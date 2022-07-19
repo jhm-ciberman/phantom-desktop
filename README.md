@@ -15,7 +15,7 @@ After that, create a virtual environment, activate it, and install the pip requi
 
 ```bash
 python -m venv .env
-source .env/bin/activate
+source .env/Scripts/activate
 pip install -r requirements.txt
 ```
 
@@ -37,4 +37,14 @@ To generate an executable file that can be distributed, run the following comman
 python setup.py build
 ```
 
-This will use `cx_Freeze` to generate an executable file according to the current operating system. The output file will be placed in the `build` folder.
+This will use [cx_Freeze](https://cx-freeze.readthedocs.io/en/latest/) to generate an executable file according to the current operating system. The output files will be placed in the `build` folder ready to be distributed.
+
+## Pulling changes from GitHub
+
+This project uses git submodules, so to pull the latest changes from GitHub, run the following command:
+
+```bash
+git pull --recurse-submodules
+```
+
+This will pull the latest changes from the main repository and update the submodules as well if required.
