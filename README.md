@@ -8,6 +8,7 @@ Phantom desktop uses git submodules, so you need to clone the repository and the
 
 ```bash
 git clone git@github.com:jhm-ciberman/phantom-desktop.git
+cd ./phantom-desktop
 git submodule update --init --recursive
 ```
 
