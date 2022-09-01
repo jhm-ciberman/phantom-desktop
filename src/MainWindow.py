@@ -20,32 +20,34 @@ class MainWindow(QtWidgets.QWidget):
         self.cam_detect_demo_button.clicked.connect(self.open_cam_detect_demo)
         self.layout.addWidget(self.cam_detect_demo_button)
 
-        image_paths = [
-            "test_images/icon.png",
-            "test_images/billboard.jpg",
-            "test_images/cookies-800x400.jpg",
-        ]
 
-        max_image_count = 500
-
-        for f in glob.glob('test_images/celebrities/**/*.jpg', recursive=True):
-            if len(image_paths) >= max_image_count:
-                break
-            image_paths.append(f)
 
         scroll_area = QtWidgets.QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
 
-        image_grid = ImageGrid()
-        for image_path in image_paths:
+        self.image_grid = ImageGrid()
+        for image_path in self.get_test_image_paths():
             image = Image.from_path(image_path)
-            image_grid.addImage(image)
+            self.image_grid.addImage(image)
         
+        self.image_grid.selectionChanged.connect(self.on_image_grid_selection_changed)
+
         self.setLayout(self.layout)
         self.layout.addWidget(scroll_area)
-        scroll_area.setWidget(image_grid)
+        scroll_area.setWidget(self.image_grid)
+
+    def get_test_image_paths(self):
+        max_image_count = 1000
+        image_paths = [
+            "test_images/icon.png",
+            "test_images/billboard.jpg",
+            "test_images/cookies-800x400.jpg",
+        ]
+        image_paths += glob.glob("test_images/celebrities/**/*.jpg", recursive=True)
+        
+        return image_paths[:max_image_count]
 
     @QtCore.Slot()
     def open_cam_detect_demo(self) -> None:
@@ -61,3 +63,9 @@ class MainWindow(QtWidgets.QWidget):
                 break
 
         video.release()
+
+    @QtCore.Slot()
+    def on_image_grid_selection_changed(self) -> None:
+        print("Selection changed")
+        for item in self.image_grid.selectedImages():
+            print(item.path)
