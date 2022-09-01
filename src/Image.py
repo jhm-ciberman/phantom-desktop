@@ -1,5 +1,6 @@
 import string
 import cv2
+import os
 
 class Image:
     """
@@ -9,7 +10,8 @@ class Image:
     channel being a uint8 array.
 
     Attributes:
-        path (str): The path to the image source.
+        path (str): The full path to the image source.
+        basename (str): The basename of the image source.
         raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format.
         channels (int): The number of channels in the image source.
         width (int): The width of the image source.
@@ -21,7 +23,7 @@ class Image:
         """
         self.path = path
         self.raw_image = raw_image
-        print(self.width, self.height, self.channels)
+        self.basename = os.path.basename(path)
 
     @property
     def channels(self):
@@ -49,7 +51,7 @@ class Image:
         """
         Loads an image from a path.
         """
-        raw_image = cv2.imread(path)
+        raw_image = cv2.imread(path, flags=cv2.IMREAD_UNCHANGED)
         raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
         return Image(path, raw_image)
 
