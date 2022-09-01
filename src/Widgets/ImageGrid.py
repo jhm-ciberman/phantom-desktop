@@ -20,6 +20,7 @@ class ImageGrid(QtWidgets.QWidget):
         self._gridSize = QtCore.QSize(150, 150)
         self._iconSize = QtCore.QSize(130, 100)
         self._listWidget = QtWidgets.QListWidget()
+        self._listWidget.setContentsMargins(0, 0, 0, 0)
         self._listWidget.setGridSize(self._gridSize)
         self._listWidget.setIconSize(self._iconSize)
         self._listWidget.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
@@ -29,10 +30,12 @@ class ImageGrid(QtWidgets.QWidget):
         self._listWidget.setDragDropMode(QtWidgets.QListView.DragDropMode.NoDragDrop)
         self._listWidget.setSelectionMode(QtWidgets.QListView.SelectionMode.ExtendedSelection)
         self._listWidget.setSelectionBehavior(QtWidgets.QListView.SelectionBehavior.SelectItems)
-        
+
         layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._listWidget)
         self.setLayout(layout)
+        self.setContentsMargins(0, 0, 0, 0)
 
         self._listWidget.itemSelectionChanged.connect(self._onItemSelectionChanged)
     

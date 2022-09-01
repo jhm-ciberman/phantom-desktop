@@ -21,7 +21,7 @@ class Image:
         """
         Initializes the Image class.
         """
-        self.path = path
+        self.path = os.path.normpath(path)
         self.raw_image = raw_image
         self.basename = os.path.basename(path)
 
@@ -54,4 +54,11 @@ class Image:
         raw_image = cv2.imread(path, flags=cv2.IMREAD_UNCHANGED)
         raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
         return Image(path, raw_image)
+
+    def save(self, path: str):
+        """
+        Saves the image to a path.
+        """
+        raw_bgra = cv2.cvtColor(self.raw_image, cv2.COLOR_RGBA2BGRA)
+        cv2.imwrite(path, raw_bgra)
 
