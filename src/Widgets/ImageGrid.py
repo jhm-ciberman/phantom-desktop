@@ -1,6 +1,6 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from Widgets.PixmapDisplay import PixmapDisplay
-from Image import Image
+from .PixmapDisplay import PixmapDisplay
+from src.Image import Image
 
 class ImageGrid(QtWidgets.QWidget):
 

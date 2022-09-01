@@ -1,6 +1,6 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from Image import Image
-from Widgets.PixmapDisplay import PixmapDisplay
+from src.Image import Image
+from .PixmapDisplay import PixmapDisplay
 
 class InspectorPanel(QtWidgets.QWidget):
     """

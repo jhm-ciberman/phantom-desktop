@@ -1,17 +1,22 @@
 from cx_Freeze import setup, Executable
+import sys
+import os
 
 # Dependencies are automatically detected, but it might need
 # fine tuning.
-build_options = {'packages': [
-    "scipy.optimize",
-    "scipy.integrate",
-], 'excludes': []}
+build_options = {
+    'packages': [
+        "scipy.optimize",
+        "scipy.integrate",
+    ], 
+    'excludes': [],
+}
 
 import sys
 base = 'Win32GUI' if sys.platform=='win32' else None
 
 executables = [
-    Executable('src/main.py', base=base, target_name = 'Phantom')
+    Executable('./main.py', base=base, target_name = 'Phantom')
 ]
 
 setup(name='Phantom Desktop',

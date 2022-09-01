@@ -1,7 +1,7 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from Widgets.ImageGrid import ImageGrid
-from Widgets.InspectorPanel import InspectorPanel
-from Image import Image
+from .Widgets.ImageGrid import ImageGrid
+from .Widgets.InspectorPanel import InspectorPanel
+from .Image import Image
 from phantom.utils import draw_faces
 from phantom.faces import landmark
 import cv2
