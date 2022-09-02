@@ -18,7 +18,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.statusBar().setSizeGripEnabled(True)
         self.statusBar().setFixedHeight(20)
-        self.statusBar().showMessage("Hola como estás wei")
+        self.statusBar().showMessage("Phantom Desktop")
 
 
         self.cam_detect_demo_button = QtWidgets.QPushButton("Open Cam detect demo")
@@ -31,8 +31,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.image_grid = ImageGrid()
         for image_path in self.get_test_image_paths():
-            image = Image.from_path(image_path)
-            self.image_grid.addImage(image)
+            try:
+                image = Image(image_path)
+                self.image_grid.addImage(image)
+            except Exception as e:
+                print(f"Failed to load image {image_path}: {e}")
         
         self.image_grid.selectionChanged.connect(self.on_image_grid_selection_changed)
 
@@ -41,7 +44,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.splitter.addWidget(self.image_grid)
         self.splitter.addWidget(self.inspector_panel)
-        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(0, 2)
+        self.splitter.setStretchFactor(1, 1)
 
         self._mainWidget = QtWidgets.QWidget()
         self._layout = QtWidgets.QVBoxLayout()
@@ -59,12 +63,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self._fileMenu.addAction("&Exit", self.close)
 
     def get_test_image_paths(self):
-        max_image_count = 1000
+        max_image_count = 2000
         image_paths = [
             "test_images/icon.png",
             "test_images/billboard.jpg",
             "test_images/cookies-800x400.jpg",
         ]
+        image_paths += glob.glob("test_images/exif/**/*.jpg", recursive=True)
+        image_paths += glob.glob("test_images/exif/**/*.tiff", recursive=True)
         image_paths += glob.glob("test_images/celebrities/**/*.jpg", recursive=True)
         
         return image_paths[:max_image_count]

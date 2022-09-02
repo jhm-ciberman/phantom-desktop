@@ -17,13 +17,24 @@ class Image:
         width (int): The width of the image source.
         height (int): The height of the image source.
     """
-    def __init__(self, path: str, raw_image):
+    def __init__(self, path: str, raw_image = None):
         """
         Initializes the Image class.
+
+        Args:
+            path (str): The full path to the image source.
+            raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format. If not provided, the image will be loaded from the path.
         """
         self.path = os.path.normpath(path)
-        self.raw_image = raw_image
         self.basename = os.path.basename(path)
+
+        if raw_image is None:
+            raw_image = cv2.imread(path, flags=cv2.IMREAD_UNCHANGED)
+            if raw_image is None:
+                raise Exception(f"Could not load image from path: {path}")
+            raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
+            
+        self.raw_image = raw_image
 
     @property
     def channels(self):
@@ -46,19 +57,12 @@ class Image:
         """
         return self.raw_image.shape[0]
 
-    @staticmethod
-    def from_path(path: str):
-        """
-        Loads an image from a path.
-        """
-        raw_image = cv2.imread(path, flags=cv2.IMREAD_UNCHANGED)
-        raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
-        return Image(path, raw_image)
-
     def save(self, path: str):
         """
         Saves the image to a path.
         """
         raw_bgra = cv2.cvtColor(self.raw_image, cv2.COLOR_RGBA2BGRA)
         cv2.imwrite(path, raw_bgra)
+
+    
 

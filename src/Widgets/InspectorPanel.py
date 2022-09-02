@@ -1,6 +1,8 @@
 from PySide6 import QtGui, QtCore, QtWidgets
 from src.Image import Image
 from .PixmapDisplay import PixmapDisplay
+from PIL import Image as PILImage
+from PIL.ExifTags import TAGS
 
 class InspectorPanel(QtWidgets.QWidget):
     """
@@ -21,8 +23,8 @@ class InspectorPanel(QtWidgets.QWidget):
         self._frame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         self._frame.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         self._frame.setContentsMargins(0, 0, 0, 0)
-        self._frameLayout = QtWidgets.QVBoxLayout()
-        self._frameLayout.setContentsMargins(0, 0, 0, 0)
+        self._frameLayout = QtWidgets.QFormLayout()
+        self._frameLayout.setContentsMargins(10, 10, 10, 10)
         self._frame.setLayout(self._frameLayout)
 
         self._layout.addWidget(self._frame)
@@ -38,16 +40,84 @@ class InspectorPanel(QtWidgets.QWidget):
         Sets the selected images.
         """
         self._selectedImages = images
-
-        if len(self._selectedImages) == 1:
-            image = self._selectedImages[0]
-            qimage = QtGui.QImage(image.raw_image, image.width, image.height, QtGui.QImage.Format_RGBA8888)
-            self._pixmapDisplay.setPixmap(QtGui.QPixmap.fromImage(qimage))
-        else:
-            self._pixmapDisplay.setPixmap(None)
+        self._refresh_info()
 
     def selectedImages(self) -> list[Image]:
         """
         Gets the selected images.
         """
         return self._selectedImages
+
+    def _get_exif(self, image: PILImage) -> dict[str, str]:
+        """
+        Gets the EXIF data from the image.
+        """
+        exif = {}
+        info = image.getexif()
+        if info:
+            for tag, value in info.items():
+                decoded = TAGS.get(tag, tag)
+                exif[decoded] = value
+
+        return exif
+
+    def _get_basic_info(self, image: PILImage) -> dict[str, str]:
+        """
+        Gets basic information about the image.
+        """
+        return {
+            "Filename": image.filename,
+            "Image Size": image.size,
+            "Image Height": image.height,
+            "Image Width": image.width,
+            "Image Format": image.format,
+            "Image Mode": image.mode,
+            "Image is Animated": getattr(image, "is_animated", False),
+            "Frames in Image": getattr(image, "n_frames", 1)
+        }
+
+    def _refresh_info(self):
+        """
+        Refreshes the information displayed in the inspector panel.
+        """
+        # delete all children in _frameLayout
+        for i in reversed(range(self._frameLayout.count())):
+            widget = self._frameLayout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+        if len(self._selectedImages) == 0:
+            self._pixmapDisplay.setPixmap(None)
+        elif len(self._selectedImages) == 1:
+            image = self._selectedImages[0]
+            qimage = QtGui.QImage(image.raw_image, image.width, image.height, QtGui.QImage.Format_RGBA8888)
+            self._pixmapDisplay.setPixmap(QtGui.QPixmap.fromImage(qimage))
+
+            pil_image = PILImage.open(image.path)
+
+            basic_info = self._get_basic_info(pil_image)
+            for key, value in basic_info.items():
+                label = QtWidgets.QLabel(key)
+                label.setStyleSheet("font-weight: bold; margin-right: 10px;")
+                value_label = QtWidgets.QLabel(str(value))
+                self._frameLayout.addRow(label, value_label)
+
+            exif = self._get_exif(pil_image)
+            if (len(exif) == 0):
+                label = QtWidgets.QLabel("No EXIF data found.")
+                label.setStyleSheet("font-weight: bold; margin-top: 10px; color: #555;")
+                self._frameLayout.addRow(label)
+            else:
+                label = QtWidgets.QLabel("EXIF Data")
+                label.setStyleSheet("font-weight: bold; margin-top: 10px; color: #555;")
+                self._frameLayout.addRow(label)
+                for key, value in exif.items():
+                    label = QtWidgets.QLabel(key)
+                    label.setStyleSheet("font-weight: bold; margin-right: 10px;")
+                    value_label = QtWidgets.QLabel(str(value))
+                    self._frameLayout.addRow(label, value_label)
+        else:
+            self._pixmapDisplay.setPixmap(None)
+            label = QtWidgets.QLabel("Multiple Images Selected")
+            label.setStyleSheet("font-weight: bold; margin-top: 10px; color: #555;")
+            self._frameLayout.addRow(label)
