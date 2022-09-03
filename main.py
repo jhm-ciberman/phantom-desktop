@@ -17,7 +17,6 @@ if __name__ == "__main__":
         QStatusBar { background-color: #f0f0f0; }
     """)
 
-    widget = MainWindow()
-    widget.resize(800, 600)
-    widget.show()
+    main_window = MainWindow()
+    main_window.showMaximized()
     sys.exit(app.exec())

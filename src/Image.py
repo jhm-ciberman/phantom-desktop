@@ -1,6 +1,7 @@
 import string
 import cv2
 import os
+from PySide6 import QtGui, QtCore, QtWidgets
 
 class Image:
     """
@@ -64,5 +65,72 @@ class Image:
         raw_bgra = cv2.cvtColor(self.raw_image, cv2.COLOR_RGBA2BGRA)
         cv2.imwrite(path, raw_bgra)
 
-    
+    @property
+    def pixmap(self):
+        """
+        Gets a QPixmap of the image.
+        """
+        return ImageCache.default().get_pixmap(self)
 
+    @property
+    def image(self):
+        """
+        Gets a QImage of the image.
+        """
+        return ImageCache.default().get_image(self)
+
+class ImageCache:
+    """
+    Singleton class for storing QImage and QPixmap cached references in a central location.
+    """
+    _instance = None
+
+    def __init__(self):
+        self._image_cache = {}
+        self._pixmap_cache = {}
+
+    @staticmethod
+    def default():
+        """
+        Gets the default ImageCache instance.
+        """
+        if ImageCache._instance is None:
+            ImageCache._instance = ImageCache()
+        return ImageCache._instance
+
+    def get_image(self, image: Image):
+        """
+        Gets a QImage for the given Image object.
+        """
+        if image not in self._image_cache:
+            self._image_cache[image] = QtGui.QImage(image.raw_image.data, image.width, image.height, QtGui.QImage.Format_RGBA8888)
+        return self._image_cache[image]
+
+    def get_pixmap(self, image: Image):
+        """
+        Gets a QPixmap for the given Image object.
+        """
+        if image not in self._pixmap_cache:
+            self._pixmap_cache[image] = QtGui.QPixmap.fromImage(self.get_image(image))
+        return self._pixmap_cache[image]
+    
+    def clear(self):
+        """
+        Clears the cache.
+        """
+        self._image_cache.clear()
+        self._pixmap_cache.clear()
+
+    def clear_image(self, image: Image):
+        """
+        Clears the image from the cache.
+        """
+        if image in self._image_cache:
+            del self._image_cache[image]
+
+    def clear_pixmap(self, image: Image):
+        """
+        Clears the pixmap from the cache.
+        """
+        if image in self._pixmap_cache:
+            del self._pixmap_cache[image]

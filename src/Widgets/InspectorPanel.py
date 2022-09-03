@@ -30,6 +30,7 @@ class InspectorPanel(QtWidgets.QWidget):
         self._layout.addWidget(self._frame)
 
         self._pixmapDisplay = PixmapDisplay()
+        self._pixmapDisplay.setMinimumHeight(200)
         self.setMinimumWidth(200)
         self._layout.addWidget(self._pixmapDisplay)
         
@@ -67,9 +68,8 @@ class InspectorPanel(QtWidgets.QWidget):
         """
         return {
             "Filename": image.filename,
-            "Image Size": image.size,
-            "Image Height": image.height,
             "Image Width": image.width,
+            "Image Height": image.height,
             "Image Format": image.format,
             "Image Mode": image.mode,
             "Image is Animated": getattr(image, "is_animated", False),
@@ -86,12 +86,12 @@ class InspectorPanel(QtWidgets.QWidget):
             if widget is not None:
                 widget.deleteLater()
 
-        if len(self._selectedImages) == 0:
+        selected_count = len(self._selectedImages)
+        if selected_count == 0:
             self._pixmapDisplay.setPixmap(None)
-        elif len(self._selectedImages) == 1:
+        elif selected_count == 1:
             image = self._selectedImages[0]
-            qimage = QtGui.QImage(image.raw_image, image.width, image.height, QtGui.QImage.Format_RGBA8888)
-            self._pixmapDisplay.setPixmap(QtGui.QPixmap.fromImage(qimage))
+            self._pixmapDisplay.setPixmap(image.pixmap)
 
             pil_image = PILImage.open(image.path)
 
@@ -118,6 +118,6 @@ class InspectorPanel(QtWidgets.QWidget):
                     self._frameLayout.addRow(label, value_label)
         else:
             self._pixmapDisplay.setPixmap(None)
-            label = QtWidgets.QLabel("Multiple Images Selected")
+            label = QtWidgets.QLabel(str(selected_count) + " Images Selected")
             label.setStyleSheet("font-weight: bold; margin-top: 10px; color: #555;")
             self._frameLayout.addRow(label)

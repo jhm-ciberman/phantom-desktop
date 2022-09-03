@@ -2,6 +2,7 @@ from PySide6 import QtGui, QtCore, QtWidgets
 from .Widgets.ImageGrid import ImageGrid
 from .Widgets.InspectorPanel import InspectorPanel
 from .Image import Image
+from .PerspectiveWindow import PerspectiveWindow
 from phantom.utils import draw_faces
 from phantom.faces import landmark
 import cv2
@@ -15,14 +16,25 @@ class MainWindow(QtWidgets.QMainWindow):
         icon = QtGui.QIcon("res/icon_128.png")
         self.setWindowIcon(icon)
         self.setWindowTitle("Phantom")
+        self.setMinimumSize(800, 600)
 
         self.statusBar().setSizeGripEnabled(True)
         self.statusBar().setFixedHeight(20)
         self.statusBar().showMessage("Phantom Desktop")
 
+        self._mainWidget = QtWidgets.QWidget()
+        self._layout = QtWidgets.QVBoxLayout()
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(0)
 
         self.cam_detect_demo_button = QtWidgets.QPushButton("Open Cam detect demo")
         self.cam_detect_demo_button.clicked.connect(self.open_cam_detect_demo)
+        self._layout.addWidget(self.cam_detect_demo_button, 0, QtCore.Qt.AlignTop)
+
+        self.perspective_correct_button = QtWidgets.QPushButton("Open Perspective Correct Window")
+        self.perspective_correct_button.clicked.connect(self.open_perspective_correct_window)
+        self._layout.addWidget(self.perspective_correct_button, 0, QtCore.Qt.AlignTop)
+
         self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
         self.splitter.setContentsMargins(10, 10, 10, 10)
@@ -47,11 +59,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.splitter.setStretchFactor(0, 2)
         self.splitter.setStretchFactor(1, 1)
 
-        self._mainWidget = QtWidgets.QWidget()
-        self._layout = QtWidgets.QVBoxLayout()
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(0)
-        self._layout.addWidget(self.cam_detect_demo_button, 0, QtCore.Qt.AlignTop)
         self._layout.addWidget(self.splitter, 1)
         self._mainWidget.setLayout(self._layout)
         self.setCentralWidget(self._mainWidget)
@@ -61,6 +68,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._fileMenu.addAction("&Import image", self.import_image)
         self._fileMenu.addAction("&Export image", self.export_image)
         self._fileMenu.addAction("&Exit", self.close)
+
+        self._childWindows = [] # Only because GC closes the window when the reference is lost.
 
     def get_test_image_paths(self):
         max_image_count = 2000
@@ -96,7 +105,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.inspector_panel.setSelectedImages(selected_images)
         count = len(selected_images)
         if (count == 0):
-            self.statusBar().showMessage("{} images in the collection".format(self.image_grid.images().count()))
+            self.statusBar().showMessage("{} images in the collection".format(len(self.image_grid.images())))
         elif (count == 1):
             self.statusBar().showMessage(selected_images[0].path)
         else:
@@ -116,3 +125,13 @@ class MainWindow(QtWidgets.QMainWindow):
             file_path = QtWidgets.QFileDialog.getSaveFileName(self, "Save File", "", "Images (*.png *.jpg *.jpeg)")[0]
             if file_path:
                 selected_images[0].save(file_path)
+
+    @QtCore.Slot()
+    def open_perspective_correct_window(self) -> None:
+        selected = self.image_grid.selectedImages()
+        if len(selected) == 1:
+            window = PerspectiveWindow(selected[0])
+            self._childWindows.append(window)
+            window.showMaximized()
+
+            print("Opening perspective correct window")
