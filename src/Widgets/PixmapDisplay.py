@@ -3,13 +3,14 @@ from PySide6 import QtGui, QtCore, QtWidgets
 class PixmapDisplay(QtWidgets.QWidget):
     """
     Widget for displaying a QPixmap. The image is scaled proportionally to fit the widget.
+    This class can also be used as a base class for editors that display an image.
     """
     def __init__(self, pixmap: QtGui.QPixmap = None):
         """
         Initializes the PixmapDisplay class.
 
         Args:
-            pixmap (QPixmap): The pixmap to display.
+            pixmap (QPixmap): The pixmap to display. Defaults to None.
         """
         super().__init__()
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
