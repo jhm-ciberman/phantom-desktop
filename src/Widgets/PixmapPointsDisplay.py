@@ -25,7 +25,7 @@ class PixmapPointsDisplay(PixmapDisplay):
 
         self._zoomRectSourceSize = 25 # type: int
         self._zoomRectDestSize = 200 # type: int
-        self._zoomCrosshairSize = 10 # type: int
+        self._zoomCrosshairSize = 6 # type: int
         self._zoomFactor = self._zoomRectDestSize / self._zoomRectSourceSize
         # Visual settings
         self._pointsPen = QtGui.QPen(QtGui.QColor("#583879"), 6)
@@ -33,7 +33,6 @@ class PixmapPointsDisplay(PixmapDisplay):
         self._editingLinePen = QtGui.QPen(QtGui.QColor("#CCC"), 2)
         self._finishedlinePen = QtGui.QPen(QtGui.QColor("#FFF"), 2)
         self._zoomCrosshairPen = QtGui.QPen(QtGui.QColor("#FFF"), self._zoomFactor)
-        self._zoomCrosshairPen.setCapStyle(QtCore.Qt.PenCapStyle.FlatCap)
 
         self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
 
@@ -133,6 +132,15 @@ class PixmapPointsDisplay(PixmapDisplay):
                 painter.setPen(self._pointsPen)
             painter.drawPoint(point)
 
+        if not self._hasFinished or self._draggedPointIndex != -1:
+            self._drawZoomRect(painter)
+
+        painter.end()
+
+    def _drawZoomRect(self, painter: QtGui.QPainter):
+        """
+        Draws the zoom rect.
+        """
         # Draw zoom rect
         cursorDest, cursorSource = self._cursorPoint, self._widgetToImage(self._cursorPoint)
         pixmap = self.pixmap()
@@ -144,23 +152,23 @@ class PixmapPointsDisplay(PixmapDisplay):
         
         destX, destY = 0, 0
         destW, destH = self._zoomRectDestSize, self._zoomRectDestSize
-        if cursorDest.x() < destW * 1.5:
+        if cursorDest.x() < destW + 20 and cursorDest.y() < destH + 20:
             destX = self.width() - destW
 
         painter.drawPixmap(destX, destY, destW, destH, pixmap, srcX, srcY, srcW, srcH)
 
         # Draw a crosshair (4 lines, leaving the center pixel visible) with inverted colors
+        cx, cy = destX + destW // 2, destY + destH // 2
         painter.setCompositionMode(QtGui.QPainter.CompositionMode.RasterOp_SourceXorDestination)
         painter.setPen(self._zoomCrosshairPen)
-        s = self._zoomCrosshairSize
-        p = self._zoomFactor
-        cx, cy = destX + destW // 2, destY + destH // 2
-        painter.drawLine(cx - s, cy, cx - p, cy) # left
-        painter.drawLine(cx + p, cy, cx + s, cy) # right
-        painter.drawLine(cx, cy - s, cx, cy - p) # top
-        painter.drawLine(cx, cy + p, cx, cy + s) # bottom
+        p = self._zoomFactor # 1 pixel in source space is p pixels in dest space
+        s = self._zoomCrosshairSize * p # size of the crosshair in source space
+        pp = 2 * p # 2 pixels in source space for the inner space of the crosshair
 
-        painter.end()
+        painter.drawLine(cx - s, cy, cx - pp, cy) # left
+        painter.drawLine(cx + pp, cy, cx + s, cy) # right
+        painter.drawLine(cx, cy - s, cx, cy - pp) # top
+        painter.drawLine(cx, cy + pp, cx, cy + s) # bottom
 
     def _widgetToImage(self, point: QtCore.QPoint) -> QtCore.QPoint:
         """
@@ -243,5 +251,7 @@ class PixmapPointsDisplay(PixmapDisplay):
                 self.addPoint(point)
                 if len(self._pointsImageSpace) == self._requiredPoints:
                     self._hasFinished = True
+            self._updateCursor()
+            self.repaint()
 
 
