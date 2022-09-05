@@ -142,6 +142,8 @@ class PixmapPointsDisplay(PixmapDisplay):
         Draws the zoom rect.
         """
         # Draw zoom rect
+        if self._cursorPoint is None:
+            return
         cursorDest, cursorSource = self._cursorPoint, self._widgetToImage(self._cursorPoint)
         pixmap = self.pixmap()
 
