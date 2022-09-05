@@ -33,6 +33,7 @@ class PixmapPointsDisplay(PixmapDisplay):
         self._editingLinePen = QtGui.QPen(QtGui.QColor("#CCC"), 2)
         self._finishedlinePen = QtGui.QPen(QtGui.QColor("#FFF"), 2)
         self._zoomCrosshairPen = QtGui.QPen(QtGui.QColor("#FFF"), self._zoomFactor)
+        self._zoomBackgroundBrush = QtGui.QBrush(QtGui.QColor("#808080")) # pure gray
 
         self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
 
@@ -149,13 +150,15 @@ class PixmapPointsDisplay(PixmapDisplay):
 
         srcW, srcH = self._zoomRectSourceSize, self._zoomRectSourceSize
         srcX, srcY = cursorSource.x() - srcW // 2, cursorSource.y() - srcH // 2
-        srcX = max(0, min(srcX, pixmap.width() - srcW))
-        srcY = max(0, min(srcY, pixmap.height() - srcH))
         
         destX, destY = 0, 0
         destW, destH = self._zoomRectDestSize, self._zoomRectDestSize
         if cursorDest.x() < destW + 20 and cursorDest.y() < destH + 20:
             destX = self.width() - destW
+
+        painter.setBrush(self._zoomBackgroundBrush)
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.drawRect(destX, destY, destW, destH)
 
         painter.drawPixmap(destX, destY, destW, destH, pixmap, srcX, srcY, srcW, srcH)
 
