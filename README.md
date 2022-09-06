@@ -49,3 +49,9 @@ git pull --recurse-submodules
 ```
 
 This will pull the latest changes from the main repository and update the submodules as well if required.
+
+## Code conventions
+
+This project uses Qt and thus, it tries to follow the Qt style for all classes that inherit from `QObject`. The rest of the code follows the [PEP8](https://www.python.org/dev/peps/pep-0008/) style guide.
+
+For more info please refer to [this](http://bitesofcode.blogspot.com/2011/10/pyqt-coding-style-guidelines.html) blog post.

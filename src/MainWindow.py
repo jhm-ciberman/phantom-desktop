@@ -1,4 +1,6 @@
 from PySide6 import QtGui, QtCore, QtWidgets
+
+from .QtHelpers import setSplitterStyle
 from .Widgets.ImageGrid import ImageGrid
 from .Widgets.InspectorPanel import InspectorPanel
 from .Image import Image
@@ -13,8 +15,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
-        icon = QtGui.QIcon("res/icon_128.png")
-        self.setWindowIcon(icon)
         self.setWindowTitle("Phantom")
         self.setMinimumSize(800, 600)
 
@@ -22,7 +22,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().setFixedHeight(20)
         self.statusBar().showMessage("Phantom Desktop")
 
-        self._mainWidget = QtWidgets.QWidget()
+        mainWidget = QtWidgets.QWidget()
         self._layout = QtWidgets.QVBoxLayout()
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(0)
@@ -35,11 +35,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.perspective_correct_button.clicked.connect(self.open_perspective_correct_window)
         self._layout.addWidget(self.perspective_correct_button, 0, QtCore.Qt.AlignTop)
 
-        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
-        self.splitter.setContentsMargins(10, 10, 10, 10)
-        # The splitter is invisible due to a bug in Qt so we use an image instead.
-        self.splitter.setStyleSheet("QSplitter::handle { image: url(res/drag_handle_horizontal.png); }")
+        splitter.setContentsMargins(10, 10, 10, 10)
+        setSplitterStyle(splitter)
 
         self.image_grid = ImageGrid()
         for image_path in self.get_test_image_paths():
@@ -54,14 +53,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.inspector_panel = InspectorPanel()
         self.inspector_panel.setContentsMargins(0, 0, 0, 0)
         
-        self.splitter.addWidget(self.image_grid)
-        self.splitter.addWidget(self.inspector_panel)
-        self.splitter.setStretchFactor(0, 2)
-        self.splitter.setStretchFactor(1, 1)
+        splitter.addWidget(self.image_grid)
+        splitter.addWidget(self.inspector_panel)
+        splitter.setStretchFactor(0, 2)
+        splitter.setStretchFactor(1, 1)
 
-        self._layout.addWidget(self.splitter, 1)
-        self._mainWidget.setLayout(self._layout)
-        self.setCentralWidget(self._mainWidget)
+        self._layout.addWidget(splitter, 1)
+        mainWidget.setLayout(self._layout)
+        self.setCentralWidget(mainWidget)
 
         self._menuBar = self.menuBar()
         self._fileMenu = self._menuBar.addMenu("&File")
@@ -115,7 +114,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def import_image(self) -> None:
         file_path = QtWidgets.QFileDialog.getOpenFileName(self, "Open File", "", "Images (*.png *.jpg *.jpeg)")[0]
         if file_path:
-            image = Image.from_path(file_path)
+            image = Image(file_path)
             self.image_grid.addImage(image)
 
     @QtCore.Slot()

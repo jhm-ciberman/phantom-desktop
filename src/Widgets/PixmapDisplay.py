@@ -1,6 +1,9 @@
 from PySide6 import QtGui, QtCore, QtWidgets
 
 class PixmapDisplay(QtWidgets.QWidget):
+
+    onImageRectChanged = QtCore.Signal(QtCore.QRect)
+
     """
     Widget for displaying a QPixmap. The image is scaled proportionally to fit the widget.
     This class can also be used as a base class for editors that display an image.
@@ -87,7 +90,7 @@ class PixmapDisplay(QtWidgets.QWidget):
         in derived classes to perform custom actions when the image rectangle changes. 
         The rectangle can be null if there is no image.
         """
-        pass
+        self.onImageRectChanged.emit(imageRect)
 
     def _processDirty(self) -> None:
         if not self._isDirty:
