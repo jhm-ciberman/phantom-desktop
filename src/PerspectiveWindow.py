@@ -75,13 +75,18 @@ class PerspectiveWindow(QtWidgets.QWidget):
         self._outputHeight = self._createSpinBox(min=1, max=10000, value=image.height, step=1, suffix="px")
         self._outputHeight.valueChanged.connect(self._onPreviewConfigChanged)
 
-        self._useLinearInterpolation = QtWidgets.QCheckBox()
-        self._useLinearInterpolation.setChecked(True)
-        self._useLinearInterpolation.setToolTip("""
-            <p>When checked, the output image will be interpolated using a linear interpolation instead of a nearest neighbor interpolation.</p>
-            <p>You can uncheck this option when you need to make sure the original pixels are visible in the output image.</p>
-        """)
-        self._useLinearInterpolation.stateChanged.connect(self._onPreviewConfigChanged)
+        self._interpolationMode = QtWidgets.QComboBox()
+        options = [
+            ("Nearest (Pixelated)", cv2.INTER_NEAREST),
+            ("Linear (Default)", cv2.INTER_LINEAR), # default
+            ("Area", cv2.INTER_AREA),
+            ("Cubic", cv2.INTER_CUBIC),
+            ("Lanczos4", cv2.INTER_LANCZOS4)
+        ]
+        for name, value in options:
+            self._interpolationMode.addItem(name, value)
+        self._interpolationMode.currentIndexChanged.connect(self._onPreviewConfigChanged)
+        self._interpolationMode.setCurrentIndex(1)
 
         self._rotationModeSmart = QtWidgets.QToolButton()
         self._rotationModeSmart.setText("Smart")
@@ -132,7 +137,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         formLayout.addRow("Aspect ratio", self._aspectRatio)
         formLayout.addRow("Output width", self._outputWidth)
         formLayout.addRow("Output height", self._outputHeight)
-        formLayout.addRow("Linear interpolation", self._useLinearInterpolation)
+        formLayout.addRow("Interpolation Mode", self._interpolationMode)
         formLayout.addRow("Rotation", rotationLayout)
 
         self._onPreviewConfigChanged()
@@ -172,8 +177,8 @@ class PerspectiveWindow(QtWidgets.QWidget):
         if self._previewBuffer.shape != previewShape:
             self._previewBuffer = np.zeros(previewShape, dtype=np.uint8);
 
-        linear = self._useLinearInterpolation.isChecked()
-        PerspectiveTransform.basic_transform(self._image.raw_image, self._previewBuffer, self._points, linear)
+        interpolation = self._interpolationMode.currentData()
+        PerspectiveTransform.basic_transform(self._image.raw_image, self._previewBuffer, self._points, interpolation)
 
         image = QtGui.QImage(self._previewBuffer.data, w, h, QtGui.QImage.Format.Format_RGBA8888)
         pixmap = QtGui.QPixmap.fromImage(image)
