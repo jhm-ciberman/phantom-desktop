@@ -1,4 +1,4 @@
-from PySide6 import QtGui, QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from .QtHelpers import setSplitterStyle
 from .Widgets.ImageGrid import ImageGrid
@@ -10,7 +10,7 @@ from phantom.utils import draw_faces
 from phantom.faces import landmark
 import cv2
 import glob
-import os
+
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -52,12 +52,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.image_grid.addImage(image)
             except Exception as e:
                 print(f"Failed to load image {image_path}: {e}")
-        
+
         self.image_grid.selectionChanged.connect(self.on_image_grid_selection_changed)
 
         self.inspector_panel = InspectorPanel()
         self.inspector_panel.setContentsMargins(0, 0, 0, 0)
-        
+
         splitter.addWidget(self.image_grid)
         splitter.addWidget(self.inspector_panel)
         splitter.setStretchFactor(0, 2)
@@ -73,7 +73,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._fileMenu.addAction("&Export image", self.export_image)
         self._fileMenu.addAction("&Exit", self.close)
 
-        self._childWindows = [] # Only because GC closes the window when the reference is lost.
+        self._childWindows = []  # Only because GC closes the window when the reference is lost.
 
     def get_test_image_paths(self):
         max_image_count = 2000
@@ -85,7 +85,7 @@ class MainWindow(QtWidgets.QMainWindow):
         image_paths += glob.glob("test_images/exif/**/*.jpg", recursive=True)
         image_paths += glob.glob("test_images/exif/**/*.tiff", recursive=True)
         image_paths += glob.glob("test_images/celebrities/**/*.jpg", recursive=True)
-        
+
         return image_paths[:max_image_count]
 
     @QtCore.Slot()

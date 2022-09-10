@@ -15,10 +15,10 @@ class PerspectiveWindow(QtWidgets.QWidget):
 
         self._image = image
         # Initialize as 1x1 RGBA
-        self._previewBuffer = np.zeros((1,1,4), dtype=np.uint8); # type: cv2.Mat
-        
+        self._previewBuffer = np.zeros((1, 1, 4), dtype=np.uint8)  # type: cv2.Mat
+
         self._rotationIndex = 0
-        self._points = [] # type: list[(int, int)]
+        self._points = []  # type: list[(int, int)]
 
         self.setWindowTitle(str(image.basename) + " - Phantom")
         self.setMinimumSize(800, 600)
@@ -26,7 +26,6 @@ class PerspectiveWindow(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout()
         self.setLayout(layout)
 
-        
         splitter = QtWidgets.QSplitter()
         splitter.setOrientation(QtCore.Qt.Horizontal)
         splitter.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -61,7 +60,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         optionsFrame.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
         optionsFrame.setMinimumWidth(200)
         optionsFrame.setMaximumWidth(400)
-        
+
         formLayout = QtWidgets.QFormLayout()
         formLayout.setContentsMargins(10, 10, 10, 10)
         optionsFrame.setLayout(formLayout)
@@ -77,7 +76,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         self._interpolationMode = QtWidgets.QComboBox()
         options = [
             ("Nearest (Pixelated)", cv2.INTER_NEAREST),
-            ("Linear (Default)", cv2.INTER_LINEAR), # default
+            ("Linear (Default)", cv2.INTER_LINEAR),  # default
             ("Area", cv2.INTER_AREA),
             ("Cubic", cv2.INTER_CUBIC),
             ("Lanczos4", cv2.INTER_LANCZOS4)
@@ -141,7 +140,6 @@ class PerspectiveWindow(QtWidgets.QWidget):
 
         self._onPreviewConfigChanged()
 
-
     @QtCore.Slot()
     def _onPointsChanged(self) -> None:
         if self._editor.hasFinished():
@@ -174,7 +172,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         h = int(w / aspectRatio)
         previewShape = (h, w, 4)
         if self._previewBuffer.shape != previewShape:
-            self._previewBuffer = np.zeros(previewShape, dtype=np.uint8);
+            self._previewBuffer = np.zeros(previewShape, dtype=np.uint8)
 
         interpolation = self._interpolationMode.currentData()
         PerspectiveTransform.basic_transform(self._image.raw_image, self._previewBuffer, self._points, interpolation)
@@ -214,9 +212,9 @@ class PerspectiveWindow(QtWidgets.QWidget):
 
         if self._rotationModeSmart.isChecked():
             self._rotationIndex = self._indexOfTopLeftCorner(points)
-            
+
         self._points = points[self._rotationIndex:] + points[:self._rotationIndex]
-    
+
     def _rotate(self, direction: int) -> None:
         self._rotationModeSmart.setChecked(False)
         self._rotationIndex = (self._rotationIndex - direction) % 4
