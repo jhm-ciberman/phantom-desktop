@@ -52,8 +52,8 @@ class DeblurWindow(QtWidgets.QWidget):
 
         self._blurIterations = QtWidgets.QSpinBox()
         self._blurIterations.setMinimum(1)
-        self._blurIterations.setMaximum(20)
-        self._blurIterations.setValue(5)
+        self._blurIterations.setMaximum(100)
+        self._blurIterations.setValue(10)
         self._blurIterations.valueChanged.connect(self._onSettingsChanged)
 
         optionsLayout.addRow("Blur radius", self._blurRadius)
@@ -69,23 +69,27 @@ class DeblurWindow(QtWidgets.QWidget):
 
     def _updatePreview(self) -> None:
         rawImage = self._image.raw_image
+        srcW, srcH = self._image.width, self._image.height
 
         rect = self._imagePreview.imageRect()
-        h, w = rect.height(), rect.width()
-        previewShape = (h, w, 4)
+        dstW, dstH = rect.width(), rect.height()
+        previewShape = (dstH, dstW, 4)
         if self._previewBuffer.shape != previewShape:
             self._previewBuffer = np.zeros(previewShape, dtype=np.uint8)
             # draw the image into the buffer
-            cv2.resize(rawImage, (w, h), self._previewBuffer)
+            cv2.resize(rawImage, (dstW, dstH), self._previewBuffer, interpolation=cv2.INTER_AREA)
 
-        sigmag = self._blurRadius.value()
+        scale = dstW / srcW
+        sigmag = self._blurRadius.value() / scale
+        # round to next odd number (> 0)
+        sigmag = 1 if sigmag < 1 else int(sigmag) | 1
         iterations = self._blurIterations.value()
 
-        filter = DeblurFilter(self._previewBuffer)
-        filter.setBlurIterations(iterations)
-        filter.setBlurRadius(sigmag)
-        result = filter.process()
+        print("srcW: {}, srcH: {}, dstW: {}, dstH: {}, scale: {}, sigmag: {}, iterations: {}"
+              .format(srcW, srcH, dstW, dstH, scale, sigmag, iterations))
 
-        image = QtGui.QImage(result.data, result.shape[1], result.shape[0], QtGui.QImage.Format_RGB888)
+        result = DeblurFilter.lucy_richardson_deconv(self._previewBuffer, iterations, sigmag)
+
+        image = QtGui.QImage(result.data, result.shape[1], result.shape[0], QtGui.QImage.Format_RGBA8888)
         pixmap = QtGui.QPixmap.fromImage(image)
         self._imagePreview.setPixmap(pixmap)

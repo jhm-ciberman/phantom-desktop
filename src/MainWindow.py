@@ -81,6 +81,9 @@ class MainWindow(QtWidgets.QMainWindow):
             "test_images/icon.png",
             "test_images/billboard.jpg",
             "test_images/cookies-800x400.jpg",
+            "test_images/lena.png",
+            "test_images/lena_blur_3.png",
+            "test_images/lena_blur_10.png",
         ]
         image_paths += glob.glob("test_images/exif/**/*.jpg", recursive=True)
         image_paths += glob.glob("test_images/exif/**/*.tiff", recursive=True)
