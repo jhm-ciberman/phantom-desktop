@@ -1,5 +1,6 @@
 from PySide6 import QtGui, QtCore, QtWidgets
 
+
 class PixmapDisplay(QtWidgets.QWidget):
 
     onImageRectChanged = QtCore.Signal(QtCore.QRect)
@@ -19,7 +20,7 @@ class PixmapDisplay(QtWidgets.QWidget):
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self._pixmap = None
         self._resizedPixmap = None
-        self._imageRect = None # type: QtCore.QRect
+        self._imageRect = None  # type: QtCore.QRect
         self._aspectRatioMode = QtCore.Qt.AspectRatioMode.KeepAspectRatio
         self._transformationMode = QtCore.Qt.TransformationMode.SmoothTransformation
         self._imageToWidgetTransform = QtGui.QTransform()
@@ -86,8 +87,8 @@ class PixmapDisplay(QtWidgets.QWidget):
 
     def imageRectChangedEvent(self, imageRect: QtCore.QRect) -> None:
         """
-        Called when the image rectangle changes. This method can be overriden 
-        in derived classes to perform custom actions when the image rectangle changes. 
+        Called when the image rectangle changes. This method can be overriden
+        in derived classes to perform custom actions when the image rectangle changes.
         The rectangle can be null if there is no image.
         """
         self.onImageRectChanged.emit(imageRect)
@@ -144,5 +145,3 @@ class PixmapDisplay(QtWidgets.QWidget):
         """
         self._processDirty()
         return self._imageRect
-
-

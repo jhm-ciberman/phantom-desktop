@@ -1,5 +1,6 @@
-from PySide6 import QtGui, QtCore, QtWidgets
+from PySide6 import QtGui, QtCore
 from .PixmapDisplay import PixmapDisplay
+
 
 class PixmapPointsDisplay(PixmapDisplay):
     """
@@ -18,19 +19,19 @@ class PixmapPointsDisplay(PixmapDisplay):
         self.setMinimumHeight(200)
         self.setMinimumWidth(200)
         self.setMouseTracking(True)
-        self._pointsImageSpace = [] # type: list[QtCore.QPoint]
-        self._pointsWidgetSpace = [] # type: list[QtCore.QPoint]
+        self._pointsImageSpace = []  # type: list[QtCore.QPoint]
+        self._pointsWidgetSpace = []  # type: list[QtCore.QPoint]
 
-        self._cursorPoint = None # type: QtCore.QPoint
+        self._cursorPoint = None  # type: QtCore.QPoint
         self._hasFinished = False
-        self._hightlightedPointIndex = -1 # type: int
-        self._draggedPointIndex = -1 # type: int
-        self._pointHitAreaRadius = 15 # type: int
-        self._requiredPoints = 4 # type: int
+        self._hightlightedPointIndex = -1  # type: int
+        self._draggedPointIndex = -1  # type: int
+        self._pointHitAreaRadius = 15  # type: int
+        self._requiredPoints = 4  # type: int
 
-        self._zoomRectSourceSize = 25 # type: int
-        self._zoomRectDestSize = 200 # type: int
-        self._zoomCrosshairSize = 6 # type: int
+        self._zoomRectSourceSize = 25  # type: int
+        self._zoomRectDestSize = 200  # type: int
+        self._zoomCrosshairSize = 6  # type: int
         self._zoomFactor = self._zoomRectDestSize / self._zoomRectSourceSize
         # Visual settings
         self._pointsPen = QtGui.QPen(QtGui.QColor("#583879"), 6)
@@ -38,7 +39,7 @@ class PixmapPointsDisplay(PixmapDisplay):
         self._editingLinePen = QtGui.QPen(QtGui.QColor("#CCC"), 2)
         self._finishedlinePen = QtGui.QPen(QtGui.QColor("#FFF"), 2)
         self._zoomCrosshairPen = QtGui.QPen(QtGui.QColor("#FFF"), self._zoomFactor)
-        self._zoomBackgroundBrush = QtGui.QBrush(QtGui.QColor("#808080")) # pure gray
+        self._zoomBackgroundBrush = QtGui.QBrush(QtGui.QColor("#808080"))  # pure gray
 
         self.setCursor(QtCore.Qt.CursorShape.CrossCursor)
 
@@ -99,8 +100,8 @@ class PixmapPointsDisplay(PixmapDisplay):
 
     def imageRectChangedEvent(self, imageRect: QtCore.QRect) -> None:
         """
-        Called when the image rectangle changes. This method can be overriden 
-        in derived classes to perform custom actions when the image rectangle changes. 
+        Called when the image rectangle changes. This method can be overriden
+        in derived classes to perform custom actions when the image rectangle changes.
         The rectangle can be null if there is no image.
         """
         super().imageRectChangedEvent(imageRect)
@@ -113,7 +114,7 @@ class PixmapPointsDisplay(PixmapDisplay):
         """
         Paints the widget.
         """
-        super().paintEvent(event) 
+        super().paintEvent(event)
         painter = QtGui.QPainter(self)
 
         points = self._pointsWidgetSpace
@@ -159,7 +160,7 @@ class PixmapPointsDisplay(PixmapDisplay):
 
         srcW, srcH = self._zoomRectSourceSize, self._zoomRectSourceSize
         srcX, srcY = cursorSource.x() - srcW // 2, cursorSource.y() - srcH // 2
-        
+
         destX, destY = 0, 0
         destW, destH = self._zoomRectDestSize, self._zoomRectDestSize
         if cursorDest.x() < destW + 20 and cursorDest.y() < destH + 20:
@@ -175,14 +176,14 @@ class PixmapPointsDisplay(PixmapDisplay):
         cx, cy = destX + destW // 2, destY + destH // 2
         painter.setCompositionMode(QtGui.QPainter.CompositionMode.RasterOp_SourceXorDestination)
         painter.setPen(self._zoomCrosshairPen)
-        p = self._zoomFactor # 1 pixel in source space is p pixels in dest space
-        s = self._zoomCrosshairSize * p # size of the crosshair in source space
-        pp = 2 * p # 2 pixels in source space for the inner space of the crosshair
+        p = self._zoomFactor  # 1 pixel in source space is p pixels in dest space
+        s = self._zoomCrosshairSize * p  # size of the crosshair in source space
+        pp = 2 * p  # 2 pixels in source space for the inner space of the crosshair
 
-        painter.drawLine(cx - s, cy, cx - pp, cy) # left
-        painter.drawLine(cx + pp, cy, cx + s, cy) # right
-        painter.drawLine(cx, cy - s, cx, cy - pp) # top
-        painter.drawLine(cx, cy + pp, cx, cy + s) # bottom
+        painter.drawLine(cx - s, cy, cx - pp, cy)  # left
+        painter.drawLine(cx + pp, cy, cx + s, cy)  # right
+        painter.drawLine(cx, cy - s, cx, cy - pp)  # top
+        painter.drawLine(cx, cy + pp, cx, cy + s)  # bottom
 
     def _widgetToImage(self, point: QtCore.QPoint) -> QtCore.QPoint:
         """
@@ -200,7 +201,6 @@ class PixmapPointsDisplay(PixmapDisplay):
         x = max(0, min(point.x(), pixmapSize.width()))
         y = max(0, min(point.y(), pixmapSize.height()))
         return QtCore.QPoint(x, y)
-
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         """
@@ -269,5 +269,3 @@ class PixmapPointsDisplay(PixmapDisplay):
                     self.onFinished.emit()
             self._updateCursor()
             self.repaint()
-
-

@@ -1,4 +1,3 @@
-import imp
 from PySide6 import QtGui, QtCore, QtWidgets
 from .Image import Image
 from .Widgets.PixmapDisplay import PixmapDisplay
@@ -6,13 +5,14 @@ import numpy as np
 from .Services.DeblurFilter import DeblurFilter
 import cv2
 
+
 class DeblurWindow(QtWidgets.QWidget):
     def __init__(self, image: Image) -> None:
         super().__init__()
 
         self._image = image
 
-        self._previewBuffer = np.zeros((1,1,4), dtype=np.uint8); # type: cv2.Mat
+        self._previewBuffer = np.zeros((1, 1, 4), dtype=np.uint8)  # type: cv2.Mat
 
         self.setWindowTitle(str(image.basename) + " - Phantom")
         self.setMinimumSize(800, 600)
@@ -65,7 +65,6 @@ class DeblurWindow(QtWidgets.QWidget):
 
     @QtCore.Slot(QtCore.QRect)
     def _onPreviewRectChanged(self, rect: QtCore.QRect) -> None:
-        #self._updatePreview()
         pass
 
     def _updatePreview(self) -> None:

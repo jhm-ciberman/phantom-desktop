@@ -1,8 +1,9 @@
-from PySide6 import QtGui, QtCore, QtWidgets
+from PySide6 import QtWidgets
 from src.Image import Image
 from .PixmapDisplay import PixmapDisplay
 from PIL import Image as PILImage
 from PIL.ExifTags import TAGS
+
 
 class InspectorPanel(QtWidgets.QWidget):
     """
@@ -32,14 +33,13 @@ class InspectorPanel(QtWidgets.QWidget):
         self._table.setShowGrid(False)
         self._table.setContentsMargins(5, 5, 5, 5)
 
-
         self._layout.addWidget(self._table)
 
         self._pixmapDisplay = PixmapDisplay()
         self._pixmapDisplay.setMinimumHeight(200)
         self.setMinimumWidth(200)
         self._layout.addWidget(self._pixmapDisplay)
-        
+
         self._selectedImages = []
 
     def setSelectedImages(self, images: list[Image]):
@@ -83,7 +83,7 @@ class InspectorPanel(QtWidgets.QWidget):
         frames = getattr(image, "n_frames", 1)
         if frames > 1:
             data["Number of Frames"] = frames
-        
+
         return data
 
     def _bool(self, value: bool) -> str:
@@ -145,14 +145,14 @@ class InspectorPanel(QtWidgets.QWidget):
 
     def _add_header(self, text: str):
         """
-        Adds a header to the inspector panel. 
+        Adds a header to the inspector panel.
         """
         header = InspectorHeader(text)
         row = self._table.rowCount()
         self._table.insertRow(row)
         self._table.setSpan(row, 0, 1, 2)
         self._table.setCellWidget(row, 0, header)
-        
+
 
 class InspectorHeader(QtWidgets.QWidget):
     """

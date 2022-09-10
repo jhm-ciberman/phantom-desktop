@@ -1,6 +1,6 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from .PixmapDisplay import PixmapDisplay
 from src.Image import Image
+
 
 class ImageGrid(QtWidgets.QWidget):
 
@@ -38,7 +38,7 @@ class ImageGrid(QtWidgets.QWidget):
         self.setContentsMargins(0, 0, 0, 0)
 
         self._listWidget.itemSelectionChanged.connect(self._onItemSelectionChanged)
-    
+
     def addImage(self, image: Image) -> None:
         """
         Adds an image to the grid.
@@ -78,7 +78,7 @@ class ImageGrid(QtWidgets.QWidget):
         self._selectedImages = []
         for item in self._listWidget.selectedIndexes():
             self._selectedImages.append(self._images[item.row()])
-        
+
         self.selectionChanged.emit()
 
     def clear(self) -> None:
@@ -89,7 +89,3 @@ class ImageGrid(QtWidgets.QWidget):
         self._images = []
         self._items = []
         self._selectedImages = []
-
-    
-
-    

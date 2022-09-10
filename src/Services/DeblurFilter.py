@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 class DeblurFilter:
     """
     Performs Lucy-Richardson deconvolution on an image.
@@ -41,7 +42,6 @@ class DeblurFilter:
 
         :return: The deblurred image.
         """
-            
         # Convert the image to float32
         image = self._image.astype(np.float32)
 

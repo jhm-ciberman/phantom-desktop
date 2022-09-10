@@ -1,7 +1,7 @@
-import string
 import cv2
 import os
-from PySide6 import QtGui, QtCore, QtWidgets
+from PySide6 import QtGui
+
 
 class Image:
     """
@@ -18,13 +18,14 @@ class Image:
         width (int): The width of the image source.
         height (int): The height of the image source.
     """
-    def __init__(self, path: str, raw_image = None):
+    def __init__(self, path: str, raw_image=None):
         """
         Initializes the Image class.
 
         Args:
             path (str): The full path to the image source.
-            raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format. If not provided, the image will be loaded from the path.
+            raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format. If not provided,
+              the image will be loaded from the path.
         """
         self.path = os.path.normpath(path)
         self.basename = os.path.basename(path)
@@ -34,7 +35,7 @@ class Image:
             if raw_image is None:
                 raise Exception(f"Could not load image from path: {path}")
             raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
-            
+
         self.raw_image = raw_image
 
     @property
@@ -79,6 +80,7 @@ class Image:
         """
         return ImageCache.default().get_image(self)
 
+
 class ImageCache:
     """
     Singleton class for storing QImage and QPixmap cached references in a central location.
@@ -103,7 +105,8 @@ class ImageCache:
         Gets a QImage for the given Image object.
         """
         if image not in self._image_cache:
-            self._image_cache[image] = QtGui.QImage(image.raw_image.data, image.width, image.height, QtGui.QImage.Format_RGBA8888)
+            self._image_cache[image] = QtGui.QImage(image.raw_image.data, image.width, image.height,
+                                                    QtGui.QImage.Format_RGBA8888)
         return self._image_cache[image]
 
     def get_pixmap(self, image: Image):
@@ -113,7 +116,7 @@ class ImageCache:
         if image not in self._pixmap_cache:
             self._pixmap_cache[image] = QtGui.QPixmap.fromImage(self.get_image(image))
         return self._pixmap_cache[image]
-    
+
     def clear(self):
         """
         Clears the cache.

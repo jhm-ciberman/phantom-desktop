@@ -1,4 +1,5 @@
-from PySide6 import QtGui, QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
+
 
 def setSplitterStyle(splitter: QtWidgets.QSplitter):
     # The splitter is invisible due to a bug in Qt so we use an image instead.

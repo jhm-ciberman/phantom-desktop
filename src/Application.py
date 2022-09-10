@@ -2,13 +2,14 @@ from PySide6 import QtGui, QtCore, QtWidgets
 from .MainWindow import MainWindow
 import sys
 
+
 class Application(QtWidgets.QApplication):
     def __init__(self, args):
         super().__init__(args)
         self._icon = QtGui.QIcon("res/icon_128.png")
         self.setWindowIcon(self._icon)
 
-        #self.setStyle(QtWidgets.QStyleFactory.create("Fusion"))
+        # self.setStyle(QtWidgets.QStyleFactory.create("Fusion"))
 
         p = self.palette()
         p.setColor(QtGui.QPalette.Window, QtCore.Qt.white)
