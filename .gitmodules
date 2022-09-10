@@ -1,3 +1,4 @@
 [submodule "phantom"]
 	path = phantom
-	url = git@github.com:bconstanzo/phantom.git
+	url = git@github.com:jhm-ciberman/phantom.git
+	branch = ci
