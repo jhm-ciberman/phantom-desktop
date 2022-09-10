@@ -1,4 +1,3 @@
-from tkinter import Image
 from PySide6 import QtGui, QtCore, QtWidgets
 
 from .QtHelpers import setSplitterStyle
@@ -171,7 +170,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         aspectRatio = self._aspectRatio.currentData()
         if aspectRatio is None:
             aspectRatio = self._outputWidth.value() / self._outputHeight.value()
-        w = self._outputWidth.value()
+        w = min(self._outputWidth.value(), self._imagePreview.width())
         h = int(w / aspectRatio)
         previewShape = (h, w, 4)
         if self._previewBuffer.shape != previewShape:

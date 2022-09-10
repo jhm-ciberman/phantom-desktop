@@ -5,6 +5,7 @@ from .Widgets.ImageGrid import ImageGrid
 from .Widgets.InspectorPanel import InspectorPanel
 from .Image import Image
 from .PerspectiveWindow import PerspectiveWindow
+from .DeblurWindow import DeblurWindow
 from phantom.utils import draw_faces
 from phantom.faces import landmark
 import cv2
@@ -34,6 +35,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.perspective_correct_button = QtWidgets.QPushButton("Open Perspective Correct Window")
         self.perspective_correct_button.clicked.connect(self.open_perspective_correct_window)
         self._layout.addWidget(self.perspective_correct_button, 0, QtCore.Qt.AlignTop)
+
+        self.deblur_button = QtWidgets.QPushButton("Open Deblur Window")
+        self.deblur_button.clicked.connect(self.open_deblur_window)
+        self._layout.addWidget(self.deblur_button, 0, QtCore.Qt.AlignTop)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
@@ -133,4 +138,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self._childWindows.append(window)
             window.showMaximized()
 
-            print("Opening perspective correct window")
+    @QtCore.Slot()
+    def open_deblur_window(self) -> None:
+        selected = self.image_grid.selectedImages()
+        if len(selected) == 1:
+            window = DeblurWindow(selected[0])
+            self._childWindows.append(window)
+            window.showMaximized()

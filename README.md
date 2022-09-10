@@ -55,3 +55,5 @@ This will pull the latest changes from the main repository and update the submod
 This project uses Qt and thus, it tries to follow the Qt style for all classes that inherit from `QObject`. The rest of the code follows the [PEP8](https://www.python.org/dev/peps/pep-0008/) style guide.
 
 For more info please refer to [this](http://bitesofcode.blogspot.com/2011/10/pyqt-coding-style-guidelines.html) blog post.
+
+For Docstrings, we use the [Google style](https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings).
