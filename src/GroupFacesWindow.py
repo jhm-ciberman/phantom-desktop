@@ -1,5 +1,4 @@
-from tkinter import Image
-from PySide6 import QtGui, QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets
 from .Image import Image
 
 

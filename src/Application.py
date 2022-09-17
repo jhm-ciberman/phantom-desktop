@@ -1,4 +1,5 @@
 from PySide6 import QtGui, QtCore, QtWidgets
+from .Services.LoadingWorker import LoadingWorker
 from .MainWindow import MainWindow
 import sys
 
@@ -24,4 +25,9 @@ class Application(QtWidgets.QApplication):
     def run(self):
         win = MainWindow()
         win.showMaximized()
-        sys.exit(self.exec())
+
+        exitCode = self.exec()
+
+        LoadingWorker.instance().stop()
+
+        sys.exit(exitCode)

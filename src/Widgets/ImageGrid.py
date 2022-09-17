@@ -3,12 +3,12 @@ from src.Image import Image
 
 
 class ImageGrid(QtWidgets.QWidget):
-
-    selectionChanged = QtCore.Signal()
-
     """
     A widget that displays a grid of images.
     """
+
+    selectionChanged = QtCore.Signal()
+
     def __init__(self):
         """
         Initializes the ImageGrid class.
@@ -30,6 +30,9 @@ class ImageGrid(QtWidgets.QWidget):
         self._listWidget.setDragDropMode(QtWidgets.QListView.DragDropMode.NoDragDrop)
         self._listWidget.setSelectionMode(QtWidgets.QListView.SelectionMode.ExtendedSelection)
         self._listWidget.setSelectionBehavior(QtWidgets.QListView.SelectionBehavior.SelectItems)
+        self._listWidget.setItemDelegate(_TextOverDelegate(self))
+
+        self._loadingIcon = QtGui.QIcon("res/loading.png")
 
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -89,3 +92,21 @@ class ImageGrid(QtWidgets.QWidget):
         self._images = []
         self._items = []
         self._selectedImages = []
+
+
+class _TextOverDelegate(QtWidgets.QStyledItemDelegate):
+    def __init__(self, imageGrid: ImageGrid, parent=None):
+        self._imageGrid = imageGrid
+        super().__init__(parent)
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        itemIndex = index.row()
+        image = self._imageGrid.images()[itemIndex]
+        if not image.processed:
+            painter.save()
+            painter.setRenderHint(QtGui.QPainter.Antialiasing)
+            # draw loading icon
+            iconRect = QtCore.QRect(option.rect.x() + 5, option.rect.y() + 5, 24, 24)
+            self._imageGrid._loadingIcon.paint(painter, iconRect)
+            painter.restore()

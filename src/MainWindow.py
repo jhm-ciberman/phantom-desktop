@@ -1,5 +1,7 @@
 from PySide6 import QtGui, QtCore, QtWidgets
 
+from .Services.LoadingWorker import LoadingWorker
+
 from .QtHelpers import setSplitterStyle
 from .Widgets.ImageGrid import ImageGrid
 from .Widgets.InspectorPanel import InspectorPanel
@@ -11,6 +13,9 @@ import glob
 
 
 class MainWindow(QtWidgets.QMainWindow):
+
+    onLoaded = QtCore.Signal()
+
     def __init__(self):
         super().__init__()
 
@@ -69,20 +74,16 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter.setContentsMargins(10, 10, 10, 10)
         setSplitterStyle(splitter)
 
-        self.image_grid = ImageGrid()
+        self.imageGrid = ImageGrid()
         for image_path in self.getTestImagePaths():
-            try:
-                image = Image(image_path)
-                self.image_grid.addImage(image)
-            except Exception as e:
-                print(f"Failed to load image {image_path}: {e}")
+            self._addImage(image_path)
 
-        self.image_grid.selectionChanged.connect(self.onImageGridSelectionChanged)
+        self.imageGrid.selectionChanged.connect(self.onImageGridSelectionChanged)
 
         self.inspector_panel = InspectorPanel()
         self.inspector_panel.setContentsMargins(0, 0, 0, 0)
 
-        splitter.addWidget(self.image_grid)
+        splitter.addWidget(self.imageGrid)
         splitter.addWidget(self.inspector_panel)
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 1)
@@ -106,6 +107,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.onImageGridSelectionChanged()  # Refresh the UI for the first time.
 
+        LoadingWorker.instance().on_image_processed.connect(self.onWorkerImageProcessed)
+        LoadingWorker.instance().start()
+
     def getTestImagePaths(self):
         max_image_count = 2000
         image_paths = [
@@ -124,11 +128,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def onImageGridSelectionChanged(self) -> None:
-        selected_images = self.image_grid.selectedImages()
+        selected_images = self.imageGrid.selectedImages()
         self.inspector_panel.setSelectedImages(selected_images)
         count = len(selected_images)
         if (count == 0):
-            self.statusBar().showMessage("{} images in the collection".format(len(self.image_grid.images())))
+            self.statusBar().showMessage("{} images in the collection".format(len(self.imageGrid.images())))
         elif (count == 1):
             self.statusBar().showMessage(selected_images[0].path)
         else:
@@ -143,12 +147,11 @@ class MainWindow(QtWidgets.QMainWindow):
     def onAddImagesPressed(self) -> None:
         file_path = QtWidgets.QFileDialog.getOpenFileName(self, "Open File", "", "Images (*.png *.jpg *.jpeg)")[0]
         if file_path:
-            image = Image(file_path)
-            self.image_grid.addImage(image)
+            self._addImage(file_path)
 
     @QtCore.Slot()
     def onExportImagePressed(self) -> None:
-        selected_images = self.image_grid.selectedImages()
+        selected_images = self.imageGrid.selectedImages()
         if len(selected_images) == 1:
             file_path = QtWidgets.QFileDialog.getSaveFileName(self, "Save File", "", "Images (*.png *.jpg *.jpeg)")[0]
             if file_path:
@@ -156,7 +159,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def onCorrectPerspectivePressed(self) -> None:
-        selected = self.image_grid.selectedImages()
+        selected = self.imageGrid.selectedImages()
         if len(selected) == 1:
             window = PerspectiveWindow(selected[0])
             self._childWindows.append(window)
@@ -164,7 +167,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def onDeblurPressed(self) -> None:
-        selected = self.image_grid.selectedImages()
+        selected = self.imageGrid.selectedImages()
         if len(selected) == 1:
             window = DeblurWindow(selected[0])
             self._childWindows.append(window)
@@ -172,13 +175,41 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def onGroupFacesPressed(self) -> None:
-        selected = self.image_grid.selectedImages()
+        selected = self.imageGrid.selectedImages()
         if len(selected) == 1:
             return
 
         if len(selected) == 0:
-            selected = self.image_grid.images()
+            selected = self.imageGrid.images()
+
+        if not self._allImagesAreProcessed(selected):
+            # Show a dialog
+            msg = QtWidgets.QMessageBox()
+            msg.setIcon(QtWidgets.QMessageBox.Information)
+            msg.setText("Some images are not processed yet. Please wait until all images are processed.")
+            msg.setWindowTitle("Phantom is processing the images")
+            msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            msg.exec_()
+            return
 
         window = GroupFacesWindow(selected)
         self._childWindows.append(window)
         window.showMaximized()
+
+    def _addImage(self, image_path: str) -> None:
+        try:
+            image = Image(image_path)
+            self.imageGrid.addImage(image)
+            LoadingWorker.instance().add_image(image)
+        except Exception as e:
+            print(f"Failed to load image {image_path}: {e}")
+
+    def _allImagesAreProcessed(self, images: list[Image]) -> bool:
+        for image in images:
+            if not image.processed:
+                return False
+        return True
+
+    @QtCore.Slot(Image)
+    def onWorkerImageProcessed(self, image: Image) -> None:
+        self.imageGrid.repaint()

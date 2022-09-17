@@ -1,11 +1,60 @@
 import cv2
 import os
 from PySide6 import QtGui
+import numpy as np
+
+
+class Face:
+    """
+    Represents a face in an image.
+
+    Attributes:
+        x (int): The x coordinate of the face.
+        y (int): The y coordinate of the face.
+        width (int): The width of the face.
+        height (int): The height of the face.
+        encoding (numpy.ndarray): The encoding of the face.
+        parts (dlib.points): The parts of the face.
+
+    """
+    def __init__(self, x: int, y: int, width: int, height: int,
+                 encoding: np.ndarray = None, parts: list = None) -> None:
+        """
+        Initializes a new instance of the Face class.
+        """
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.encoding = encoding
+        self.parts = parts
+
+    @classmethod
+    def from_phantom_touple(cls, coordinates: tuple):
+        """
+        Creates a new instance of the Image class from a tuple.
+
+        Args:
+            coordinates (tuple): A touple with four values representing the x0, y0, x1, y1 coordinates of the face.
+        """
+        x, y = coordinates[0], coordinates[1]
+        w, h = coordinates[2] - x, coordinates[3] - y
+        return cls(x, y, w, h)
+
+    def to_phantom_touple(self) -> tuple:
+        """
+        Converts the face to a touple.
+
+        Returns:
+            tuple: A touple with four values representing the x0, y0, x1, y1 coordinates of the face.
+        """
+        return (self.x, self.y, self.x + self.width, self.y + self.height)
 
 
 class Image:
     """
-    The Image class represents an image loaded into memory. This class
+    The Image class is the main Phantom Desktop image model.
+    It represents an image loaded into memory. This class
     holds metadata about the image, and provides methods for accessing the raw color
     bytes of the image. The raw color bytes are stored in RGBA format, with each
     channel being a uint8 array.
@@ -17,7 +66,10 @@ class Image:
         channels (int): The number of channels in the image source.
         width (int): The width of the image source.
         height (int): The height of the image source.
+        processed (bool): Whether or not the image has been processed by the LoadingWorker.
+        faces (list[Face]): The faces detected in the image.
     """
+
     def __init__(self, path: str, raw_image=None):
         """
         Initializes the Image class.
@@ -37,6 +89,8 @@ class Image:
             raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
 
         self.raw_image = raw_image
+        self.faces = []  # type: list[Face]
+        self._processed = False
 
     @property
     def channels(self):
@@ -67,18 +121,38 @@ class Image:
         cv2.imwrite(path, raw_bgra)
 
     @property
-    def pixmap(self):
+    def pixmap(self) -> QtGui.QPixmap:
         """
         Gets a QPixmap of the image.
         """
         return ImageCache.default().get_pixmap(self)
 
     @property
-    def image(self):
+    def image(self) -> QtGui.QImage:
         """
         Gets a QImage of the image.
         """
         return ImageCache.default().get_image(self)
+
+    @property
+    def processed(self) -> bool:
+        """
+        Gets whether the image has been processed by the LoadingWorker.
+        """
+        return self._processed
+
+    @processed.setter
+    def processed(self, value: bool):
+        """
+        Sets whether the image has been processed by the LoadingWorker.
+        """
+        self._processed = value
+
+    def get_rgb(self) -> np.ndarray:
+        """
+        Gets the raw image data in RGB format. (No alpha channel)
+        """
+        return cv2.cvtColor(self.raw_image, cv2.COLOR_RGBA2RGB)
 
 
 class ImageCache:
