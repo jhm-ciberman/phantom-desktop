@@ -1,5 +1,5 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from .Services.LoadingWorker import LoadingWorker
+from .Services.ImageFeaturesService import ImageFeaturesService
 from .MainWindow import MainWindow
 import sys
 
@@ -28,6 +28,6 @@ class Application(QtWidgets.QApplication):
 
         exitCode = self.exec()
 
-        LoadingWorker.instance().stop()
+        ImageFeaturesService.instance().stop()
 
         sys.exit(exitCode)

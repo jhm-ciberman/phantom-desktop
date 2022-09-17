@@ -1,7 +1,5 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-
-from .Services.LoadingWorker import LoadingWorker
-
+from .Services.ImageFeaturesService import ImageFeaturesService
 from .QtHelpers import setSplitterStyle
 from .Widgets.ImageGrid import ImageGrid
 from .Widgets.InspectorPanel import InspectorPanel
@@ -107,8 +105,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.onImageGridSelectionChanged()  # Refresh the UI for the first time.
 
-        LoadingWorker.instance().on_image_processed.connect(self.onWorkerImageProcessed)
-        LoadingWorker.instance().start()
+        ImageFeaturesService.instance().onImageProcessed.connect(self.onImageProcessed)
+        ImageFeaturesService.instance().onImageError.connect(self.onImageError)
+        ImageFeaturesService.instance().start()
 
     def getTestImagePaths(self):
         max_image_count = 2000
@@ -200,7 +199,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             image = Image(image_path)
             self.imageGrid.addImage(image)
-            LoadingWorker.instance().add_image(image)
+            ImageFeaturesService.instance().process(image)
         except Exception as e:
             print(f"Failed to load image {image_path}: {e}")
 
@@ -211,5 +210,10 @@ class MainWindow(QtWidgets.QMainWindow):
         return True
 
     @QtCore.Slot(Image)
-    def onWorkerImageProcessed(self, image: Image) -> None:
+    def onImageProcessed(self, image: Image) -> None:
         self.imageGrid.repaint()
+
+    @QtCore.Slot(Image, Exception)
+    def onImageError(self, image: Image, error: Exception) -> None:
+        # Print for now
+        print(f"Failed to process image {image.path}: {error}")

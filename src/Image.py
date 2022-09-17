@@ -2,11 +2,12 @@ import cv2
 import os
 from PySide6 import QtGui
 import numpy as np
+import uuid
 
 
 class Face:
     """
-    Represents a face in an image.
+    Represents a face in an image. This class is pickleable.
 
     Attributes:
         x (int): The x coordinate of the face.
@@ -15,6 +16,8 @@ class Face:
         height (int): The height of the face.
         encoding (numpy.ndarray): The encoding of the face.
         parts (dlib.points): The parts of the face.
+        predict_time (int): The time it took to predict the face parts in nanoseconds.
+        encoding_time (int): The time it took to encode the face parts in nanoseconds.
 
     """
     def __init__(self, x: int, y: int, width: int, height: int,
@@ -28,6 +31,8 @@ class Face:
         self.height = height
         self.encoding = encoding
         self.parts = parts
+        self.predict_time = -1
+        self.encoding_time = -1
 
     @classmethod
     def from_phantom_touple(cls, coordinates: tuple):
@@ -51,6 +56,26 @@ class Face:
         return (self.x, self.y, self.x + self.width, self.y + self.height)
 
 
+class ImageFeatures:
+    """
+    The ImageFeatures class contains pre-processed metadata that phantom uses in it's algorithms.
+    This metadata is precomputed by the ImageFeaturesService when the image is
+    loaded for the first time and speed up subsequent operations.
+
+    This class is pickleable.
+
+    Attributes:
+        faces (list[Face]): The faces in the image.
+        time (int): The time it took to process the image in nanoseconds.
+    """
+    def __init__(self, faces: list, time: int) -> None:
+        """
+        Initializes a new instance of the ImageMetadata class.
+        """
+        self.faces = faces
+        self.time = time
+
+
 class Image:
     """
     The Image class is the main Phantom Desktop image model.
@@ -66,8 +91,6 @@ class Image:
         channels (int): The number of channels in the image source.
         width (int): The width of the image source.
         height (int): The height of the image source.
-        processed (bool): Whether or not the image has been processed by the LoadingWorker.
-        faces (list[Face]): The faces detected in the image.
     """
 
     def __init__(self, path: str, raw_image=None):
@@ -79,6 +102,7 @@ class Image:
             raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format. If not provided,
               the image will be loaded from the path.
         """
+        self.uuid = uuid.uuid4()
         self.path = os.path.normpath(path)
         self.basename = os.path.basename(path)
 
@@ -90,7 +114,7 @@ class Image:
 
         self.raw_image = raw_image
         self.faces = []  # type: list[Face]
-        self._processed = False
+        self._features = None  # type: ImageFeatures
 
     @property
     def channels(self):
@@ -137,16 +161,23 @@ class Image:
     @property
     def processed(self) -> bool:
         """
-        Gets whether the image has been processed by the LoadingWorker.
+        Gets whether the image has been processed by the ImageFeaturesService.
         """
-        return self._processed
+        return self._features is not None
 
-    @processed.setter
-    def processed(self, value: bool):
+    @property
+    def features(self) -> ImageFeatures:
         """
-        Sets whether the image has been processed by the LoadingWorker.
+        Gets the pre-processed metadata for the image.
         """
-        self._processed = value
+        return self._features
+
+    @features.setter
+    def features(self, value: ImageFeatures):
+        """
+        Sets the pre-processed metadata for the image.
+        """
+        self._features = value
 
     def get_rgb(self) -> np.ndarray:
         """
