@@ -1,11 +1,33 @@
 import multiprocessing
 from uuid import UUID
-from src.Image import Image, Face, ImageFeatures
+from src.Image import Image, Face, Rect
 from PySide6 import QtCore
 import threading
 import dlib
 from pkg_resources import resource_filename
 from time import perf_counter_ns
+import queue
+
+
+class _ImageProcessorResult:
+    """
+    Represents the result of the image processor.
+
+    Attributes:
+        faces (list[Face]): The faces in the image.
+        time (int): The time it took to process the image in nanoseconds.
+    """
+
+    def __init__(self, faces: list[Face], time: int):
+        """
+        Initializes the ImageProcessorResult class.
+
+        Args:
+            faces (list[Face]): The faces in the image.
+            time (int): The time it took to process the image in nanoseconds.
+        """
+        self.faces = faces
+        self.time = time
 
 
 class _ImageProcessor:
@@ -30,26 +52,31 @@ class _ImageProcessor:
         self._shape_predictor = dlib.shape_predictor(self._path_shape_68p)
         self.predictor_jitter = 0
 
-    def _process_face(self, image_rgb: dlib.array, face_rect: dlib.rectangle) -> Face:
+    def _process_face(self, image_rgb: dlib.array, face_rect: dlib.rectangle, score: float) -> Face:
         """
         Process a single face in an image and returns a Face object.
 
         Args:
             image_rgb (dlib.array): The image in RGB format.
             rect (dlib.rectangle): The face rectangle.
+            score (float): The face detection score.
 
         Returns:
             The processed face.
         """
-        w = face_rect.right() - face_rect.left()
-        h = face_rect.bottom() - face_rect.top()
-        face = Face(face_rect.left(), face_rect.top(), w, h)
+
+        face = Face()
+        face.score = score
+
+        x, y = face_rect.left(), face_rect.top()
+        w, h = face_rect.right() - x, face_rect.bottom() - y
+        face.rect = Rect(x, y, w, h)
 
         # predict face parts
         t = perf_counter_ns()
         shape = self._shape_predictor(image_rgb, face_rect)
-        face.parts = shape.parts()
-        face.predict_time = perf_counter_ns() - t
+        face.shape = shape.parts()
+        face.shape_time = perf_counter_ns() - t
 
         # encode face
         t = perf_counter_ns()
@@ -58,7 +85,7 @@ class _ImageProcessor:
 
         return face
 
-    def process(self, image_rgb: dlib.array) -> ImageFeatures:
+    def process(self, image_rgb: dlib.array) -> _ImageProcessorResult:
         """
         Processes an image and returns the image features.
 
@@ -67,11 +94,11 @@ class _ImageProcessor:
         """
         t = perf_counter_ns()
 
-        faces = self._face_detector(image_rgb, 1)
-        faces = [self._process_face(image_rgb, face) for face in faces]
+        detections, scores, idx = self._face_detector.run(image_rgb)
+        faces = [self._process_face(image_rgb, face, score) for face, score in zip(detections, scores)]
         time = perf_counter_ns() - t
 
-        return ImageFeatures(faces, time)
+        return _ImageProcessorResult(faces, time)
 
 
 class _WorkerEvent:
@@ -94,16 +121,16 @@ class _WorkerSuccessEvent(_WorkerEvent):
     Represents an event that is raised by the worker when an image is processed.
     """
 
-    def __init__(self, uuid: UUID, features: ImageFeatures) -> None:
+    def __init__(self, uuid: UUID, result: _ImageProcessorResult) -> None:
         """
         Initializes a new instance of the WorkerSuccessEvent class.
 
         Args:
             uuid (UUID): The image UUID.
-            features (ImageFeatures): The image features.
+            result (_ImageProcessorResult): The image result.
         """
         super().__init__(uuid)
-        self.features = features
+        self.result = result
 
 
 class _WorkerFailureEvent(_WorkerEvent):
@@ -150,24 +177,39 @@ class _Worker(multiprocessing.Process):
     """
 
     def __init__(self, input_queue, event_queue, *args, **kwargs):
+        """
+        Initializes a new instance of the Worker class.
+
+        Args:
+            input_queue (multiprocessing.Queue): The input queue.
+            event_queue (multiprocessing.Queue): The event queue.
+        """
         super().__init__(*args, **kwargs)
         self.daemon = True
         self._input_queue = input_queue  # type: multiprocessing.Queue[_WorkerTask]
         self._event_queue = event_queue  # type: multiprocessing.Queue[_WorkerEvent]
         self._image_processor = None  # This is lazy initialized because dlib cannot be pickled.
+        self.max_idle_time = 10  # seconds
 
     def run(self):
+        """
+        Runs the worker.
+        """
         if self._image_processor is None:
             self._image_processor = _ImageProcessor()
 
         while True:
-            task = self._input_queue.get()
+            try:
+                task = self._input_queue.get(timeout=self.max_idle_time)
+            except queue.Empty:
+                break
+
             if task is None:  # Poison pill pattern
                 break
 
             try:
-                features = self._image_processor.process(task.image_rgb)
-                event = _WorkerSuccessEvent(task.uuid, features)
+                result = self._image_processor.process(task.image_rgb)
+                event = _WorkerSuccessEvent(task.uuid, result)
             except Exception as e:
                 event = _WorkerFailureEvent(task.uuid, e)
 
@@ -225,10 +267,29 @@ class ImageFeaturesService(QtCore.QObject):
             del self._pending_images[event.uuid]
 
             if isinstance(event, _WorkerSuccessEvent):
-                image.features = event.features
+                image.faces = event.result.faces
+                image.faces_time = event.result.time
+                image.processed = True
                 self.onImageProcessed.emit(image)
             elif isinstance(event, _WorkerFailureEvent):
                 self.onImageError.emit(image, event.error)
+
+    def _addWorker(self) -> None:
+        i = len(self._workers)
+        name = "ImageFeaturesServiceWorker-{}".format(i)
+        worker = _Worker(self._input_queue, self._event_queue, name=name, daemon=True)
+        self._workers.append(worker)
+        worker.start()
+
+    def _addWorkerIfNeeded(self) -> bool:
+        canAddWorker = self.workers_count() < self._max_workers
+        hasPendingImages = len(self._pending_images) > 0
+
+        if canAddWorker and hasPendingImages:
+            self._addWorker()
+            return True
+
+        return False
 
     def start(self) -> None:
         """
@@ -237,11 +298,10 @@ class ImageFeaturesService(QtCore.QObject):
         if self._is_running:
             return
 
-        for i in range(self._max_workers):
-            name = "ImageFeaturesServiceWorker-{}".format(i)
-            worker = _Worker(self._input_queue, self._event_queue, name=name, daemon=True)
-            worker.start()
-            self._workers.append(worker)
+        self._is_running = True
+
+        while self._addWorkerIfNeeded():
+            pass
 
     def stop(self) -> None:
         """
@@ -250,7 +310,7 @@ class ImageFeaturesService(QtCore.QObject):
         if not self._is_running:
             return
 
-        for _ in range(self._max_workers):
+        for _ in range(len(self._workers)):
             self._input_queue.put(None)
         for worker in self._workers:
             worker.join()
@@ -272,8 +332,11 @@ class ImageFeaturesService(QtCore.QObject):
         """
         if image.uuid in self._pending_images:
             raise ValueError("Image is already being processed.")
+
+        self._addWorkerIfNeeded()
+
         self._pending_images[image.uuid] = image
-        self._input_queue.put(_WorkerTask(image.uuid, image.get_rgb()))
+        self._input_queue.put(_WorkerTask(image.uuid, image.get_pixels_rgb()))
 
     def __del__(self):
         self.stop()
@@ -283,3 +346,17 @@ class ImageFeaturesService(QtCore.QObject):
         Returns the number of images in the queue.
         """
         return self._input_queue.qsize()
+
+    def pending_images_count(self) -> int:
+        """
+        Returns the number of images being processed.
+        """
+        return len(self._pending_images)
+
+    def workers_count(self) -> int:
+        """
+        Returns the number of workers.
+        """
+        # First, remove all workers that are not running anymore.
+        self._workers = [w for w in self._workers if w.is_alive()]
+        return len(self._workers)

@@ -26,7 +26,7 @@ class DeblurWindow(QtWidgets.QWidget):
         self._imagePreview.setAutoFillBackground(True)
         self._imagePreview.setMinimumHeight(200)
         self._imagePreview.setMinimumWidth(200)
-        self._imagePreview.setPixmap(self._image.pixmap)
+        self._imagePreview.setPixmap(self._image.get_pixmap())
 
         frame = QtWidgets.QFrame()
         frame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
@@ -63,7 +63,7 @@ class DeblurWindow(QtWidgets.QWidget):
         self._updatePreview()
 
     def _updatePreview(self) -> None:
-        rawImage = self._image.raw_image
+        rawImage = self._image.get_pixels_rgba()
         srcW, srcH = self._image.width, self._image.height
 
         rect = self._imagePreview.imageRect()

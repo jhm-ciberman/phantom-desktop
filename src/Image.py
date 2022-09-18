@@ -1,8 +1,54 @@
 import cv2
 import os
-from PySide6 import QtGui
+from PySide6 import QtGui, QtCore
 import numpy as np
-import uuid
+from uuid import UUID, uuid4
+
+
+class Rect:
+    """
+    Represents a rectangle
+    """
+
+    def __init__(self, x: int, y: int, width: int, height: int) -> None:
+        """
+        Initializes a new instance of the Rect class.
+
+        Args:
+            x (int): The x coordinate of the rectangle.
+            y (int): The y coordinate of the rectangle.
+            width (int): The width of the rectangle.
+            height (int): The height of the rectangle.
+        """
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+    def __repr__(self) -> str:
+        return f"Rect(x={self.x}, y={self.y}, width={self.width}, height={self.height})"
+
+    def fit_contains(self, max_width: int, max_height: int) -> "Rect":
+        """
+        Fits the rectangle into the given width and height preserving the aspect ratio.
+
+        Args:
+            max_width (int): The maximum width.
+            max_height (int): The maximum height.
+
+        Returns:
+            Rect: A new rectangle that fits into the given width and height.
+        """
+        aspect_ratio = self.width / self.height
+        new_width = max_width
+        new_height = int(max_width / aspect_ratio)
+        if new_height > max_height:
+            new_height = max_height
+            new_width = int(max_height * aspect_ratio)
+
+        x = int((max_width - new_width) / 2)
+        y = int((max_height - new_height) / 2)
+        return Rect(x, y, new_width, new_height)
 
 
 class Face:
@@ -10,70 +56,100 @@ class Face:
     Represents a face in an image. This class is pickleable.
 
     Attributes:
-        x (int): The x coordinate of the face.
-        y (int): The y coordinate of the face.
-        width (int): The width of the face.
-        height (int): The height of the face.
+        uuid (uuid.UUID): The unique identifier of the face.
+        score (float): The score of the face according to the face recognition model.
+        aabb (Rect): The axis-aligned bounding box of the face.
         encoding (numpy.ndarray): The encoding of the face.
-        parts (dlib.points): The parts of the face.
+        shape (dlib.points): A list of points representing the shape of the face.
         predict_time (int): The time it took to predict the face parts in nanoseconds.
         encoding_time (int): The time it took to encode the face parts in nanoseconds.
+        image (Image): The image the face belongs to (None if the face is not part of an image).
 
     """
-    def __init__(self, x: int, y: int, width: int, height: int,
-                 encoding: np.ndarray = None, parts: list = None) -> None:
+    def __init__(self, uuid: UUID = None) -> None:
         """
         Initializes a new instance of the Face class.
         """
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.encoding = encoding
-        self.parts = parts
-        self.predict_time = -1
+        self.uuid = uuid if uuid is not None else uuid4()
+        self._aabb = None
+        self.encoding = None
+        self.shape = None
+        self.shape_time = -1
         self.encoding_time = -1
+        self.image = None  # type: Image
 
-    @classmethod
-    def from_phantom_touple(cls, coordinates: tuple):
+    def __repr__(self) -> str:
+        return "Face(uuid={}, score={}, aabb={})".format(self.uuid, self.score, self.aabb)
+
+    @property
+    def aabb(self) -> Rect:
         """
-        Creates a new instance of the Image class from a tuple.
+        Gets the axis-aligned bounding box of the face.
+        """
+        if self._aabb is not None:
+            return self._aabb
+
+        if self.shape is None:
+            raise Exception("The face shape is not set.")
+
+        p = self.shape[0]
+        x0, y0 = p.x, p.y
+        x1, y1 = p.x, p.y
+
+        for p in self.shape:
+            x0 = min(x0, p.x)
+            y0 = min(y0, p.y)
+            x1 = max(x1, p.x)
+            y1 = max(y1, p.y)
+
+        self._aabb = Rect(x0, y0, x1 - x0, y1 - y0)
+        return self._aabb
+
+    @aabb.setter
+    def aabb(self, value: Rect) -> None:
+        """
+        Sets the axis-aligned bounding box of the face.
+        """
+        self._aabb = value
+
+    def get_square_pixmap(self, size: int = 256, padding: float = 0.25) -> QtGui.QPixmap:
+        """
+        Gets a square pixmap of the face.
 
         Args:
-            coordinates (tuple): A touple with four values representing the x0, y0, x1, y1 coordinates of the face.
-        """
-        x, y = coordinates[0], coordinates[1]
-        w, h = coordinates[2] - x, coordinates[3] - y
-        return cls(x, y, w, h)
-
-    def to_phantom_touple(self) -> tuple:
-        """
-        Converts the face to a touple.
+            size (int): The size of the pixmap.
+            padding (float): The padding factor. This is proportional to the size of the face.
 
         Returns:
-            tuple: A touple with four values representing the x0, y0, x1, y1 coordinates of the face.
+            QtGui.QPixmap: The pixmap.
         """
-        return (self.x, self.y, self.x + self.width, self.y + self.height)
+        return self.get_pixmap(size, size, padding)
 
-
-class ImageFeatures:
-    """
-    The ImageFeatures class contains pre-processed metadata that phantom uses in it's algorithms.
-    This metadata is precomputed by the ImageFeaturesService when the image is
-    loaded for the first time and speed up subsequent operations.
-
-    This class is pickleable.
-
-    Attributes:
-        faces (list[Face]): The faces in the image.
-        time (int): The time it took to process the image in nanoseconds.
-    """
-    def __init__(self, faces: list, time: int) -> None:
+    def get_pixmap(self, width: int = 256, height: int = 256, padding: float = 0.25) -> QtGui.QPixmap:
         """
-        Initializes a new instance of the ImageMetadata class.
+        Gets a pixmap of the face. The face will be scaled to fit the width and height
+        preserving the aspect ratio.
+
+        Args:
+            width (int): The width of the pixmap.
+            height (int): The height of the pixmap.
+            padding (float): The padding factor. This is proportional to the size of the face.
+
+        Returns:
+            QtGui.QPixmap: The pixmap.
         """
-        self.faces = faces
-        self.time = time
+        if self.image is None:
+            raise Exception("The face is not part of an image.")
+
+        # get the face rectangle
+        aabb = self.aabb
+        scale = max(aabb.width, aabb.height)
+        padding = int(scale * padding)
+
+        pixmap = self.image.get_pixmap()
+        pixmap = pixmap.copy(aabb.x - padding, aabb.y - padding, scale + padding * 2, scale + padding * 2)
+        pixmap = pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        return pixmap
 
 
 class Image:
@@ -91,6 +167,9 @@ class Image:
         channels (int): The number of channels in the image source.
         width (int): The width of the image source.
         height (int): The height of the image source.
+        faces (list[Face]): The faces in the image.
+        faces_time (int): The time it took to process the faces in nanoseconds.
+        processed (bool): Whether or not the image has been processed by the face detector.
     """
 
     def __init__(self, path: str, raw_image=None):
@@ -102,7 +181,7 @@ class Image:
             raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format. If not provided,
               the image will be loaded from the path.
         """
-        self.uuid = uuid.uuid4()
+        self.uuid = uuid4()
         self.path = os.path.normpath(path)
         self.basename = os.path.basename(path)
 
@@ -112,78 +191,78 @@ class Image:
                 raise Exception(f"Could not load image from path: {path}")
             raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
 
-        self.raw_image = raw_image
-        self.faces = []  # type: list[Face]
-        self._features = None  # type: ImageFeatures
+        self._raw_image = raw_image
+        self._faces = []  # type: list[Face]
+        self.faces_time = -1
+        self.processed = False
 
     @property
     def channels(self):
         """
         Gets the number of channels in the image source.
         """
-        return self.raw_image.shape[2]
+        return self._raw_image.shape[2]
 
     @property
     def width(self):
         """
         Gets the width of the image source.
         """
-        return self.raw_image.shape[1]
+        return self._raw_image.shape[1]
 
     @property
     def height(self):
         """
         Gets the height of the image source.
         """
-        return self.raw_image.shape[0]
+        return self._raw_image.shape[0]
 
     def save(self, path: str):
         """
         Saves the image to a path.
         """
-        raw_bgra = cv2.cvtColor(self.raw_image, cv2.COLOR_RGBA2BGRA)
+        raw_bgra = cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2BGRA)
         cv2.imwrite(path, raw_bgra)
 
-    @property
-    def pixmap(self) -> QtGui.QPixmap:
+    def get_pixmap(self) -> QtGui.QPixmap:
         """
-        Gets a QPixmap of the image.
+        Returns a QPixmap of the image.
         """
         return ImageCache.default().get_pixmap(self)
 
-    @property
-    def image(self) -> QtGui.QImage:
+    def get_image(self) -> QtGui.QImage:
         """
-        Gets a QImage of the image.
+        Returns a QImage of the image.
         """
         return ImageCache.default().get_image(self)
 
-    @property
-    def processed(self) -> bool:
+    def get_pixels_rgb(self) -> np.ndarray:
         """
-        Gets whether the image has been processed by the ImageFeaturesService.
+        Returns the raw image data in RGB format. (No alpha channel)
         """
-        return self._features is not None
+        return cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2RGB)
+
+    def get_pixels_rgba(self) -> np.ndarray:
+        """
+        Returns the raw image data in RGBA format.
+        """
+        return self._raw_image
 
     @property
-    def features(self) -> ImageFeatures:
+    def faces(self) -> list[Face]:
         """
-        Gets the pre-processed metadata for the image.
+        Gets the faces in the image.
         """
-        return self._features
+        return self._faces
 
-    @features.setter
-    def features(self, value: ImageFeatures):
+    @faces.setter
+    def faces(self, value: list[Face]):
         """
-        Sets the pre-processed metadata for the image.
+        Sets the faces in the image.
         """
-        self._features = value
-
-    def get_rgb(self) -> np.ndarray:
-        """
-        Gets the raw image data in RGB format. (No alpha channel)
-        """
-        return cv2.cvtColor(self.raw_image, cv2.COLOR_RGBA2RGB)
+        self._faces = value
+        for face in self._faces:
+            face.image = self
 
 
 class ImageCache:
@@ -210,7 +289,7 @@ class ImageCache:
         Gets a QImage for the given Image object.
         """
         if image not in self._image_cache:
-            self._image_cache[image] = QtGui.QImage(image.raw_image.data, image.width, image.height,
+            self._image_cache[image] = QtGui.QImage(image._raw_image.data, image.width, image.height,
                                                     QtGui.QImage.Format_RGBA8888)
         return self._image_cache[image]
 

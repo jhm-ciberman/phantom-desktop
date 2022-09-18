@@ -38,7 +38,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         self._editor.setStyleSheet("background-color: #F00;")
         self._editor.setMinimumHeight(200)
         self._editor.setMinimumWidth(200)
-        self._editor.setPixmap(self._image.pixmap)
+        self._editor.setPixmap(self._image.get_pixmap())
         self._editor.onPointsChanged.connect(self._onPointsChanged)
         self._editor.onFinished.connect(self._onPointsFinished)
         self._editor.onImageRectChanged.connect(self._onImageRectChanged)
@@ -49,7 +49,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         self._imagePreview.setAutoFillBackground(True)
         self._imagePreview.setMinimumHeight(200)
         self._imagePreview.setMinimumWidth(200)
-        self._imagePreview.setPixmap(self._image.pixmap)
+        self._imagePreview.setPixmap(self._image.get_pixmap())
 
         splitter.addWidget(self._editor)
         splitter.addWidget(self._imagePreview)
@@ -175,7 +175,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
             self._previewBuffer = np.zeros(previewShape, dtype=np.uint8)
 
         interpolation = self._interpolationMode.currentData()
-        PerspectiveTransform.basic_transform(self._image.raw_image, self._previewBuffer, self._points, interpolation)
+        PerspectiveTransform.basic_transform(self._image.get_pixels_rgba(), self._previewBuffer, self._points, interpolation)
 
         image = QtGui.QImage(self._previewBuffer.data, w, h, QtGui.QImage.Format.Format_RGBA8888)
         pixmap = QtGui.QPixmap.fromImage(image)

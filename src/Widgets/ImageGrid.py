@@ -49,7 +49,7 @@ class ImageGrid(QtWidgets.QWidget):
         Args:
             image (Image): The image to add.
         """
-        qimage = QtGui.QImage(image.raw_image.data, image.width, image.height, QtGui.QImage.Format_RGBA8888)
+        qimage = QtGui.QImage(image.get_pixels_rgba().data, image.width, image.height, QtGui.QImage.Format_RGBA8888)
         pixmap = QtGui.QPixmap.fromImage(qimage)
         item = QtWidgets.QListWidgetItem(pixmap, image.basename, self._listWidget)
         item.setSizeHint(self._gridSize)

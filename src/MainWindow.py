@@ -24,6 +24,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().setFixedHeight(20)
         self.statusBar().showMessage("Phantom Desktop")
 
+        self._progressBar = QtWidgets.QProgressBar()
+        self._progressBar.setFixedHeight(20)
+        self._progressBar.setFixedWidth(200)
+        self._progressBar.setValue(0)
+        self._progressBar.setVisible(False)
+        self._progressBar.setTextVisible(False)
+        # self._progressBar.setGeometry(30, 40, 200, 25)
+        self.statusBar().addPermanentWidget(self._progressBar)
+
+        # We keep a count of how many items were queues for processing since
+        # the last time the progress bar finished. We only reset this number
+        # to 0 when the progress bar finishes.
+        self._itemsQueuedCount = 0
+        self._itemsProcessedCount = 0
+
         mainWidget = QtWidgets.QWidget()
         self._layout = QtWidgets.QVBoxLayout()
         self._layout.setContentsMargins(0, 0, 0, 0)
@@ -118,10 +133,11 @@ class MainWindow(QtWidgets.QMainWindow):
             "test_images/lena.png",
             "test_images/lena_blur_3.png",
             "test_images/lena_blur_10.png",
+            "test_images/endgame.jpg",
         ]
+        image_paths += glob.glob("test_images/celebrities/**/*.jpg", recursive=True)
         image_paths += glob.glob("test_images/exif/**/*.jpg", recursive=True)
         image_paths += glob.glob("test_images/exif/**/*.tiff", recursive=True)
-        image_paths += glob.glob("test_images/celebrities/**/*.jpg", recursive=True)
 
         return image_paths[:max_image_count]
 
@@ -196,12 +212,17 @@ class MainWindow(QtWidgets.QMainWindow):
         window.showMaximized()
 
     def _addImage(self, image_path: str) -> None:
+        image = None
         try:
             image = Image(image_path)
-            self.imageGrid.addImage(image)
-            ImageFeaturesService.instance().process(image)
         except Exception as e:
             print(f"Failed to load image {image_path}: {e}")
+
+        if image:
+            self.imageGrid.addImage(image)
+            self._itemsQueuedCount += 1
+            ImageFeaturesService.instance().process(image)
+            self._updateProgress()
 
     def _allImagesAreProcessed(self, images: list[Image]) -> bool:
         for image in images:
@@ -211,9 +232,30 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot(Image)
     def onImageProcessed(self, image: Image) -> None:
+        self._itemsProcessedCount += 1
+        self._updateProgress()
         self.imageGrid.repaint()
 
     @QtCore.Slot(Image, Exception)
     def onImageError(self, image: Image, error: Exception) -> None:
-        # Print for now
+        self._itemsProcessedCount += 1
+        self._updateProgress()
         print(f"Failed to process image {image.path}: {error}")
+
+    def _updateProgress(self) -> None:
+        items = self._itemsProcessedCount
+        total = self._itemsQueuedCount if self._itemsQueuedCount > 0 else 1
+        progress = items / total
+        self._progressBar.setValue(progress * 100)
+
+        if items == 0:
+            self._progressBar.setVisible(False)
+            pass
+        elif items == total:
+            self._progressBar.setVisible(False)
+            self._itemsProcessedCount = 0
+            self._itemsQueuedCount = 0
+            self.statusBar().showMessage("All images are processed")
+        else:
+            self.statusBar().showMessage(f"Processing images... {items}/{total}")
+            self._progressBar.setVisible(True)

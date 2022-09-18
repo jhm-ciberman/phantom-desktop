@@ -104,7 +104,7 @@ class InspectorPanel(QtWidgets.QWidget):
             self._pixmapDisplay.setPixmap(None)
         elif selected_count == 1:
             image = self._selectedImages[0]
-            self._pixmapDisplay.setPixmap(image.pixmap)
+            self._pixmapDisplay.setPixmap(image.get_pixmap())
 
             pil_image = PILImage.open(image.path)
 
