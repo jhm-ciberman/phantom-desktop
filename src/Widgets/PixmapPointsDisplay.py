@@ -146,8 +146,6 @@ class PixmapPointsDisplay(PixmapDisplay):
         if not self._hasFinished or self._draggedPointIndex != -1:
             self._drawZoomRect(painter)
 
-        painter.end()
-
     def _drawZoomRect(self, painter: QtGui.QPainter):
         """
         Draws the zoom rect.

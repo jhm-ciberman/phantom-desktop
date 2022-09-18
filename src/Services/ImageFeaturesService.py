@@ -32,7 +32,7 @@ class _ImageProcessor:
 
     def _process_face(self, image_rgb: dlib.array, face_rect: dlib.rectangle) -> Face:
         """
-        Process a single face in an image.
+        Process a single face in an image and returns a Face object.
 
         Args:
             image_rgb (dlib.array): The image in RGB format.
@@ -55,12 +55,6 @@ class _ImageProcessor:
         t = perf_counter_ns()
         face.encoding = self._face_encoder.compute_face_descriptor(image_rgb, shape, self.predictor_jitter)
         face.encoding_time = perf_counter_ns() - t
-
-        print("Times (ms): Total: {:.2f}, Predict: {:.2f}, Encode: {:.2f}".format(
-            (face.predict_time + face.encoding_time) / 1e6,
-            face.predict_time / 1e6,
-            face.encoding_time / 1e6
-        ))
 
         return face
 

@@ -41,6 +41,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         self._editor.setPixmap(self._image.pixmap)
         self._editor.onPointsChanged.connect(self._onPointsChanged)
         self._editor.onFinished.connect(self._onPointsFinished)
+        self._editor.onImageRectChanged.connect(self._onImageRectChanged)
 
         # right side: image result preview
         self._imagePreview = PixmapDisplay()
@@ -49,7 +50,6 @@ class PerspectiveWindow(QtWidgets.QWidget):
         self._imagePreview.setMinimumHeight(200)
         self._imagePreview.setMinimumWidth(200)
         self._imagePreview.setPixmap(self._image.pixmap)
-        self._imagePreview.onImageRectChanged.connect(self._onPreviewRectChanged)
 
         splitter.addWidget(self._editor)
         splitter.addWidget(self._imagePreview)
