@@ -135,9 +135,9 @@ class MainWindow(QtWidgets.QMainWindow):
             "test_images/lena_blur_10.png",
             "test_images/endgame.jpg",
         ]
-        image_paths += glob.glob("test_images/celebrities/**/*.jpg", recursive=True)
         image_paths += glob.glob("test_images/exif/**/*.jpg", recursive=True)
         image_paths += glob.glob("test_images/exif/**/*.tiff", recursive=True)
+        # image_paths += glob.glob("test_images/celebrities/**/*.jpg", recursive=True)
 
         return image_paths[:max_image_count]
 
