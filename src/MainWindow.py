@@ -118,11 +118,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self._editMenu.addAction(self._groupFacesAction)
 
         self._viewMenu = self._menuBar.addMenu("&View")
+        self._sizePresetActions = []
+
         for preset in GridBase.sizePresets():
             action = QtGui.QAction(preset.name + " Thumbnails", self)
+            action.setCheckable(True)
             action.setData(preset)
             action.triggered.connect(self.onGridSizePresetPressed)
             self._viewMenu.addAction(action)
+            self._sizePresetActions.append(action)
+
+        self._sizePresetActions[1].setChecked(True)
 
         self._childWindows = []  # Only because GC closes the window when the reference is lost.
 
@@ -132,9 +138,14 @@ class MainWindow(QtWidgets.QMainWindow):
         ImageFeaturesService.instance().onImageError.connect(self.onImageError)
         ImageFeaturesService.instance().start()
 
-    @QtCore.Slot()
-    def onGridSizePresetPressed(self):
-        self._imageGrid.setSizePreset(self.sender().data())
+    @QtCore.Slot(bool)
+    def onGridSizePresetPressed(self, checked):
+        if not checked:
+            return
+        action = self.sender()
+        self._imageGrid.setSizePreset(action.data())
+        for a in self._sizePresetActions:
+            a.setChecked(a == action)
 
     def getTestImagePaths(self):
         max_image_count = 2000
@@ -172,15 +183,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def onAddImagesPressed(self) -> None:
-        file_path = QtWidgets.QFileDialog.getOpenFileName(self, "Open File", "", "Images (*.png *.jpg *.jpeg)")[0]
-        if file_path:
+        file_paths, _filter = QtWidgets.QFileDialog.getOpenFileNames(
+            self, "Open File", "", "Images (*.png *.jpg *.jpeg *.tiff)")
+
+        for file_path in file_paths:
             self._addImage(file_path)
 
     @QtCore.Slot()
     def onExportImagePressed(self) -> None:
         selected_images = self._imageGrid.selectedImages()
         if len(selected_images) == 1:
-            file_path = QtWidgets.QFileDialog.getSaveFileName(self, "Save File", "", "Images (*.png *.jpg *.jpeg)")[0]
+            file_path, _filter = QtWidgets.QFileDialog.getSaveFileName(
+                self, "Save File", "", "Images (*.png *.jpg *.jpeg)")
             if file_path:
                 selected_images[0].save(file_path)
 
