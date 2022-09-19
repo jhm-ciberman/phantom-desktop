@@ -52,25 +52,25 @@ class _ImageProcessor:
         self._shape_predictor = dlib.shape_predictor(self._path_shape_68p)
         self.predictor_jitter = 0
 
-    def _process_face(self, image_rgb: dlib.array, face_rect: dlib.rectangle, score: float) -> Face:
+    def _process_face(self, image_rgb: dlib.array, face_rect: dlib.rectangle, confidence: float) -> Face:
         """
         Process a single face in an image and returns a Face object.
 
         Args:
             image_rgb (dlib.array): The image in RGB format.
-            rect (dlib.rectangle): The face rectangle.
-            score (float): The face detection score.
+            face_rect (dlib.rectangle): The face rectangle.
+            confidence (float): The face detection confidence score.
 
         Returns:
             The processed face.
         """
 
         face = Face()
-        face.score = score
+        face.confidence = confidence
 
         x, y = face_rect.left(), face_rect.top()
         w, h = face_rect.right() - x, face_rect.bottom() - y
-        face.rect = Rect(x, y, w, h)
+        face.aabb = Rect(x, y, w, h)
 
         # predict face parts
         t = perf_counter_ns()
@@ -94,7 +94,7 @@ class _ImageProcessor:
         """
         t = perf_counter_ns()
 
-        detections, scores, idx = self._face_detector.run(image_rgb)
+        detections, scores, _ = self._face_detector.run(image_rgb)
         faces = [self._process_face(image_rgb, face, score) for face, score in zip(detections, scores)]
         time = perf_counter_ns() - t
 

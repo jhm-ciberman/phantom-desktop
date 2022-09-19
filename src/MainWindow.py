@@ -137,7 +137,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ]
         image_paths += glob.glob("test_images/exif/**/*.jpg", recursive=True)
         image_paths += glob.glob("test_images/exif/**/*.tiff", recursive=True)
-        # image_paths += glob.glob("test_images/celebrities/**/*.jpg", recursive=True)
+        image_paths += glob.glob("test_images/celebrities/**/*.jpg", recursive=True)
 
         return image_paths[:max_image_count]
 
@@ -149,7 +149,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if (count == 0):
             self.statusBar().showMessage("{} images in the collection".format(len(self.imageGrid.images())))
         elif (count == 1):
-            self.statusBar().showMessage(selected_images[0].path)
+            self.statusBar().showMessage(selected_images[0].full_path)
         else:
             self.statusBar().showMessage("{} images selected".format(count))
 
@@ -240,7 +240,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def onImageError(self, image: Image, error: Exception) -> None:
         self._itemsProcessedCount += 1
         self._updateProgress()
-        print(f"Failed to process image {image.path}: {error}")
+        print(f"Failed to process image {image.full_path}: {error}")
 
     def _updateProgress(self) -> None:
         items = self._itemsProcessedCount

@@ -64,6 +64,7 @@ class Face:
         predict_time (int): The time it took to predict the face parts in nanoseconds.
         encoding_time (int): The time it took to encode the face parts in nanoseconds.
         image (Image): The image the face belongs to (None if the face is not part of an image).
+        confidence (float): The confidence score of the face.
 
     """
     def __init__(self, uuid: UUID = None) -> None:
@@ -77,9 +78,10 @@ class Face:
         self.shape_time = -1
         self.encoding_time = -1
         self.image = None  # type: Image
+        self.confidence = 0.0  # type: float
 
     def __repr__(self) -> str:
-        return "Face(uuid={}, score={}, aabb={})".format(self.uuid, self.score, self.aabb)
+        return "Face(uuid={}, confidence={}, aabb={})".format(self.uuid, self.confidence, self.aabb)
 
     @property
     def aabb(self) -> Rect:
@@ -152,6 +154,36 @@ class Face:
         return pixmap
 
 
+class Group:
+    """
+    Represents a group of faces.
+
+    Attributes:
+        centroid (numpy.ndarray): The centroid of the group.
+        faces (list[Face]): The faces in the group.
+        name (str): The name of the group.
+        main_face (Face): The face with the highest confidence score.
+    """
+
+    def __init__(self, faces: list[Face] = None, name: str = None) -> None:
+        """
+        Initializes the Group class.
+
+        Args:
+            centroid (numpy.ndarray): The centroid of the group.
+        """
+        self.centroid = None  # type: np.ndarray
+        self.faces = faces if faces is not None else []  # type: list[Face]
+        self.name = name  # type: str
+
+    @property
+    def main_face(self) -> Face:
+        """
+        Gets the face with the highest confidence score.
+        """
+        return max(self.faces, key=lambda face: face.confidence)
+
+
 class Image:
     """
     The Image class is the main Phantom Desktop image model.
@@ -161,8 +193,9 @@ class Image:
     channel being a uint8 array.
 
     Attributes:
-        path (str): The full path to the image source.
+        full_path (str): The full path to the image source.
         basename (str): The basename of the image source.
+        folder_path (str): The folder path of the image source.
         raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format.
         channels (int): The number of channels in the image source.
         width (int): The width of the image source.
@@ -177,13 +210,12 @@ class Image:
         Initializes the Image class.
 
         Args:
-            path (str): The full path to the image source.
+            path (str): The path to the image source (can be relative or absolute).
             raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format. If not provided,
               the image will be loaded from the path.
         """
         self.uuid = uuid4()
-        self.path = os.path.normpath(path)
-        self.basename = os.path.basename(path)
+        self.full_path = os.path.abspath(path)
 
         if raw_image is None:
             raw_image = cv2.imread(path, flags=cv2.IMREAD_UNCHANGED)
@@ -195,6 +227,20 @@ class Image:
         self._faces = []  # type: list[Face]
         self.faces_time = -1
         self.processed = False
+
+    @property
+    def basename(self) -> str:
+        """
+        Gets the basename of the image source.
+        """
+        return os.path.basename(self.full_path)
+
+    @property
+    def folder_path(self) -> str:
+        """
+        Gets the folder path of the image source. The path always ends with a trailing slash.
+        """
+        return os.path.dirname(self.full_path) + os.path.sep
 
     @property
     def channels(self):
@@ -224,17 +270,17 @@ class Image:
         raw_bgra = cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2BGRA)
         cv2.imwrite(path, raw_bgra)
 
-    def get_pixmap(self) -> QtGui.QPixmap:
-        """
-        Returns a QPixmap of the image.
-        """
-        return ImageCache.default().get_pixmap(self)
-
     def get_image(self) -> QtGui.QImage:
         """
         Returns a QImage of the image.
         """
-        return ImageCache.default().get_image(self)
+        return QtGui.QImage(self._raw_image.data, self.width, self.height, QtGui.QImage.Format_RGBA8888)
+
+    def get_pixmap(self) -> QtGui.QPixmap:
+        """
+        Returns a QPixmap of the image.
+        """
+        return QtGui.QPixmap(self.get_image())
 
     def get_pixels_rgb(self) -> np.ndarray:
         """
@@ -263,61 +309,3 @@ class Image:
         self._faces = value
         for face in self._faces:
             face.image = self
-
-
-class ImageCache:
-    """
-    Singleton class for storing QImage and QPixmap cached references in a central location.
-    """
-    _instance = None
-
-    def __init__(self):
-        self._image_cache = {}
-        self._pixmap_cache = {}
-
-    @staticmethod
-    def default():
-        """
-        Gets the default ImageCache instance.
-        """
-        if ImageCache._instance is None:
-            ImageCache._instance = ImageCache()
-        return ImageCache._instance
-
-    def get_image(self, image: Image):
-        """
-        Gets a QImage for the given Image object.
-        """
-        if image not in self._image_cache:
-            self._image_cache[image] = QtGui.QImage(image._raw_image.data, image.width, image.height,
-                                                    QtGui.QImage.Format_RGBA8888)
-        return self._image_cache[image]
-
-    def get_pixmap(self, image: Image):
-        """
-        Gets a QPixmap for the given Image object.
-        """
-        if image not in self._pixmap_cache:
-            self._pixmap_cache[image] = QtGui.QPixmap.fromImage(self.get_image(image))
-        return self._pixmap_cache[image]
-
-    def clear(self):
-        """
-        Clears the cache.
-        """
-        self._image_cache.clear()
-        self._pixmap_cache.clear()
-
-    def clear_image(self, image: Image):
-        """
-        Clears the image from the cache.
-        """
-        if image in self._image_cache:
-            del self._image_cache[image]
-
-    def clear_pixmap(self, image: Image):
-        """
-        Clears the pixmap from the cache.
-        """
-        if image in self._pixmap_cache:
-            del self._pixmap_cache[image]
