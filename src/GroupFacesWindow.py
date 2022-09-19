@@ -1,53 +1,11 @@
-from cProfile import label
 from PySide6 import QtCore, QtGui, QtWidgets
 from .Image import Image, Face
 from .Services.ClusteringService import Group, cluster
 from .QtHelpers import setSplitterStyle
+from .Widgets.GridBase import GridBase
 
 
-class _GridBase(QtWidgets.QListWidget):
-    """
-    An abstract Widget class that provides functionality to show a grid of images
-    """
-
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
-        """
-        Initialize a new instance of the _GridBase class.
-
-        Args:
-            parent (QWidget): The parent widget.
-        """
-        super().__init__(parent)
-        self.setContentsMargins(0, 0, 0, 0)
-        self.setGridSize(QtCore.QSize(250, 250))
-        self.setIconSize(QtCore.QSize(250, 230))
-        self.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
-        self.setFlow(QtWidgets.QListView.Flow.LeftToRight)
-        self.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust)
-        self.setMovement(QtWidgets.QListView.Movement.Static)
-        self.setDragDropMode(QtWidgets.QListView.DragDropMode.NoDragDrop)
-        self.setSelectionMode(QtWidgets.QListView.SelectionMode.SingleSelection)
-        self.setSpacing(10)
-        self.setWordWrap(True)
-        self.setUniformItemSizes(True)
-
-    def _addItemCore(self, pixmap: QtGui.QPixmap, text: str) -> None:
-        """
-        Add an item to the list.
-
-        Args:
-            pixmap (QPixmap): The pixmap to display.
-            text (str): The text to display.
-        """
-        item = QtWidgets.QListWidgetItem()
-        icon = QtGui.QIcon(pixmap)
-        item.setIcon(icon)
-        item.setText(text)
-        item.setToolTip(text)
-        self.addItem(item)
-
-
-class _GroupsGrid(_GridBase):
+class _GroupsGrid(GridBase):
     """
     Widget that displays a list of groups of faces in form of a grid of thumbnails.
     """
@@ -106,7 +64,7 @@ class _GroupsGrid(_GridBase):
         self.groupClicked.emit(group)
 
 
-class _FacesGrid(_GridBase):
+class _FacesGrid(GridBase):
     """
     Widget that displays a list of faces in form of a grid of thumbnails.
     """

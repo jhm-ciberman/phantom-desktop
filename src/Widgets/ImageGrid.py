@@ -1,46 +1,32 @@
 from PySide6 import QtGui, QtCore, QtWidgets
 from src.Image import Image
+from .GridBase import GridBase
 
 
-class ImageGrid(QtWidgets.QWidget):
+class ImageGrid(GridBase):
     """
     A widget that displays a grid of images.
     """
 
     selectionChanged = QtCore.Signal()
 
-    def __init__(self):
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """
-        Initializes the ImageGrid class.
+        Initializes a new instance of the ImageGrid class.
         """
-        super().__init__()
+        super().__init__(parent)
         self._images = []
-        self._items = []
         self._selectedImages = []
-        self._gridSize = QtCore.QSize(150, 150)
-        self._iconSize = QtCore.QSize(130, 100)
-        self._listWidget = QtWidgets.QListWidget()
-        self._listWidget.setContentsMargins(0, 0, 0, 0)
-        self._listWidget.setGridSize(self._gridSize)
-        self._listWidget.setIconSize(self._iconSize)
-        self._listWidget.setViewMode(QtWidgets.QListView.ViewMode.IconMode)
-        self._listWidget.setFlow(QtWidgets.QListView.Flow.LeftToRight)
-        self._listWidget.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust)
-        self._listWidget.setMovement(QtWidgets.QListView.Movement.Static)
-        self._listWidget.setDragDropMode(QtWidgets.QListView.DragDropMode.NoDragDrop)
-        self._listWidget.setSelectionMode(QtWidgets.QListView.SelectionMode.ExtendedSelection)
-        self._listWidget.setSelectionBehavior(QtWidgets.QListView.SelectionBehavior.SelectItems)
-        self._listWidget.setItemDelegate(_TextOverDelegate(self))
+        # self.setGridSize(QtCore.QSize(150, 150))
+        # self.setIconSize(QtCore.QSize(130, 100))
+        self.setSelectionMode(QtWidgets.QListView.SelectionMode.ExtendedSelection)
+        self.setSelectionBehavior(QtWidgets.QListView.SelectionBehavior.SelectItems)
+        self.setItemDelegate(_TextOverDelegate(self))
 
         self._loadingIcon = QtGui.QIcon("res/loading.png")
+        self._faceIcon = QtGui.QIcon("res/person.png")
 
-        layout = QtWidgets.QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._listWidget)
-        self.setLayout(layout)
-        self.setContentsMargins(0, 0, 0, 0)
-
-        self._listWidget.itemSelectionChanged.connect(self._onItemSelectionChanged)
+        self.itemSelectionChanged.connect(self._onItemSelectionChanged)
 
     def addImage(self, image: Image) -> None:
         """
@@ -49,21 +35,16 @@ class ImageGrid(QtWidgets.QWidget):
         Args:
             image (Image): The image to add.
         """
-        qimage = QtGui.QImage(image.get_pixels_rgba().data, image.width, image.height, QtGui.QImage.Format_RGBA8888)
-        pixmap = QtGui.QPixmap.fromImage(qimage)
-        item = QtWidgets.QListWidgetItem(pixmap, image.basename, self._listWidget)
-        item.setSizeHint(self._gridSize)
-        self._items.append(item)
+        pixmap = image.get_pixmap()
+        self._addItemCore(pixmap, image.basename)
         self._images.append(image)
-        self._items.append(item)
 
     def removeImage(self, index: int) -> None:
         """
         Removes an image from the grid.
         """
-        self._listWidget.takeItem(index)
+        self.takeItem(index)
         self._images.pop(index)
-        self._items.pop(index)
 
     def images(self) -> list[Image]:
         """
@@ -79,7 +60,7 @@ class ImageGrid(QtWidgets.QWidget):
 
     def _onItemSelectionChanged(self) -> None:
         self._selectedImages = []
-        for item in self._listWidget.selectedIndexes():
+        for item in self.selectedIndexes():
             self._selectedImages.append(self._images[item.row()])
 
         self.selectionChanged.emit()
@@ -88,10 +69,10 @@ class ImageGrid(QtWidgets.QWidget):
         """
         Clears the grid.
         """
-        self._listWidget.clear()
         self._images = []
-        self._items = []
         self._selectedImages = []
+        super().clear()
+        self.selectionChanged.emit()
 
 
 class _TextOverDelegate(QtWidgets.QStyledItemDelegate):
@@ -99,14 +80,24 @@ class _TextOverDelegate(QtWidgets.QStyledItemDelegate):
         self._imageGrid = imageGrid
         super().__init__(parent)
 
+    def _getIcon(self, image: Image):
+        if not image.processed:
+            return self._imageGrid._loadingIcon
+        elif len(image.faces) > 0:
+            return self._imageGrid._faceIcon
+        else:
+            return None
+
     def paint(self, painter, option, index):
         super().paint(painter, option, index)
         itemIndex = index.row()
         image = self._imageGrid.images()[itemIndex]
-        if not image.processed:
+        icon = self._getIcon(image)
+
+        if icon is not None:
             painter.save()
             painter.setRenderHint(QtGui.QPainter.Antialiasing)
             # draw loading icon
-            iconRect = QtCore.QRect(option.rect.x() + 5, option.rect.y() + 5, 24, 24)
-            self._imageGrid._loadingIcon.paint(painter, iconRect)
+            iconRect = QtCore.QRect(option.rect.x() + 2, option.rect.y() + 2, 24, 24)
+            icon.paint(painter, iconRect)
             painter.restore()
