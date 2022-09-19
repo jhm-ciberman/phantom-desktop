@@ -9,6 +9,7 @@ from .PerspectiveWindow import PerspectiveWindow
 from .DeblurWindow import DeblurWindow
 from .GroupFacesWindow import GroupFacesWindow
 import glob
+import os
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -50,6 +51,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._addImagesAction.setToolTip("Add images to current project")
         self._addImagesAction.triggered.connect(self.onAddImagesPressed)
 
+        self._addFolderAction = QtGui.QAction(
+            QtGui.QIcon("res/folder_add.png"), "Add From Folder", self)
+        self._addFolderAction.setToolTip("Add images from folder to current project")
+        self._addFolderAction.triggered.connect(self.onAddFolderPressed)
+
         self._exportImageAction = QtGui.QAction(
             QtGui.QIcon("res/image_save.png"), "Export Image", self)
         self._exportImageAction.triggered.connect(self.onExportImagePressed)
@@ -76,6 +82,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._toolbar.setIconSize(QtCore.QSize(48, 48))
         self._toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self._toolbar.addAction(self._addImagesAction)
+        self._toolbar.addAction(self._addFolderAction)
         self._toolbar.addAction(self._exportImageAction)
         self._toolbar.addAction(self._correctPerspectiveAction)
         self._toolbar.addAction(self._deblurAction)
@@ -109,6 +116,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._menuBar = self.menuBar()
         self._fileMenu = self._menuBar.addMenu("&File")
         self._fileMenu.addAction(self._addImagesAction)
+        self._fileMenu.addAction(self._addFolderAction)
         self._fileMenu.addAction(self._exportImageAction)
         self._fileMenu.addAction(self._exitAction)
 
@@ -184,10 +192,38 @@ class MainWindow(QtWidgets.QMainWindow):
     @QtCore.Slot()
     def onAddImagesPressed(self) -> None:
         file_paths, _filter = QtWidgets.QFileDialog.getOpenFileNames(
-            self, "Open File", "", "Images (*.png *.jpg *.jpeg *.tiff)")
+            self, "Select Images to the project", "", "Images (*.png *.jpg *.jpeg *.tiff)")
 
         for file_path in file_paths:
             self._addImage(file_path)
+
+    @QtCore.Slot()
+    def onAddFolderPressed(self) -> None:
+        folder_path = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select a folder to add to the project", "")
+
+        if folder_path:
+            extensions = ["png", "jpg", "jpeg", "tiff"]
+            glob_base = folder_path + "/**/*."
+            file_paths = []
+            for ext in extensions:
+                file_paths += glob.glob(glob_base + ext, recursive=True)
+
+            # Show a dialog asking the user to confirm the files to add.
+            count = len(file_paths)
+            if count == 0:
+                QtWidgets.QMessageBox.warning(
+                    self, "No images found", "No images found in the selected folder. Please select a folder with images.")
+                return
+            else:
+                result = QtWidgets.QMessageBox.question(
+                    self, f"{count} images found", f"{count} images found in the selected folder. "
+                    "Do you want to add them to the project?")
+                if result != QtWidgets.QMessageBox.Yes:
+                    return
+
+            for file_path in file_paths:
+                self._addImage(file_path)
 
     @QtCore.Slot()
     def onExportImagePressed(self) -> None:
@@ -197,6 +233,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 self, "Save File", "", "Images (*.png *.jpg *.jpeg)")
             if file_path:
                 selected_images[0].save(file_path)
+        else:
+            folder_path = QtWidgets.QFileDialog.getExistingDirectory(
+                self, "Select a folder to export the images to", "")
+
+            if folder_path:
+                for image in selected_images:
+                    image.save(os.path.join(folder_path, image.name))
 
     @QtCore.Slot()
     def onCorrectPerspectivePressed(self) -> None:
@@ -291,4 +334,4 @@ class MainWindow(QtWidgets.QMainWindow):
             window.close()
 
         event.accept()
-        
+
