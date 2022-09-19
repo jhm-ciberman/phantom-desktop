@@ -114,7 +114,7 @@ class Face:
         """
         self._aabb = value
 
-    def get_square_pixmap(self, size: int = 256, padding: float = 0.25) -> QtGui.QPixmap:
+    def get_square_pixmap(self, size: int = 256, padding: float = 0.5) -> QtGui.QPixmap:
         """
         Gets a square pixmap of the face.
 
@@ -127,7 +127,7 @@ class Face:
         """
         return self.get_pixmap(size, size, padding)
 
-    def get_pixmap(self, width: int = 256, height: int = 256, padding: float = 0.25) -> QtGui.QPixmap:
+    def get_pixmap(self, width: int = 256, height: int = 256, padding: float = 0.5) -> QtGui.QPixmap:
         """
         Gets a pixmap of the face. The face will be scaled to fit the width and height
         preserving the aspect ratio.
@@ -151,6 +151,29 @@ class Face:
         pixmap = self.image.get_pixmap()
         pixmap = pixmap.copy(aabb.x - padding, aabb.y - padding, scale + padding * 2, scale + padding * 2)
         pixmap = pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        return pixmap
+
+    def get_avatar_pixmap(self, width: int = 256, height: int = None) -> QtGui.QPixmap:
+        """
+        Gets a square pixmap of the face with a circular mask.
+
+        Args:
+            width (int): The width of the pixmap.
+            height (int): The height of the pixmap. If None, the height will be set to the width.
+
+        Returns:
+            QtGui.QPixmap: The pixmap.
+        """
+        height = width if height is None else height
+        pixmap = self.get_pixmap(width, height)
+        mask = QtGui.QPixmap(pixmap.size())
+        mask.fill(QtCore.Qt.transparent)
+        painter = QtGui.QPainter(mask)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setBrush(QtCore.Qt.white)
+        painter.drawEllipse(0, 0, mask.width(), mask.height())
+        painter.end()
+        pixmap.setMask(mask.mask())
         return pixmap
 
 
@@ -182,6 +205,15 @@ class Group:
         Gets the face with the highest confidence score.
         """
         return max(self.faces, key=lambda face: face.confidence)
+
+    def count_unique_images(self) -> int:
+        """
+        Gets the number of unique images the group is part of.
+
+        Returns:
+            int: The number of unique images.
+        """
+        return len(set([face.image for face in self.faces]))
 
 
 class Image:

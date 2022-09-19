@@ -17,8 +17,6 @@ class Application(QtWidgets.QApplication):
         self.setPalette(p)
 
         self.setStyleSheet("""
-            QWidget { margin:0 px; }
-            QLayout { margin:0 px; }
             QStatusBar { background-color: #f0f0f0; }
         """)
 

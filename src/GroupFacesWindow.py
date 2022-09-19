@@ -1,4 +1,5 @@
 from PySide6 import QtCore, QtGui, QtWidgets
+from .Widgets.PixmapDisplay import PixmapDisplay
 from .Image import Image, Face
 from .Services.ClusteringService import Group, cluster
 from .QtHelpers import setSplitterStyle
@@ -23,6 +24,8 @@ class _GroupsGrid(GridBase):
         self._groups = []  # type: list[Group]
         self.itemClicked.connect(self._onItemClicked)
 
+        self.resize(self.gridSize().width() * 3, self.height())
+
     def setGroups(self, groups: list[Group]) -> None:
         """
         Set the groups to display.
@@ -39,8 +42,8 @@ class _GroupsGrid(GridBase):
             if len(group.faces) == 0:
                 continue
             w, h = self.iconSize().width(), self.iconSize().height()
-            pixmap = group.main_face.get_pixmap(w, h)
-            text = group.name if group.name else "(No name)"
+            pixmap = group.main_face.get_avatar_pixmap(w, h)
+            text = group.name if group.name else ""
             self._addItemCore(pixmap, text)
 
     def groups(self) -> list[Group]:
@@ -121,6 +124,118 @@ class _FacesGrid(GridBase):
         self.onFaceClicked.emit(face)
 
 
+class GroupDetailsWidget(QtWidgets.QWidget):
+    """
+    A widget that contains a top header with available actions and a grid with all the
+    faces that belongs to a group
+    """
+
+    faceClicked = QtCore.Signal(Face)
+
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        """
+        Initialize a new instance of the GroupDetailsWidget class.
+
+        Args:
+            parent (QWidget): The parent widget.
+        """
+        super().__init__(parent)
+        self._group = None  # type: Group
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+        self._header = QtWidgets.QWidget()
+        self._header.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum))
+        self._header.setFixedHeight(160)
+
+        headerLayout = QtWidgets.QHBoxLayout()
+        headerLayout.setContentsMargins(0, 0, 0, 0)
+        self._header.setLayout(headerLayout)
+
+        self._mainFaceIcon = PixmapDisplay()
+        self._mainFaceIcon.setFixedSize(150, 150)
+        headerLayout.addWidget(self._mainFaceIcon)
+
+        infoLayout = QtWidgets.QVBoxLayout()
+        infoLayout.setContentsMargins(10, 0, 0, 0)
+        headerLayout.addLayout(infoLayout)
+
+        infoLayoutTop = QtWidgets.QHBoxLayout()
+        infoLayout.addLayout(infoLayoutTop)
+
+        self._nameLabel = QtWidgets.QLabel()
+        self._nameLabel.setFont(QtGui.QFont("Arial", 20))
+        self._nameLabel.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed))
+        self._nameLabel.setText("")
+        infoLayoutTop.addWidget(self._nameLabel)
+
+        self.setStyleSheet("QPushButton { padding: 10px 5px; }")
+        self._editNameButton = QtWidgets.QPushButton(QtGui.QIcon("res/edit.png"), "Edit name")
+        self._editNameButton.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed))
+        self._editNameButton.setContentsMargins(10, 0, 0, 0)
+        self._editNameButton.clicked.connect(self._onEditNameClicked)
+        infoLayoutTop.addWidget(self._editNameButton)
+
+        self._subtitleLabel = QtWidgets.QLabel()
+        self._subtitleLabel.setFont(QtGui.QFont("Arial", 12))
+        self._subtitleLabel.setText("")
+        self._subtitleLabel.setStyleSheet("color: gray;")
+        infoLayout.addWidget(self._subtitleLabel)
+
+        self._facesGrid = _FacesGrid()
+        self._facesGrid.onFaceClicked.connect(self._onFaceClicked)
+
+        layout.addWidget(self._header)
+        layout.addWidget(self._facesGrid)
+
+    def setGroup(self, group: Group) -> None:
+        """
+        Set the group to display.
+
+        Args:
+            group (Group): The group to display.
+        """
+        self._group = group
+        self._mainFaceIcon.setPixmap(group.main_face.get_avatar_pixmap(150, 150))
+        name = group.name if group.name else "(No name)"
+        self._nameLabel.setText(name)
+        self._facesGrid.setFaces(group.faces)
+        unique_images_count = group.count_unique_images()
+        self._subtitleLabel.setText(f"{unique_images_count} photos")
+
+    def group(self) -> Group:
+        """
+        Get the group that is displayed.
+
+        Returns:
+            Group: The group that is displayed.
+        """
+        return self._group
+
+    @QtCore.Slot(Face)
+    def _onFaceClicked(self, face: Face) -> None:
+        """
+        Called when a face is clicked.
+
+        Args:
+            face (Face): The face that was clicked.
+        """
+        self.faceClicked.emit(face)
+
+    @QtCore.Slot()
+    def _onEditNameClicked(self) -> None:
+        """
+        Called when the edit name button is clicked.
+        """
+        name, ok = QtWidgets.QInputDialog.getText(
+            self, "Edit group name", "Enter a name for the group:")
+        if ok:
+            self._group.name = name
+            self._nameLabel.setText(name)
+
+
 class GroupFacesWindow(QtWidgets.QWidget):
     def __init__(self, images: list[Image]) -> None:
         super().__init__()
@@ -152,10 +267,12 @@ class GroupFacesWindow(QtWidgets.QWidget):
 
         self._groupsGrid.setGroups(groups)
 
-        self._facesGrid = _FacesGrid()
-        splitter.addWidget(self._facesGrid)
+        self._groupDetails = GroupDetailsWidget()
+        self._groupDetails.faceClicked.connect(self._onFaceClicked)
+        splitter.addWidget(self._groupDetails)
 
-        self._selectedGroup = None  # type: Group
+        if len(groups) > 0:
+            self._groupDetails.setGroup(groups[0])
 
     @QtCore.Slot(Group)
     def _onGroupClicked(self, group: Group) -> None:
@@ -165,5 +282,14 @@ class GroupFacesWindow(QtWidgets.QWidget):
         Args:
             group (Group): The group that was clicked.
         """
-        self._selectedGroup = group
-        self._facesGrid.setFaces(group.faces)
+        self._groupDetails.setGroup(group)
+
+    @QtCore.Slot(Face)
+    def _onFaceClicked(self, face: Face) -> None:
+        """
+        Called when a face is clicked.
+
+        Args:
+            face (Face): The face that was clicked.
+        """
+        pass

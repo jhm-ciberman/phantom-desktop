@@ -334,4 +334,3 @@ class MainWindow(QtWidgets.QMainWindow):
             window.close()
 
         event.accept()
-
