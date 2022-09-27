@@ -12,15 +12,15 @@ class EventBus(QtCore.QObject):
 
     _default = None  # Singleton
 
-    onImageProcessed = QtCore.Signal(Image)
-    """Raised when an image is processed successfully."""
-
-    onImageProcessingFailed = QtCore.Signal(Image, Exception)
-    """Raised when an image processing error occurs."""
-
     @staticmethod
     def default() -> "EventBus":
         """Gets the default EventBus instance."""
         if EventBus._default is None:
             EventBus._default = EventBus()
         return EventBus._default
+
+    imageProcessed = QtCore.Signal(Image)
+    """Emited when an image is processed successfully."""
+
+    imageProcessingFailed = QtCore.Signal(Image, Exception)
+    """Emited when an image processing error occurs."""

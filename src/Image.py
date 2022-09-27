@@ -185,7 +185,9 @@ class Group:
         centroid (numpy.ndarray): The centroid of the group.
         faces (list[Face]): The faces in the group.
         name (str): The name of the group.
-        main_face (Face): The face with the highest confidence score.
+        main_face (Face): The face that is the most representative of the group.
+          By default, the face with the highest confidence score is returned.
+        main_face_override (Face): Overrides the main_face property.
     """
 
     def __init__(self, faces: list[Face] = None, name: str = None) -> None:
@@ -196,15 +198,28 @@ class Group:
             centroid (numpy.ndarray): The centroid of the group.
         """
         self.centroid = None  # type: np.ndarray
-        self.faces = faces if faces is not None else []  # type: list[Face]
+        self._faces = faces if faces is not None else []  # type: list[Face]
         self.name = name  # type: str
+        self.main_face_override = None  # type: Face
 
     @property
     def main_face(self) -> Face:
         """
-        Gets the face with the highest confidence score.
+        Gets the face that is the most representative of the group.
+        This face can be overridden by setting the main_face_override property.
+        By default, the face with the highest confidence score is returned.
         """
-        return max(self.faces, key=lambda face: face.confidence)
+        if self._main_face_override is not None:
+            return self._main_face_override
+
+        return max(self._faces, key=lambda face: face.confidence)
+
+    @property
+    def faces(self) -> list[Face]:
+        """
+        Gets the faces in the group.
+        """
+        return self._faces
 
     def count_unique_images(self) -> int:
         """
@@ -213,7 +228,31 @@ class Group:
         Returns:
             int: The number of unique images.
         """
-        return len(set([face.image for face in self.faces]))
+        return len(set([face.image for face in self._faces]))
+
+    def add_face(self, face: Face) -> None:
+        """
+        Adds a face to the group.
+
+        Args:
+            face (Face): The face to add.
+        """
+        self._faces.append(face)
+
+    def remove_face(self, face: Face) -> None:
+        """
+        Removes a face from the group.
+
+        Args:
+            face (Face): The face to remove.
+        """
+        self._faces.remove(face)
+
+    def clear_faces(self) -> None:
+        """
+        Removes all faces from the group.
+        """
+        self._faces.clear()
 
 
 class Image:

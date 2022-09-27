@@ -1,3 +1,4 @@
+from typing import Any
 from PySide6 import QtCore, QtGui, QtWidgets
 
 
@@ -58,26 +59,53 @@ class GridBase(QtWidgets.QListWidget):
         self.setSelectionMode(QtWidgets.QListView.SelectionMode.SingleSelection)
         self.setSizePreset(GridBase.mediumPreset)
 
-    def _addItemCore(self, pixmap: QtGui.QPixmap, text: str) -> None:
+    def _addItemCore(self, pixmap: QtGui.QPixmap, text: str, data: Any = None) -> None:
         """
         Add an item to the list.
 
         Args:
             pixmap (QPixmap): The pixmap to display.
             text (str): The text to display.
+            data (Any): The data to associate with the item.
         """
         item = QtWidgets.QListWidgetItem()
+        self._setItemCore(item, pixmap, text, data)
+
+        self.addItem(item)
+        self._itemsSources.append(GridBase._ItemData(pixmap, text))
+
+    def _setItemCore(self, item: QtWidgets.QListWidgetItem, pixmap: QtGui.QPixmap, text: str, data: Any = None) -> None:
+        """
+        Updates the item with the given pixmap and text.
+
+        Args:
+            item (QListWidgetItem): The item to update.
+            pixmap (QPixmap): The pixmap to display.
+            text (str): The text to display.
+            data (Any): The data to associate with the item.
+        """
         item.setTextAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignBottom)
         item.setSizeHint(self.gridSize())
-
         resizedPixmap = pixmap.scaled(self.iconSize(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
         item.setIcon(QtGui.QIcon(resizedPixmap))
         item.setText(text)
         item.setToolTip(text)
-        self.addItem(item)
         item.setStatusTip(text)
 
-        self._itemsSources.append(GridBase._ItemData(pixmap, text))
+        if data is not None:
+            item.setData(QtCore.Qt.ItemDataRole.UserRole, data)
+
+    def _getData(self, index: int) -> Any:
+        """
+        Gets the data associated with the item at the given index.
+
+        Args:
+            index (int): The index of the item.
+
+        Returns:
+            Any: The data associated with the item.
+        """
+        return self.item(index).data(QtCore.Qt.ItemDataRole.UserRole)
 
     def clear(self) -> None:
         """

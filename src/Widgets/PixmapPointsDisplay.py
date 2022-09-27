@@ -7,9 +7,11 @@ class PixmapPointsDisplay(PixmapDisplay):
     A widget that displays a preview of the selected image.
     """
 
-    onPointsChanged = QtCore.Signal()
+    pointsChanged = QtCore.Signal()
+    """Emited when the list of points changes."""
 
-    onFinished = QtCore.Signal()
+    finished = QtCore.Signal()
+    """Emited when the user has finished editing the points."""
 
     def __init__(self):
         """
@@ -50,7 +52,7 @@ class PixmapPointsDisplay(PixmapDisplay):
         point = self._clampToImage(point)
         self._pointsImageSpace.append(point)
         self._pointsWidgetSpace.append(self.imageToWidgetTransform().map(point))
-        self.onPointsChanged.emit()
+        self.pointsChanged.emit()
         self.repaint()
 
     def setPoint(self, index: int, point: QtCore.QPoint):
@@ -62,7 +64,7 @@ class PixmapPointsDisplay(PixmapDisplay):
         point = self._clampToImage(point)
         self._pointsImageSpace[index] = point
         self._pointsWidgetSpace[index] = self.imageToWidgetTransform().map(point)
-        self.onPointsChanged.emit()
+        self.pointsChanged.emit()
         self.repaint()
 
     def removePoint(self, index: int):
@@ -73,7 +75,7 @@ class PixmapPointsDisplay(PixmapDisplay):
             return
         self._pointsImageSpace.pop(index)
         self._pointsWidgetSpace.pop(index)
-        self.onPointsChanged.emit()
+        self.pointsChanged.emit()
         self.repaint()
 
     def clearPoints(self) -> None:
@@ -83,7 +85,7 @@ class PixmapPointsDisplay(PixmapDisplay):
         self._pointsImageSpace.clear()
         self._pointsWidgetSpace.clear()
         self._hasFinished = False
-        self.onPointsChanged.emit()
+        self.pointsChanged.emit()
         self.repaint()
 
     def points(self) -> list[QtCore.QPoint]:
@@ -214,7 +216,7 @@ class PixmapPointsDisplay(PixmapDisplay):
                 if len(self._pointsImageSpace) > 0:
                     self._pointsImageSpace.pop()
                     self._pointsWidgetSpace.pop()
-                    self.onPointsChanged.emit()
+                    self.pointsChanged.emit()
                     self.repaint()
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
@@ -264,6 +266,6 @@ class PixmapPointsDisplay(PixmapDisplay):
                 self.addPoint(point)
                 if len(self._pointsImageSpace) == self._requiredPoints:
                     self._hasFinished = True
-                    self.onFinished.emit()
+                    self.finished.emit()
             self._updateCursor()
             self.repaint()

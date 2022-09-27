@@ -213,9 +213,9 @@ class ImageFeaturesService:
                 image.faces = event.result.faces
                 image.faces_time = event.result.time
                 image.processed = True
-                EventBus.default().onImageProcessed.emit(image)
+                EventBus.default().imageProcessed.emit(image)
             elif isinstance(event, _WorkerFailureEvent):
-                EventBus.default().onImageProcessingFailed.emit(image, event.error)
+                EventBus.default().imageProcessingFailed.emit(image, event.error)
 
     def _addWorker(self) -> None:
         i = len(self._workers)

@@ -26,7 +26,7 @@ def cluster(faces: list[Face]) -> list[Group]:
         if label >= 0:
             if label not in groups:
                 groups[label] = Group()
-            groups[label].faces.append(face)
+            groups[label].add_face(face)
         else:
             groups_single.append(Group([face]))
 

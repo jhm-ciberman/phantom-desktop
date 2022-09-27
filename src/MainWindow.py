@@ -143,8 +143,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._onImageGridSelectionChanged()  # Refresh the UI for the first time.
 
-        EventBus.default().onImageProcessed.connect(self._onImageProcessed)
-        EventBus.default().onImageProcessingFailed.connect(self._onImageProcessingFailed)
+        EventBus.default().imageProcessed.connect(self._onImageProcessed)
+        EventBus.default().imageProcessingFailed.connect(self._onImageProcessingFailed)
         ImageFeaturesService.instance().start()
 
     @QtCore.Slot(bool)
@@ -304,7 +304,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def _onImageProcessed(self, image: Image) -> None:
         self._itemsProcessedCount += 1
         self._updateProgress()
-        self._imageGrid.repaint()
 
     @QtCore.Slot(Image, Exception)
     def _onImageProcessingFailed(self, image: Image, error: Exception) -> None:

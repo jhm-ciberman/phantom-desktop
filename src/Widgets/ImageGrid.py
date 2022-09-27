@@ -1,4 +1,5 @@
 from PySide6 import QtGui, QtCore, QtWidgets
+from src.EventBus import EventBus
 from src.Image import Image
 from .GridBase import GridBase
 
@@ -27,6 +28,7 @@ class ImageGrid(GridBase):
         self._faceIcon = QtGui.QIcon("res/person.png")
 
         self.itemSelectionChanged.connect(self._onItemSelectionChanged)
+        EventBus.default().imageProcessed.connect(self._onImageProcessed)
 
     def addImage(self, image: Image) -> None:
         """
@@ -73,6 +75,14 @@ class ImageGrid(GridBase):
         self._selectedImages = []
         super().clear()
         self.selectionChanged.emit()
+
+    @QtCore.Slot(Image)
+    def _onImageProcessed(self, image: Image) -> None:
+        """
+        Updates the grid when an image is processed.
+        """
+        index = self._images.index(image)
+        self.update(self.model().index(index, 0))
 
 
 class _TextOverDelegate(QtWidgets.QStyledItemDelegate):
