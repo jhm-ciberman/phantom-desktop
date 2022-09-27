@@ -6,9 +6,11 @@ import threading
 import dlib
 from pkg_resources import resource_filename
 from time import perf_counter_ns
+from dataclasses import dataclass
 import queue
 
 
+@dataclass(frozen=True, slots=True)
 class _ImageProcessorResult:
     """
     Represents the result of the image processor.
@@ -17,17 +19,8 @@ class _ImageProcessorResult:
         faces (list[Face]): The faces in the image.
         time (int): The time it took to process the image in nanoseconds.
     """
-
-    def __init__(self, faces: list[Face], time: int):
-        """
-        Initializes the ImageProcessorResult class.
-
-        Args:
-            faces (list[Face]): The faces in the image.
-            time (int): The time it took to process the image in nanoseconds.
-        """
-        self.faces = faces
-        self.time = time
+    faces: list[Face]
+    time: int
 
 
 class _ImageProcessor:
@@ -101,71 +94,29 @@ class _ImageProcessor:
         return _ImageProcessorResult(faces, time)
 
 
+@dataclass(frozen=True, slots=True)
 class _WorkerEvent:
-    """
-    Represents an event that is raised by the worker.
-    """
-
-    def __init__(self, uuid: UUID) -> None:
-        """
-        Initializes a new instance of the WorkerEvent class.
-
-        Args:
-            uuid (UUID): The image UUID.
-        """
-        self.uuid = uuid
+    """Represents an event that is raised by the worker."""
+    uuid: UUID
 
 
+@dataclass(frozen=True, slots=True)
 class _WorkerSuccessEvent(_WorkerEvent):
-    """
-    Represents an event that is raised by the worker when an image is processed.
-    """
-
-    def __init__(self, uuid: UUID, result: _ImageProcessorResult) -> None:
-        """
-        Initializes a new instance of the WorkerSuccessEvent class.
-
-        Args:
-            uuid (UUID): The image UUID.
-            result (_ImageProcessorResult): The image result.
-        """
-        super().__init__(uuid)
-        self.result = result
+    """Represents an event that is raised by the worker when an image is processed."""
+    result: _ImageProcessorResult
 
 
+@dataclass(frozen=True, slots=True)
 class _WorkerFailureEvent(_WorkerEvent):
-    """
-    Represents an event that is raised by the worker when an image processing fails.
-    """
-
-    def __init__(self, uuid: UUID, error: Exception) -> None:
-        """
-        Initializes a new instance of the WorkerFailureEvent class.
-
-        Args:
-            uuid (UUID): The image UUID.
-            error (Exception): The error.
-        """
-        super().__init__(uuid)
-        self.error = error
+    """Represents an event that is raised by the worker when an image processing fails."""
+    error: Exception
 
 
+@dataclass(frozen=True, slots=True)
 class _WorkerTask:
-    """
-    Represents a task that is executed by the worker.
-    """
-
-    def __init__(self, uuid: UUID, image_rgb: dlib.array) -> None:
-        """
-        Initializes a new instance of the WorkerTask class.
-
-        Args:
-            uuid (UUID): The image UUID.
-            image_rgb (dlib.array): The image in RGB format.
-        """
-        super().__init__()
-        self.uuid = uuid
-        self.image_rgb = image_rgb
+    """Represents a task that is executed by the worker."""
+    uuid: UUID
+    image_rgb: dlib.array
 
 
 class _Worker(multiprocessing.Process):
