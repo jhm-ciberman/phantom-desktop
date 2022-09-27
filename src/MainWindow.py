@@ -1,4 +1,5 @@
 from PySide6 import QtGui, QtCore, QtWidgets
+from .EventBus import EventBus
 from .Widgets.GridBase import GridBase
 from .Services.ImageFeaturesService import ImageFeaturesService
 from .QtHelpers import setSplitterStyle
@@ -49,28 +50,28 @@ class MainWindow(QtWidgets.QMainWindow):
         self._addImagesAction = QtGui.QAction(
             QtGui.QIcon("res/image_add.png"), "Add Images", self)
         self._addImagesAction.setToolTip("Add images to current project")
-        self._addImagesAction.triggered.connect(self.onAddImagesPressed)
+        self._addImagesAction.triggered.connect(self._onAddImagesPressed)
 
         self._addFolderAction = QtGui.QAction(
             QtGui.QIcon("res/folder_add.png"), "Add From Folder", self)
         self._addFolderAction.setToolTip("Add images from folder to current project")
-        self._addFolderAction.triggered.connect(self.onAddFolderPressed)
+        self._addFolderAction.triggered.connect(self._onAddFolderPressed)
 
         self._exportImageAction = QtGui.QAction(
             QtGui.QIcon("res/image_save.png"), "Export Image", self)
-        self._exportImageAction.triggered.connect(self.onExportImagePressed)
+        self._exportImageAction.triggered.connect(self._onExportImagePressed)
 
         self._correctPerspectiveAction = QtGui.QAction(
             QtGui.QIcon("res/correct_perspective.png"), "Correct Perspective", self)
-        self._correctPerspectiveAction.triggered.connect(self.onCorrectPerspectivePressed)
+        self._correctPerspectiveAction.triggered.connect(self._onCorrectPerspectivePressed)
 
         self._deblurAction = QtGui.QAction(
             QtGui.QIcon("res/deblur.png"), "Deblur Filter", self)
-        self._deblurAction.triggered.connect(self.onDeblurPressed)
+        self._deblurAction.triggered.connect(self._onDeblurPressed)
 
         self._groupFacesAction = QtGui.QAction(
             QtGui.QIcon("res/group_faces.png"), "Group Similar Faces", self)
-        self._groupFacesAction.triggered.connect(self.onGroupFacesPressed)
+        self._groupFacesAction.triggered.connect(self._onGroupFacesPressed)
 
         self._exitAction = QtGui.QAction(
             QtGui.QIcon("res/exit.png"), "Exit", self)
@@ -96,10 +97,10 @@ class MainWindow(QtWidgets.QMainWindow):
         setSplitterStyle(splitter)
 
         self._imageGrid = ImageGrid()
-        for image_path in self.getTestImagePaths():
+        for image_path in self._getTestImagePaths():
             self._addImage(image_path)
 
-        self._imageGrid.selectionChanged.connect(self.onImageGridSelectionChanged)
+        self._imageGrid.selectionChanged.connect(self._onImageGridSelectionChanged)
 
         self.inspector_panel = InspectorPanel()
         self.inspector_panel.setContentsMargins(0, 0, 0, 0)
@@ -132,7 +133,7 @@ class MainWindow(QtWidgets.QMainWindow):
             action = QtGui.QAction(preset.name + " Thumbnails", self)
             action.setCheckable(True)
             action.setData(preset)
-            action.triggered.connect(self.onGridSizePresetPressed)
+            action.triggered.connect(self._onGridSizePresetPressed)
             self._viewMenu.addAction(action)
             self._sizePresetActions.append(action)
 
@@ -140,14 +141,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._childWindows = []  # Only because GC closes the window when the reference is lost.
 
-        self.onImageGridSelectionChanged()  # Refresh the UI for the first time.
+        self._onImageGridSelectionChanged()  # Refresh the UI for the first time.
 
-        ImageFeaturesService.instance().onImageProcessed.connect(self.onImageProcessed)
-        ImageFeaturesService.instance().onImageError.connect(self.onImageError)
+        EventBus.default().onImageProcessed.connect(self._onImageProcessed)
+        EventBus.default().onImageProcessingFailed.connect(self._onImageProcessingFailed)
         ImageFeaturesService.instance().start()
 
     @QtCore.Slot(bool)
-    def onGridSizePresetPressed(self, checked):
+    def _onGridSizePresetPressed(self, checked):
         if not checked:
             return
         action = self.sender()
@@ -155,7 +156,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for a in self._sizePresetActions:
             a.setChecked(a == action)
 
-    def getTestImagePaths(self):
+    def _getTestImagePaths(self):
         max_image_count = 2000
         image_paths = [
             "test_images/icon.png",
@@ -173,7 +174,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return image_paths[:max_image_count]
 
     @QtCore.Slot()
-    def onImageGridSelectionChanged(self) -> None:
+    def _onImageGridSelectionChanged(self) -> None:
         selected_images = self._imageGrid.selectedImages()
         self.inspector_panel.setSelectedImages(selected_images)
         count = len(selected_images)
@@ -190,7 +191,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._groupFacesAction.setEnabled(count > 1 or count == 0)
 
     @QtCore.Slot()
-    def onAddImagesPressed(self) -> None:
+    def _onAddImagesPressed(self) -> None:
         file_paths, _filter = QtWidgets.QFileDialog.getOpenFileNames(
             self, "Select Images to the project", "", "Images (*.png *.jpg *.jpeg *.tiff)")
 
@@ -198,7 +199,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._addImage(file_path)
 
     @QtCore.Slot()
-    def onAddFolderPressed(self) -> None:
+    def _onAddFolderPressed(self) -> None:
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select a folder to add to the project", "")
 
@@ -226,7 +227,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._addImage(file_path)
 
     @QtCore.Slot()
-    def onExportImagePressed(self) -> None:
+    def _onExportImagePressed(self) -> None:
         selected_images = self._imageGrid.selectedImages()
         if len(selected_images) == 1:
             file_path, _filter = QtWidgets.QFileDialog.getSaveFileName(
@@ -242,7 +243,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     image.save(os.path.join(folder_path, image.name))
 
     @QtCore.Slot()
-    def onCorrectPerspectivePressed(self) -> None:
+    def _onCorrectPerspectivePressed(self) -> None:
         selected = self._imageGrid.selectedImages()
         if len(selected) == 1:
             window = PerspectiveWindow(selected[0])
@@ -250,7 +251,7 @@ class MainWindow(QtWidgets.QMainWindow):
             window.showMaximized()
 
     @QtCore.Slot()
-    def onDeblurPressed(self) -> None:
+    def _onDeblurPressed(self) -> None:
         selected = self._imageGrid.selectedImages()
         if len(selected) == 1:
             window = DeblurWindow(selected[0])
@@ -258,7 +259,7 @@ class MainWindow(QtWidgets.QMainWindow):
             window.showMaximized()
 
     @QtCore.Slot()
-    def onGroupFacesPressed(self) -> None:
+    def _onGroupFacesPressed(self) -> None:
         selected = self._imageGrid.selectedImages()
         if len(selected) == 1:
             return
@@ -300,13 +301,13 @@ class MainWindow(QtWidgets.QMainWindow):
         return True
 
     @QtCore.Slot(Image)
-    def onImageProcessed(self, image: Image) -> None:
+    def _onImageProcessed(self, image: Image) -> None:
         self._itemsProcessedCount += 1
         self._updateProgress()
         self._imageGrid.repaint()
 
     @QtCore.Slot(Image, Exception)
-    def onImageError(self, image: Image, error: Exception) -> None:
+    def _onImageProcessingFailed(self, image: Image, error: Exception) -> None:
         self._itemsProcessedCount += 1
         self._updateProgress()
         print(f"Failed to process image {image.full_path}: {error}")

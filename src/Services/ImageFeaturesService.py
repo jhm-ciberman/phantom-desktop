@@ -1,13 +1,13 @@
 import multiprocessing
 from uuid import UUID
 from src.Image import Image, Face, Rect
-from PySide6 import QtCore
 import threading
 import dlib
 from pkg_resources import resource_filename
 from time import perf_counter_ns
 from dataclasses import dataclass
 import queue
+from src.EventBus import EventBus
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,21 +167,13 @@ class _Worker(multiprocessing.Process):
             self._event_queue.put(event)
 
 
-class ImageFeaturesService(QtCore.QObject):
+class ImageFeaturesService:
     """
     Singleton class that provides a simple interface to process multiple images in parallel
     using multiprocessing. The class is not thread safe and should be only used from the UI thread.
-
-    Signals:
-        onImageProcessed: Emitted when an image is processed.
-        onImageError: Emitted when an error occurs while processing an image.
     """
 
     _instance = None
-
-    onImageProcessed = QtCore.Signal(Image)
-
-    onImageError = QtCore.Signal(Image, Exception)
 
     @staticmethod
     def instance() -> "ImageFeaturesService":
@@ -221,9 +213,9 @@ class ImageFeaturesService(QtCore.QObject):
                 image.faces = event.result.faces
                 image.faces_time = event.result.time
                 image.processed = True
-                self.onImageProcessed.emit(image)
+                EventBus.default().onImageProcessed.emit(image)
             elif isinstance(event, _WorkerFailureEvent):
-                self.onImageError.emit(image, event.error)
+                EventBus.default().onImageProcessingFailed.emit(image, event.error)
 
     def _addWorker(self) -> None:
         i = len(self._workers)
