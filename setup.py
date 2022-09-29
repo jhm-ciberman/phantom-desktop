@@ -7,15 +7,23 @@ build_options = {
     'packages': [
         "scipy.optimize",
         "scipy.integrate",
-        "phantom",
     ],
     'excludes': [],
+    "include_files": [
+        "models/",
+        "res/",
+    ],
 }
 
 base = 'Win32GUI' if sys.platform == 'win32' else None
 
 executables = [
-    Executable('./main.py', base=base, target_name='Phantom')
+    Executable(
+        './main.py',
+        base=base,
+        target_name='Phantom',
+        icon='./res/icon.ico',
+    )
 ]
 
 setup(name='Phantom Desktop',

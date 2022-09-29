@@ -26,6 +26,6 @@ class Application(QtWidgets.QApplication):
 
         exitCode = self.exec()
 
-        ImageFeaturesService.instance().stop()
+        ImageFeaturesService.instance().terminate()
 
         sys.exit(exitCode)

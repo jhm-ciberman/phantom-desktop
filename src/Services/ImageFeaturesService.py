@@ -3,7 +3,6 @@ from uuid import UUID
 from src.Image import Image, Face, Rect
 import threading
 import dlib
-from pkg_resources import resource_filename
 from time import perf_counter_ns
 from dataclasses import dataclass
 import queue
@@ -30,9 +29,9 @@ class _ImageProcessor:
     to create a single instance and reuse it for multiple images.
     """
 
-    _path_encoder = resource_filename("phantom", "models/dlib_face_recognition_resnet_model_v1.dat")
+    _path_encoder = "./models/dlib_face_recognition_resnet_model_v1.dat"
 
-    _path_shape_68p = resource_filename("phantom", "models/shape_predictor_68_face_landmarks.dat")
+    _path_shape_68p = "./models/shape_predictor_68_face_landmarks.dat"
 
     def __init__(self) -> None:
         """
@@ -250,6 +249,8 @@ class ImageFeaturesService:
         """
         Stops the image processing service.
         """
+        # TODO: I'm not sure this method works as expected.
+        # Use the kill() method instead.
         if not self._is_running:
             return
 
@@ -257,6 +258,21 @@ class ImageFeaturesService:
             self._input_queue.put(None)
         for worker in self._workers:
             worker.join()
+        self._workers.clear()
+
+        self._event_queue.put(None)
+        self._event_queue_thread.join()
+
+    def terminate(self) -> None:
+        """
+        Terminates the image processing service. 
+        This method should be used instead of stop() when the main process is exiting.
+        """
+        if not self._is_running:
+            return
+
+        for worker in self._workers:
+            worker.terminate()
         self._workers.clear()
 
         self._event_queue.put(None)
