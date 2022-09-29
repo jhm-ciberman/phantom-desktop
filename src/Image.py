@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import cv2
 import os
 from PySide6 import QtGui, QtCore
@@ -5,50 +6,15 @@ import numpy as np
 from uuid import UUID, uuid4
 
 
+@dataclass(frozen=True, repr=True)
 class Rect:
     """
     Represents a rectangle
     """
-
-    def __init__(self, x: int, y: int, width: int, height: int) -> None:
-        """
-        Initializes a new instance of the Rect class.
-
-        Args:
-            x (int): The x coordinate of the rectangle.
-            y (int): The y coordinate of the rectangle.
-            width (int): The width of the rectangle.
-            height (int): The height of the rectangle.
-        """
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-
-    def __repr__(self) -> str:
-        return f"Rect(x={self.x}, y={self.y}, width={self.width}, height={self.height})"
-
-    def fit_contains(self, max_width: int, max_height: int) -> "Rect":
-        """
-        Fits the rectangle into the given width and height preserving the aspect ratio.
-
-        Args:
-            max_width (int): The maximum width.
-            max_height (int): The maximum height.
-
-        Returns:
-            Rect: A new rectangle that fits into the given width and height.
-        """
-        aspect_ratio = self.width / self.height
-        new_width = max_width
-        new_height = int(max_width / aspect_ratio)
-        if new_height > max_height:
-            new_height = max_height
-            new_width = int(max_height * aspect_ratio)
-
-        x = int((max_width - new_width) / 2)
-        y = int((max_height - new_height) / 2)
-        return Rect(x, y, new_width, new_height)
+    x: int
+    y: int
+    width: int
+    height: int
 
 
 class Face:
@@ -190,17 +156,18 @@ class Group:
         main_face_override (Face): Overrides the main_face property.
     """
 
-    def __init__(self, faces: list[Face] = None, name: str = None) -> None:
+    def __init__(self, uuid: UUID = None) -> None:
         """
         Initializes the Group class.
 
         Args:
-            centroid (numpy.ndarray): The centroid of the group.
+            uuid (UUID): The UUID of the group.
         """
+        self.uuid = uuid if uuid is not None else uuid4()
         self.centroid = None  # type: np.ndarray
-        self._faces = faces if faces is not None else []  # type: list[Face]
-        self.name = name  # type: str
+        self._faces = []  # type: list[Face]
         self.main_face_override = None  # type: Face
+        self.name = None  # type: str
 
     @property
     def main_face(self) -> Face:
@@ -286,29 +253,26 @@ class Image:
     channel being a uint8 array.
 
     Attributes:
-        full_path (str): The full path to the image source.
-        basename (str): The basename of the image source.
-        folder_path (str): The folder path of the image source.
+        uuid (UUID): The UUID of the image.
         raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format.
-        channels (int): The number of channels in the image source.
-        width (int): The width of the image source.
-        height (int): The height of the image source.
         faces (list[Face]): The faces in the image.
         faces_time (int): The time it took to process the faces in nanoseconds.
         processed (bool): Whether or not the image has been processed by the face detector.
+        original_full_path (str): The original full path of the image.
     """
 
-    def __init__(self, path: str, raw_image=None):
+    def __init__(self, path: str, uuid: UUID = None, raw_image=None):
         """
         Initializes the Image class.
 
         Args:
+            uuid (UUID): The UUID of the image.
             path (str): The path to the image source (can be relative or absolute).
             raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format. If not provided,
               the image will be loaded from the path.
         """
-        self.uuid = uuid4()
-        self.full_path = os.path.abspath(path)
+        self.uuid = uuid if uuid is not None else uuid4()
+        self._full_path = os.path.abspath(path)
 
         if raw_image is None:
             raw_image = cv2.imread(path, flags=cv2.IMREAD_UNCHANGED)
@@ -320,20 +284,28 @@ class Image:
         self._faces = []  # type: list[Face]
         self.faces_time = -1
         self.processed = False
+        self.original_full_path = self._full_path
+
+    @property
+    def full_path(self) -> str:
+        """
+        Gets the full path of the image source.
+        """
+        return self._full_path
 
     @property
     def basename(self) -> str:
         """
         Gets the basename of the image source.
         """
-        return os.path.basename(self.full_path)
+        return os.path.basename(self._full_path)
 
     @property
     def folder_path(self) -> str:
         """
         Gets the folder path of the image source. The path always ends with a trailing slash.
         """
-        return os.path.dirname(self.full_path) + os.path.sep
+        return os.path.dirname(self._full_path) + os.path.sep
 
     @property
     def channels(self):
@@ -355,6 +327,20 @@ class Image:
         Gets the height of the image source.
         """
         return self._raw_image.shape[0]
+
+    @property
+    def original_basename(self) -> str:
+        """
+        Gets the basename of the original image source.
+        """
+        return os.path.basename(self.original_full_path)
+
+    @property
+    def original_folder_path(self) -> str:
+        """
+        Gets the folder path of the original image source. The path always ends with a trailing slash.
+        """
+        return os.path.dirname(self.original_full_path) + os.path.sep
 
     def save(self, path: str):
         """
