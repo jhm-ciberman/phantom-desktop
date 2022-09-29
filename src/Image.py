@@ -209,8 +209,8 @@ class Group:
         This face can be overridden by setting the main_face_override property.
         By default, the face with the highest confidence score is returned.
         """
-        if self._main_face_override is not None:
-            return self._main_face_override
+        if self.main_face_override is not None:
+            return self.main_face_override
 
         return max(self._faces, key=lambda face: face.confidence)
 
@@ -246,6 +246,9 @@ class Group:
         Args:
             face (Face): The face to remove.
         """
+        if self.main_face_override == face:
+            self.main_face_override = None
+
         self._faces.remove(face)
 
     def clear_faces(self) -> None:
@@ -253,6 +256,25 @@ class Group:
         Removes all faces from the group.
         """
         self._faces.clear()
+        self.main_face_override = None
+
+    def merge(self, other: "Group") -> None:
+        """
+        Merges another group into this group.
+
+        Args:
+            other (Group): The group to merge.
+        """
+        # Combine faces
+        self._faces.extend(other.faces)
+
+        # Copy name if target group has no name
+        if not self.name:
+            self.name = other.name
+
+        # Copy the main face override if target group has no main face override
+        if not self.main_face_override:
+            self.main_face_override = other.main_face_override
 
 
 class Image:

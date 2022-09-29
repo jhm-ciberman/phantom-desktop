@@ -15,8 +15,6 @@ import os
 
 class MainWindow(QtWidgets.QMainWindow):
 
-    onLoaded = QtCore.Signal()
-
     def __init__(self):
         super().__init__()
 
@@ -139,7 +137,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._sizePresetActions[1].setChecked(True)
 
-        self._childWindows = []  # Only because GC closes the window when the reference is lost.
+        # Only because GC closes the window when the reference is lost.
+        self._childWindows = []  # type: list[QtWidgets.QWidget]
 
         self._onImageGridSelectionChanged()  # Refresh the UI for the first time.
 

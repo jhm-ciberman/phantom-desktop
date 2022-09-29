@@ -17,20 +17,17 @@ def cluster(faces: list[Face]) -> list[Group]:
     for face in faces:
         encodings.append(face.encoding)
 
-    db = DBSCAN(eps=0.475, min_samples=2).fit(encodings)
+    # Original values from phantom: eps=0.475, min_samples=2
+    db = DBSCAN(eps=0.425, min_samples=1).fit(encodings)
 
     groups = {}  # type: dict[int, Group]
-    groups_single = []  # type: list[Group]
 
     for face, label in zip(faces, db.labels_):
-        if label >= 0:
-            if label not in groups:
-                groups[label] = Group()
-            groups[label].add_face(face)
-        else:
-            groups_single.append(Group([face]))
+        if label not in groups:
+            groups[label] = Group()
+        groups[label].add_face(face)
 
-    groups = list(groups.values()) + groups_single
+    groups = list(groups.values())
 
     # sort groups by size
     groups.sort(key=lambda g: len(g.faces), reverse=True)

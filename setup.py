@@ -7,6 +7,7 @@ build_options = {
     'packages': [
         "scipy.optimize",
         "scipy.integrate",
+        "phantom",
     ],
     'excludes': [],
 }

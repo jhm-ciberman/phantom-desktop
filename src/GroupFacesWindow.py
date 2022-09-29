@@ -1,9 +1,9 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from .Widgets.PixmapDisplay import PixmapDisplay
-from .Image import Image, Face
-from .Services.ClusteringService import Group, cluster
+from .Image import Group, Face, Image
 from .QtHelpers import setSplitterStyle
 from .Widgets.GridBase import GridBase
+from .Services.ClusteringService import cluster
 
 
 class _GroupsGrid(GridBase):
@@ -13,6 +13,12 @@ class _GroupsGrid(GridBase):
 
     groupClicked = QtCore.Signal(Group)
     """Emited when a group is clicked."""
+
+    combineGroupTriggered = QtCore.Signal(Group)
+    """Emited when the "Combine group with..." action is triggered"""
+
+    renameGroupTriggered = QtCore.Signal(Group)
+    """Emited when the "Rename group" action is triggered"""
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """
@@ -24,8 +30,26 @@ class _GroupsGrid(GridBase):
         super().__init__(parent)
         self._groups = []  # type: list[Group]
         self.itemClicked.connect(self._onItemClicked)
+        self.itemDoubleClicked.connect(self._onItemDoubleClicked)
 
-        self.resize(self.gridSize().width() * 3, self.height())
+        self._combineGroupAction = QtGui.QAction("Combine group with...", self)
+        self._combineGroupAction.triggered.connect(self._onCombineGroupTriggered)
+
+        self._renameGroupAction = QtGui.QAction(QtGui.QIcon("res/edit.png"), "Rename group", self)
+        self._renameGroupAction.triggered.connect(self._onRenameGroupTriggered)
+
+        self._contextMenu = QtWidgets.QMenu(self)
+        self._contextMenu.addAction(self._combineGroupAction)
+        self._contextMenu.addAction(self._renameGroupAction)
+
+    def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
+        """
+        Called when the widget receives a context menu event.
+
+        Args:
+            event (QContextMenuEvent): The event.
+        """
+        self._contextMenu.exec_(event.globalPos())
 
     def setGroups(self, groups: list[Group]) -> None:
         """
@@ -35,7 +59,7 @@ class _GroupsGrid(GridBase):
             groups (list[Group]): The groups to display.
         """
         self.clear()
-        self._groups = groups
+        self._groups = groups.copy()
         # Sort groups by number of faces in them, so that the largest groups are at the top
         self._groups.sort(key=lambda g: len(g.faces), reverse=True)
 
@@ -46,6 +70,33 @@ class _GroupsGrid(GridBase):
             pixmap = group.main_face.get_avatar_pixmap(w, h)
             text = group.name if group.name else ""
             self._addItemCore(pixmap, text)
+
+    def updateGroup(self, group: Group) -> None:
+        """
+        Update the group in the grid.
+
+        Args:
+            group (Group): The group to update.
+        """
+        index = self._groups.index(group)
+        item = self.item(index)
+        if item is None:
+            return
+        w, h = self.iconSize().width(), self.iconSize().height()
+        pixmap = group.main_face.get_avatar_pixmap(w, h)
+        text = group.name if group.name else ""
+        self._setItemCore(item, pixmap, text)
+
+    def removeGroup(self, group: Group) -> None:
+        """
+        Remove the group from the grid.
+
+        Args:
+            group (Group): The group to remove.
+        """
+        index = self._groups.index(group)
+        self.takeItem(index)
+        self._groups.remove(group)
 
     def groups(self) -> list[Group]:
         """
@@ -64,24 +115,31 @@ class _GroupsGrid(GridBase):
         Args:
             item (QListWidgetItem): The item that was clicked.
         """
-        group = self._groups[self.row(item)]
-        self.groupClicked.emit(group)
+        self.groupClicked.emit(self._groups[self.row(item)])
 
-    def updateGroup(self, group: Group) -> None:
+    @QtCore.Slot(QtWidgets.QListWidgetItem)
+    def _onItemDoubleClicked(self, item: QtWidgets.QListWidgetItem) -> None:
         """
-        Update the group in the grid.
+        Called when an item is double-clicked.
 
         Args:
-            group (Group): The group to update.
+            item (QListWidgetItem): The item that was double-clicked.
         """
-        index = self._groups.index(group)
-        item = self.item(index)
-        if item is None:
-            return
-        w, h = self.iconSize().width(), self.iconSize().height()
-        pixmap = group.main_face.get_avatar_pixmap(w, h)
-        text = group.name if group.name else ""
-        self._setItemCore(item, pixmap, text)
+        self.renameGroupTriggered.emit(self._groups[self.row(item)])
+
+    @QtCore.Slot()
+    def _onCombineGroupTriggered(self) -> None:
+        """
+        Called when the "Combine group with..." action is triggered.
+        """
+        self.combineGroupTriggered.emit(self._groups[self.currentRow()])
+
+    @QtCore.Slot()
+    def _onRenameGroupTriggered(self) -> None:
+        """
+        Called when the "Rename group" action is triggered.
+        """
+        self.renameGroupTriggered.emit(self._groups[self.currentRow()])
 
 
 class _FacesGrid(GridBase):
@@ -90,10 +148,16 @@ class _FacesGrid(GridBase):
     """
 
     faceClicked = QtCore.Signal(Face)
+    """Emited when a face is clicked."""
 
     moveToGroupTriggered = QtCore.Signal(Face)
+    """Emited when the "Move to group" action is triggered."""
 
     removeFromGroupTriggered = QtCore.Signal(Face)
+    """Emited when the "Remove from group" action is triggered."""
+
+    useAsMainFaceTriggered = QtCore.Signal(Face)
+    """Emited when the "Use as main face" action is triggered."""
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """
@@ -112,9 +176,13 @@ class _FacesGrid(GridBase):
         self._removeFromGroupAction = QtGui.QAction("Remove from group", self)
         self._removeFromGroupAction.triggered.connect(self._onRemoveFromGroupActionTriggered)
 
+        self._useAsMainFaceAction = QtGui.QAction("Use as main face", self)
+        self._useAsMainFaceAction.triggered.connect(self._onUseAsMainFaceActionTriggered)
+
         self._contextMenu = QtWidgets.QMenu(self)
         self._contextMenu.addAction(self._removeFromGroupAction)
         self._contextMenu.addAction(self._moveToGroupAction)
+        self._contextMenu.addAction(self._useAsMainFaceAction)
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         """
@@ -146,6 +214,12 @@ class _FacesGrid(GridBase):
             imageBasename = face.image.basename
             self._addItemCore(pixmap, imageBasename)
 
+    def refresh(self) -> None:
+        """
+        Refresh the grid.
+        """
+        self.setFaces(self._faces)
+
     def faces(self) -> list[Face]:
         """
         Get the faces that are displayed.
@@ -155,6 +229,18 @@ class _FacesGrid(GridBase):
         """
         return self._faces
 
+    def _currentFace(self) -> Face:
+        """
+        Get the currently selected face.
+
+        Returns:
+            Face: The currently selected face.
+        """
+        item = self.currentItem()
+        if item is None:
+            return None
+        return self._faces[self.row(item)]
+
     @QtCore.Slot(QtWidgets.QListWidgetItem)
     def _onItemClicked(self, item: QtWidgets.QWidgetItem) -> None:
         """
@@ -163,30 +249,28 @@ class _FacesGrid(GridBase):
         Args:
             item (QListWidgetItem): The item that was clicked.
         """
-        face = self._faces[self.row(item)]
-        self.faceClicked.emit(face)
+        self.faceClicked.emit(self._currentFace())
 
     @QtCore.Slot()
     def _onMoveToGroupActionTriggered(self) -> None:
         """
         Called when the move to group action is triggered.
         """
-        item = self.currentItem()
-        if item is None:
-            return
-        face = self._faces[self.row(item)]
-        self.moveToGroupTriggered.emit(face)
+        self.moveToGroupTriggered.emit(self._currentFace())
 
     @QtCore.Slot()
     def _onRemoveFromGroupActionTriggered(self) -> None:
         """
         Called when the remove from group action is triggered.
         """
-        item = self.currentItem()
-        if item is None:
-            return
-        face = self._faces[self.row(item)]
-        self.removeFromGroupTriggered.emit(face)
+        self.removeFromGroupTriggered.emit(self._currentFace())
+
+    @QtCore.Slot()
+    def _onUseAsMainFaceActionTriggered(self) -> None:
+        """
+        Called when the use as main face action is triggered.
+        """
+        self.useAsMainFaceTriggered.emit(self._currentFace())
 
 
 class _GroupDetailsHeaderWidget(QtWidgets.QWidget):
@@ -194,8 +278,11 @@ class _GroupDetailsHeaderWidget(QtWidgets.QWidget):
     The header for the group details
     """
 
-    groupRenamed = QtCore.Signal(Group)
-    """Emited when the group is renamed."""
+    renameGroupTriggered = QtCore.Signal(Group)
+    """Emited when the "Rename group" action is triggered."""
+
+    combineGroupTriggered = QtCore.Signal(Group)
+    """Emited when the "Combine group" action is triggered."""
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """
@@ -235,9 +322,15 @@ class _GroupDetailsHeaderWidget(QtWidgets.QWidget):
 
         self._editNameButton = QtWidgets.QPushButton(QtGui.QIcon("res/edit.png"), "Edit name")
         self._editNameButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
-        self._editNameButton.setContentsMargins(20, 0, 0, 0)
+        self._editNameButton.setContentsMargins(40, 0, 0, 0)
         self._editNameButton.clicked.connect(self._onEditNameClicked)
         infoLayoutTop.addWidget(self._editNameButton)
+
+        self._combineGroupButton = QtWidgets.QPushButton("Combine group")
+        self._combineGroupButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self._combineGroupButton.setContentsMargins(20, 0, 0, 0)
+        self._combineGroupButton.clicked.connect(self._onCombineGroupClicked)
+        infoLayoutTop.addWidget(self._combineGroupButton)
 
         self._subtitleLabel = QtWidgets.QLabel()
         self._subtitleLabel.setFont(QtGui.QFont("Arial", 12))
@@ -264,16 +357,25 @@ class _GroupDetailsHeaderWidget(QtWidgets.QWidget):
         titleColor = "black" if group.name else "#0078d7"
         self._nameLabel.setStyleSheet(f"color: {titleColor};")
 
+    def refresh(self) -> None:
+        """
+        Refresh the widget.
+        """
+        self.setGroup(self._group)
+
     @QtCore.Slot()
     def _onEditNameClicked(self) -> None:
         """
         Called when the edit name button is clicked.
         """
-        name, ok = QtWidgets.QInputDialog.getText(self, "Edit name", "Enter a new name:", text=self._group.name)
-        if ok:
-            self._group.name = name
-            self.groupRenamed.emit(self._group)
-            self.setGroup(self._group)
+        self.renameGroupTriggered.emit(self._group)
+
+    @QtCore.Slot()
+    def _onCombineGroupClicked(self) -> None:
+        """
+        Called when the combine group button is clicked.
+        """
+        self.combineGroupTriggered.emit(self._group)
 
 
 class _GroupSelectorGrid(GridBase):
@@ -292,26 +394,28 @@ class _GroupSelectorGrid(GridBase):
         self._addItemCore(pixmap, text, group)
 
 
-class _GroupSelector(QtWidgets.QWidget):
+class _GroupSelector(QtWidgets.QDialog):
     """
     A widget that contains a list of groups and a search box. The groups are displayed
     with their main face.
     """
 
-    groupSelected = QtCore.Signal(Group)
-    """Emited when a group is selected."""
-
-    def __init__(self, groups: list[Group], parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, groups: list[Group], parent: QtWidgets.QWidget = None, title: str = None) -> None:
         """
         Initialize a new instance of the _GroupSelector class.
 
         Args:
+            groups (list[Group]): The groups to display.
             parent (QWidget): The parent widget.
+            title (str): The title of the widget.
         """
         super().__init__(parent)
 
+        self.setWindowTitle("Select a group" if title is None else title)
+        self.setModal(True)
+        self.resize(400, 400)
+
         layout = QtWidgets.QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
         self._searchBox = QtWidgets.QLineEdit()
@@ -321,8 +425,20 @@ class _GroupSelector(QtWidgets.QWidget):
         layout.addWidget(self._searchBox)
 
         self._groupsGrid = _GroupSelectorGrid()
-        self._groupsGrid.itemClicked.connect(self._onGroupSelected)
+        self._groupsGrid.itemSelected.connect(self._onGroupSelected)
         layout.addWidget(self._groupsGrid)
+
+        selectCancelLayout = QtWidgets.QHBoxLayout()
+        layout.addLayout(selectCancelLayout)
+
+        selectCancelLayout.addStretch()
+
+        self._selectButton = QtWidgets.QPushButton("Select")
+        self._selectButton.setEnabled(False)
+        self._selectButton.clicked.connect(self._onSelectClicked)
+
+        self._cancelButton = QtWidgets.QPushButton("Cancel")
+        self._cancelButton.clicked.connect(self._onCancelClicked)
 
         for group in groups:
             self._groupsGrid.addGroup(group)
@@ -348,110 +464,62 @@ class _GroupSelector(QtWidgets.QWidget):
         group = item.data(QtCore.Qt.UserRole)  # type: Group
         self.groupSelected.emit(group)
 
-    @staticmethod
-    def selectGroup(groups: list[Group], parent: QtWidgets.QWidget) -> Group:
+    @QtCore.Slot()
+    def _onSelectClicked(self) -> None:
         """
-        Show the group selector as a modal dialog.
+        Called when the select button is clicked.
+        """
+        self.accept()
 
-        Args:
-            groups (list[Group]): The groups to display.
-            parent (QWidget): The parent widget.
+    @QtCore.Slot()
+    def _onCancelClicked(self) -> None:
+        """
+        Called when the cancel button is clicked.
+        """
+        self.reject()
+
+    def selectedGroup(self) -> Group:
+        """
+        Get the selected group.
 
         Returns:
             Group: The selected group.
         """
-        dialog = QtWidgets.QDialog(parent)
-        dialog.setWindowTitle("Select a group")
-        dialog.setModal(True)
-        dialog.resize(400, 400)
+        return self._groupsGrid.selectedItem().data(QtCore.Qt.UserRole)  # type: Group
 
-        layout = QtWidgets.QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        dialog.setLayout(layout)
-
-        groupSelector = _GroupSelector(groups)
-        groupSelector.groupSelected.connect(dialog.accept)
-        layout.addWidget(groupSelector)
-
-        dialog.exec()
-        return groupSelector._groupsGrid.currentItem().data(QtCore.Qt.UserRole)
-
-
-class GroupDetailsWidget(QtWidgets.QWidget):
-    """
-    A widget that contains a top header with available actions and a grid with all the
-    faces that belongs to a group
-    """
-
-    faceClicked = QtCore.Signal(Face)
-    """Emited when a face is clicked."""
-
-    groupRenamed = QtCore.Signal(Group)
-    """Emited when the group is renamed."""
-
-    moveFaceToGroupTriggered = QtCore.Signal(Face)
-    """Emited when the user wants to move a face to another group."""
-
-    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+    @staticmethod
+    def getGroup(groups: list[Group], parent: QtWidgets.QWidget = None, title: str = None) -> Group:
         """
-        Initialize a new instance of the GroupDetailsWidget class.
+        Get a group from the user.
 
         Args:
+            groups (list[Group]): The groups to display.
             parent (QWidget): The parent widget.
-        """
-        super().__init__(parent)
-        self._group = None  # type: Group
-
-        layout = QtWidgets.QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(layout)
-
-        self._header = _GroupDetailsHeaderWidget()
-        self._header.groupRenamed.connect(self.groupRenamed)
-
-        self._facesGrid = _FacesGrid()
-        self._facesGrid.faceClicked.connect(self._onFaceClicked)
-        self._facesGrid.moveToGroupTriggered.connect(self.moveFaceToGroupTriggered)
-
-        layout.addWidget(self._header)
-        layout.addWidget(self._facesGrid)
-
-    def setGroup(self, group: Group) -> None:
-        """
-        Set the group to display.
-
-        Args:
-            group (Group): The group to display.
-        """
-        self._group = group
-        self._header.setGroup(group)
-        self._facesGrid.setFaces(group.faces)
-
-    def group(self) -> Group:
-        """
-        Get the group that is displayed.
+            title (str): The title of the widget.
 
         Returns:
-            Group: The group that is displayed.
+            Group: The selected group.
         """
-        return self._group
-
-    @QtCore.Slot(Face)
-    def _onFaceClicked(self, face: Face) -> None:
-        """
-        Called when a face is clicked.
-
-        Args:
-            face (Face): The face that was clicked.
-        """
-        self.faceClicked.emit(face)
+        dialog = _GroupSelector(groups, parent, title)
+        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+            return dialog.selectedGroup()
+        return None
 
 
 class GroupFacesWindow(QtWidgets.QWidget):
+    """
+    A window that allows the user to group faces.
+    """
+
     def __init__(self, images: list[Image]) -> None:
+        """
+        Initialize a new instance of the GroupFacesWindow class.
+        """
         super().__init__()
 
         self._images = images
+        self._groups = self._groupImages(images)  # type: list[Group]
+        self._selectedGroup = None  # type: Group
 
         self.setMinimumSize(800, 600)
         self.setWindowTitle("Group Faces - Phantom")
@@ -466,74 +534,146 @@ class GroupFacesWindow(QtWidgets.QWidget):
         setSplitterStyle(splitter)
         layout.addWidget(splitter)
 
-        self._groupsGrid = _GroupsGrid()
-        self._groupsGrid.groupClicked.connect(self._onGroupClicked)
-        splitter.addWidget(self._groupsGrid)
+        self.groupsGrid = _GroupsGrid()
+        splitter.addWidget(self.groupsGrid)
 
-        # Collect all faces from all images
+        detailsWidget = QtWidgets.QWidget()
+        detailsLayout = QtWidgets.QVBoxLayout()
+        detailsLayout.setContentsMargins(0, 0, 0, 0)
+        detailsWidget.setLayout(detailsLayout)
+
+        self.detailsHeader = _GroupDetailsHeaderWidget()
+        self.detailsGrid = _FacesGrid()
+
+        detailsLayout.addWidget(self.detailsHeader)
+        detailsLayout.addWidget(self.detailsGrid)
+
+        splitter.addWidget(detailsWidget)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 3)
+
+        # Connect signals
+        self.groupsGrid.groupClicked.connect(self._onGroupClicked)
+        self.groupsGrid.renameGroupTriggered.connect(self._onRenameGroupTriggered)
+        self.groupsGrid.combineGroupTriggered.connect(self._onCombineGroupTriggered)
+        self.detailsGrid.faceClicked.connect(self._onFaceClicked)
+        self.detailsGrid.moveToGroupTriggered.connect(self._onMoveToGroupTriggered)
+        self.detailsGrid.removeFromGroupTriggered.connect(self._onRemoveFromGroupTriggered)
+        self.detailsGrid.useAsMainFaceTriggered.connect(self._onUseAsMainFaceTriggered)
+        self.detailsHeader.renameGroupTriggered.connect(self._onRenameGroupTriggered)
+        self.detailsHeader.combineGroupTriggered.connect(self._onCombineGroupTriggered)
+
+        self.groupsGrid.setGroups(self._groups)
+        if len(self._groups) > 0:
+            self._onGroupClicked(self._groups[0])
+
+    def _groupImages(self, images: list[Image]) -> list[Group]:
+        """
+        Group the images.
+
+        Args:
+            images (list[Image]): The images to group.
+
+        Returns:
+            list[Group]: The groups.
+        """
         faces = []
-        for image in self._images:
+        for image in images:
             faces.extend(image.faces)
-        groups = cluster(faces)
-
-        self._groupsGrid.setGroups(groups)
-
-        self._groupDetails = GroupDetailsWidget()
-        self._groupDetails.faceClicked.connect(self._onFaceClicked)
-        self._groupDetails.groupRenamed.connect(self._onGroupRenamed)
-        self._groupDetails.moveFaceToGroupTriggered.connect(self._onMoveFaceToGroupTriggered)
-        splitter.addWidget(self._groupDetails)
-
-        if len(groups) > 0:
-            self._groupDetails.setGroup(groups[0])
-
-        self._faceToMove = None  # type: Face
-
-    @QtCore.Slot(Group)
-    def _onGroupClicked(self, group: Group) -> None:
-        """
-        Called when a group is clicked.
-
-        Args:
-            group (Group): The group that was clicked.
-        """
-        self._groupDetails.setGroup(group)
+        return cluster(faces)
 
     @QtCore.Slot(Face)
-    def _onFaceClicked(self, face: Face) -> None:
-        """
-        Called when a face is clicked.
-
-        Args:
-            face (Face): The face that was clicked.
-        """
-        pass
-
-    @QtCore.Slot(Group)
-    def _onGroupRenamed(self, group: Group) -> None:
-        """
-        Called when a group is renamed.
-
-        Args:
-            group (Group): The group that was renamed.
-        """
-        self._groupsGrid.updateGroup(group)
-
-    @QtCore.Slot(Face)
-    def _onMoveFaceToGroupTriggered(self, face: Face) -> None:
+    def _onMoveToGroupTriggered(self, face: Face) -> None:
         """
         Called when the user wants to move a face to another group.
 
         Args:
             face (Face): The face to move.
         """
-        oldGroup = self._groupDetails.group()
-        groups = self._groupsGrid.groups().copy()
-        groups.remove(oldGroup)
-        group = _GroupSelector.selectGroup(groups, self)
+        groupsToShow = [group for group in self._groups if group != self._selectedGroup]
+        group = _GroupSelector.getGroup(groupsToShow, self, "Select a group to move the face to")
         if group:
+            self._selectedGroup.remove_face(face)
             group.add_face(face)
-            oldGroup.remove_face(face)
-            self._groupsGrid.updateGroup(group)
-            self._groupsGrid.updateGroup(oldGroup)
-            self._groupDetails.setGroup(oldGroup)
+            self.detailsGrid.refresh()
+            self.groupsGrid.updateGroup(self._selectedGroup)
+            self.groupsGrid.updateGroup(group)
+
+    @QtCore.Slot(Group)
+    def _onRenameGroupTriggered(self, group: Group) -> None:
+        """
+        Called when the user wants to rename a group.
+
+        Args:
+            group (Group): The group to rename.
+        """
+        name, ok = QtWidgets.QInputDialog.getText(self, "Group Name", "Enter a name for the group:", text=group.name)
+        if ok:
+            group.name = name
+            self.groupsGrid.updateGroup(group)
+            self.detailsHeader.refresh()
+
+    @QtCore.Slot(Face)
+    def _onRemoveFromGroupTriggered(self, face: Face) -> None:
+        """
+        Called when the user wants to remove a face from a group.
+
+        Args:
+            face (Face): The face to remove.
+        """
+        self._selectedGroup.remove_face(face)
+        self.detailsGrid.refresh()
+        self.groupsGrid.updateGroup(self._selectedGroup)
+
+    @QtCore.Slot(Group)
+    def _onGroupClicked(self, group: Group) -> None:
+        """
+        Called when the user clicks a group.
+
+        Args:
+            group (Group): The group.
+        """
+        self._selectedGroup = group
+        self.detailsGrid.setFaces(group.faces)
+        self.detailsHeader.setGroup(group)
+
+    @QtCore.Slot(Face)
+    def _onFaceClicked(self, face: Face) -> None:
+        """
+        Called when the user clicks a face.
+
+        Args:
+            face (Face): The face.
+        """
+        pass
+
+    @QtCore.Slot(Face)
+    def _onUseAsMainFaceTriggered(self, face: Face) -> None:
+        """
+        Called when the user wants to use a face as the main face.
+
+        Args:
+            face (Face): The face.
+        """
+        self._selectedGroup.main_face_override = face
+        self.detailsGrid.refresh()
+        self.groupsGrid.updateGroup(self._selectedGroup)
+
+    @QtCore.Slot(Group)
+    def _onCombineGroupTriggered(self, groupToCombine: Group) -> None:
+        """
+        Called when the user wants to combine a group with another group.
+
+        Args:
+            groupToCombine (Group): The group to combine.
+        """
+        groupsToShow = [group for group in self._groups if group != groupToCombine]
+        groupToCombineWith = _GroupSelector.getGroup(groupsToShow, self, "Select a group to combine with")
+
+        if groupToCombineWith:
+            groupToCombineWith.merge(groupToCombine)
+
+            self._groups.remove(groupToCombine)
+            self.groupsGrid.removeGroup(groupToCombine)
+            self.detailsGrid.refresh()
+            self.groupsGrid.updateGroup(groupToCombineWith)
