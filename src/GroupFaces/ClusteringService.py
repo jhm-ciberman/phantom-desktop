@@ -1,5 +1,5 @@
 from sklearn.cluster import DBSCAN
-from src.Image import Face, Group
+from ..Models import Face, Group
 
 
 def cluster(faces: list[Face]) -> list[Group]:

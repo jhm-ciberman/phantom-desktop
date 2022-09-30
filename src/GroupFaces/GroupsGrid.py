@@ -1,6 +1,6 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from ..Widgets.GridBase import GridBase
-from ..Image import Group
+from ..Models import Group
 
 
 class GroupsGrid(GridBase):

@@ -3,7 +3,7 @@ from .FacesGrid import FacesGrid
 from .GroupDetailsHeader import GroupDetailsHeaderWidget
 from .GroupSelector import GroupSelector
 from .GroupsGrid import GroupsGrid
-from ..Image import Group, Face, Image
+from ..Models import Group, Face, Image
 from ..QtHelpers import setSplitterStyle
 from .ClusteringService import cluster
 

@@ -1,6 +1,6 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from ..Widgets.GridBase import GridBase
-from ..Image import Face
+from ..Models import Face
 
 
 class FacesGrid(GridBase):

@@ -1,6 +1,6 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from ..Widgets.PixmapDisplay import PixmapDisplay
-from ..Image import Group
+from ..Models import Group
 
 
 class GroupDetailsHeaderWidget(QtWidgets.QWidget):

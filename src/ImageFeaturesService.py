@@ -1,7 +1,7 @@
 import multiprocessing
 from uuid import UUID
 from .ImageProcessor import ImageProcessor, ImageProcessorResult
-from src.Image import Image
+from .Models import Image
 import threading
 import dlib
 from dataclasses import dataclass

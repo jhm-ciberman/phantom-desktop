@@ -1,5 +1,5 @@
 from PySide6 import QtCore
-from .Image import Image
+from .Models import Image
 
 
 class EventBus(QtCore.QObject):

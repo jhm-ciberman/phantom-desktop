@@ -1,6 +1,6 @@
 from PySide6 import QtGui, QtCore, QtWidgets
 from src.EventBus import EventBus
-from src.Image import Image
+from ..Models import Image
 from ..Widgets.GridBase import GridBase
 
 

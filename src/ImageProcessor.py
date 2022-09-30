@@ -1,5 +1,6 @@
 from time import perf_counter_ns
-from src.Image import Face, Rect
+from .Models import Face
+from .Models import Image, Rect
 from dataclasses import dataclass
 import dlib
 

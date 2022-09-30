@@ -1,6 +1,6 @@
 from PySide6 import QtCore, QtWidgets
 from ..Widgets.GridBase import GridBase
-from ..Image import Group
+from ..Models import Group
 
 
 class GroupSelector(QtWidgets.QDialog):

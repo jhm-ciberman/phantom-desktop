@@ -3,7 +3,7 @@ from ..Widgets.PixmapDisplay import PixmapDisplay
 from PIL import Image as PILImage
 from PIL.ExifTags import TAGS
 from ..Widgets.PropertiesTable import PropertiesTable
-from ..Image import Image
+from ..Models import Image
 
 
 class InspectorPanel(QtWidgets.QWidget):

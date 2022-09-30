@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import cv2
 import os
-from PySide6 import QtGui, QtCore
+from PySide6 import QtCore, QtGui
 import numpy as np
 from uuid import UUID, uuid4
 
@@ -9,12 +9,17 @@ from uuid import UUID, uuid4
 @dataclass(frozen=True, repr=True)
 class Rect:
     """
-    Represents a rectangle
+    Represents a rectangle.
     """
+
     x: int
+    """The x coordinate of the rectangle."""
     y: int
+    """The y coordinate of the rectangle."""
     width: int
+    """The width of the rectangle."""
     height: int
+    """The height of the rectangle."""
 
 
 class Face:
@@ -31,20 +36,20 @@ class Face:
         encoding_time (int): The time it took to encode the face parts in nanoseconds.
         image (Image): The image the face belongs to (None if the face is not part of an image).
         confidence (float): The confidence score of the face.
-
     """
+
     def __init__(self, uuid: UUID = None) -> None:
         """
         Initializes a new instance of the Face class.
         """
         self.uuid = uuid if uuid is not None else uuid4()
-        self._aabb = None
+        self._aabb: 'Rect' = None
         self.encoding = None
         self.shape = None
         self.shape_time = -1
         self.encoding_time = -1
-        self.image = None  # type: Image
-        self.confidence = 0.0  # type: float
+        self.image = None
+        self.confidence: float = 0.0
 
     def __repr__(self) -> str:
         return "Face(uuid={}, confidence={}, aabb={})".format(self.uuid, self.confidence, self.aabb)
@@ -164,10 +169,10 @@ class Group:
             uuid (UUID): The UUID of the group.
         """
         self.uuid = uuid if uuid is not None else uuid4()
-        self.centroid = None  # type: np.ndarray
-        self._faces = []  # type: list[Face]
-        self.main_face_override = None  # type: Face
-        self.name = None  # type: str
+        self.centroid: np.ndarray = None
+        self._faces: list[Face] = []
+        self.main_face_override: Face = None
+        self.name: str = None
 
     @property
     def main_face(self) -> Face:
@@ -281,7 +286,7 @@ class Image:
             raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
 
         self._raw_image = raw_image
-        self._faces = []  # type: list[Face]
+        self._faces: "list[Face]" = []
         self.faces_time = -1
         self.processed = False
         self.original_full_path = self._full_path

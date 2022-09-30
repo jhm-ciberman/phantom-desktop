@@ -1,5 +1,5 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from ..Image import Image
+from ..Models import Image
 from ..Widgets.PixmapDisplay import PixmapDisplay
 import numpy as np
 from .DeblurFilter import DeblurFilter

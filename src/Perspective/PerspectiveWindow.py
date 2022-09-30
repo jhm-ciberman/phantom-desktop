@@ -2,7 +2,7 @@ from PySide6 import QtGui, QtCore, QtWidgets
 
 from ..QtHelpers import setSplitterStyle
 from ..Widgets.PixmapDisplay import PixmapDisplay
-from ..Image import Image
+from ..Models import Image
 from ..Widgets.PixmapPointsDisplay import PixmapPointsDisplay
 from .PerspectiveTransform import perspective_transform
 import cv2

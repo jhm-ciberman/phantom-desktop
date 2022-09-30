@@ -5,7 +5,7 @@ from ..Widgets.GridBase import GridBase
 from ..ImageFeaturesService import ImageFeaturesService
 from ..QtHelpers import setSplitterStyle
 from .ImageGrid import ImageGrid
-from ..Image import Image
+from ..Models import Image
 from ..Perspective.PerspectiveWindow import PerspectiveWindow
 from ..Deblur.DeblurWindow import DeblurWindow
 from ..GroupFaces.GroupFacesWindow import GroupFacesWindow
