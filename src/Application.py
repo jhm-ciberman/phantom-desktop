@@ -1,6 +1,6 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from .Services.ImageFeaturesService import ImageFeaturesService
-from .MainWindow import MainWindow
+from .ImageFeaturesService import ImageFeaturesService
+from .Main.MainWindow import MainWindow
 import sys
 
 

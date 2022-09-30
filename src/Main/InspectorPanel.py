@@ -1,9 +1,9 @@
 from PySide6 import QtWidgets
-from src.Image import Image
-from .PixmapDisplay import PixmapDisplay
+from ..Widgets.PixmapDisplay import PixmapDisplay
 from PIL import Image as PILImage
 from PIL.ExifTags import TAGS
-from .PropertiesTable import PropertiesTable
+from ..Widgets.PropertiesTable import PropertiesTable
+from ..Image import Image
 
 
 class InspectorPanel(QtWidgets.QWidget):
@@ -11,6 +11,7 @@ class InspectorPanel(QtWidgets.QWidget):
     A widget that displays a the properties of an image or a group of images.
     It shows the image itself, the basic information about the image, the EXIF data and the face detection results.
     """
+
     def __init__(self):
         """
         Initializes the InspectorPanel class.

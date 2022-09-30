@@ -18,6 +18,9 @@ def cluster(faces: list[Face]) -> list[Group]:
         encodings.append(face.encoding)
 
     # Original values from phantom: eps=0.475, min_samples=2
+    # I tuned them to have more groups because I think it's easier in the UI
+    # to combine two groups than to split one face by face.
+    # min_samples=1 because I want to have groups with only one face.
     db = DBSCAN(eps=0.425, min_samples=1).fit(encodings)
 
     groups = {}  # type: dict[int, Group]

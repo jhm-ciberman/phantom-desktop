@@ -1,7 +1,7 @@
 from PySide6 import QtGui, QtCore, QtWidgets
 from src.EventBus import EventBus
 from src.Image import Image
-from .GridBase import GridBase
+from ..Widgets.GridBase import GridBase
 
 
 class ImageGrid(GridBase):
@@ -38,7 +38,7 @@ class ImageGrid(GridBase):
             image (Image): The image to add.
         """
         pixmap = image.get_pixmap()
-        self._addItemCore(pixmap, image.basename)
+        self.addItemCore(pixmap, image.basename)
         self._images.append(image)
 
     def removeImage(self, index: int) -> None:

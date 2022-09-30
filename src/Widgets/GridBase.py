@@ -22,7 +22,10 @@ class SizePreset:
 
 class GridBase(QtWidgets.QListWidget):
     """
-    An abstract Widget class that provides base functionality to show a grid of images
+    A Widget class that provides base functionality to show a grid of images.
+    The methods addItemCore and setItemCore can be used to easily add items to
+    the grid. This class can be used by itself or as a base class to provide advanced
+    functionality.
     """
 
     class _ItemData:
@@ -59,7 +62,7 @@ class GridBase(QtWidgets.QListWidget):
         self.setSelectionMode(QtWidgets.QListView.SelectionMode.SingleSelection)
         self.setSizePreset(GridBase.mediumPreset)
 
-    def _addItemCore(self, pixmap: QtGui.QPixmap, text: str, data: Any = None) -> None:
+    def addItemCore(self, pixmap: QtGui.QPixmap, text: str, data: Any = None) -> None:
         """
         Add an item to the list.
 
@@ -69,12 +72,12 @@ class GridBase(QtWidgets.QListWidget):
             data (Any): The data to associate with the item.
         """
         item = QtWidgets.QListWidgetItem()
-        self._setItemCore(item, pixmap, text, data)
+        self.setItemCore(item, pixmap, text, data)
 
         self.addItem(item)
         self._itemsSources.append(GridBase._ItemData(pixmap, text))
 
-    def _setItemCore(self, item: QtWidgets.QListWidgetItem, pixmap: QtGui.QPixmap, text: str, data: Any = None) -> None:
+    def setItemCore(self, item: QtWidgets.QListWidgetItem, pixmap: QtGui.QPixmap, text: str, data: Any = None) -> None:
         """
         Updates the item with the given pixmap and text.
 
@@ -95,7 +98,7 @@ class GridBase(QtWidgets.QListWidget):
         if data is not None:
             item.setData(QtCore.Qt.ItemDataRole.UserRole, data)
 
-    def _getData(self, index: int) -> Any:
+    def getItemData(self, index: int) -> Any:
         """
         Gets the data associated with the item at the given index.
 

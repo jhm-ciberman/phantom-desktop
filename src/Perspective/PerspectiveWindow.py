@@ -1,10 +1,10 @@
 from PySide6 import QtGui, QtCore, QtWidgets
 
-from .QtHelpers import setSplitterStyle
-from .Widgets.PixmapDisplay import PixmapDisplay
-from .Image import Image
-from .Widgets.PixmapPointsDisplay import PixmapPointsDisplay
-from .Services.PerspectiveTransform import PerspectiveTransform
+from ..QtHelpers import setSplitterStyle
+from ..Widgets.PixmapDisplay import PixmapDisplay
+from ..Image import Image
+from ..Widgets.PixmapPointsDisplay import PixmapPointsDisplay
+from .PerspectiveTransform import perspective_transform
 import cv2
 import numpy as np
 
@@ -68,10 +68,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         layout.addWidget(optionsFrame)
 
         self._outputWidth = self._createSpinBox(min=1, max=10000, value=image.width, step=1, suffix="px")
-        self._outputWidth.valueChanged.connect(self._onPreviewConfigChanged)
-
         self._outputHeight = self._createSpinBox(min=1, max=10000, value=image.height, step=1, suffix="px")
-        self._outputHeight.valueChanged.connect(self._onPreviewConfigChanged)
 
         self._interpolationMode = QtWidgets.QComboBox()
         options = [
@@ -83,7 +80,6 @@ class PerspectiveWindow(QtWidgets.QWidget):
         ]
         for name, value in options:
             self._interpolationMode.addItem(name, value)
-        self._interpolationMode.currentIndexChanged.connect(self._onPreviewConfigChanged)
         self._interpolationMode.setCurrentIndex(1)
 
         self._rotationModeSmart = QtWidgets.QToolButton()
@@ -106,6 +102,8 @@ class PerspectiveWindow(QtWidgets.QWidget):
         rotationLayout.addWidget(self._rotateCW)
 
         aspectRatios = [
+            ("Custom", None),
+            ("Original", image.width / image.height),
             ("Square (1:1)", 1),
             ("4:3", 4 / 3),
             ("16:9", 16 / 9),
@@ -126,9 +124,6 @@ class PerspectiveWindow(QtWidgets.QWidget):
         ]
 
         self._aspectRatio = QtWidgets.QComboBox()
-        self._aspectRatio.currentIndexChanged.connect(self._onPreviewConfigChanged)
-        self._aspectRatio.addItem("Custom", None)
-        self._aspectRatio.addItem("Original", (image.width / image.height))
         for name, ratio in aspectRatios:
             self._aspectRatio.addItem(name, ratio)
 
@@ -137,6 +132,11 @@ class PerspectiveWindow(QtWidgets.QWidget):
         formLayout.addRow("Output height", self._outputHeight)
         formLayout.addRow("Interpolation Mode", self._interpolationMode)
         formLayout.addRow("Rotation", rotationLayout)
+
+        self._aspectRatio.currentIndexChanged.connect(self._onPreviewConfigChanged)
+        self._interpolationMode.currentIndexChanged.connect(self._onPreviewConfigChanged)
+        self._outputWidth.valueChanged.connect(self._onPreviewConfigChanged)
+        self._outputHeight.valueChanged.connect(self._onPreviewConfigChanged)
 
         self._onPreviewConfigChanged()
 
@@ -175,7 +175,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
             self._previewBuffer = np.zeros(previewShape, dtype=np.uint8)
 
         interpolation = self._interpolationMode.currentData()
-        PerspectiveTransform.basic_transform(self._image.get_pixels_rgba(), self._previewBuffer, self._points, interpolation)
+        perspective_transform(self._image.get_pixels_rgba(), self._previewBuffer, self._points, interpolation)
 
         image = QtGui.QImage(self._previewBuffer.data, w, h, QtGui.QImage.Format.Format_RGBA8888)
         pixmap = QtGui.QPixmap.fromImage(image)

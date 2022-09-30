@@ -1,21 +1,27 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from .EventBus import EventBus
-from .Widgets.GridBase import GridBase
-from .Services.ImageFeaturesService import ImageFeaturesService
-from .QtHelpers import setSplitterStyle
-from .Widgets.ImageGrid import ImageGrid
-from .Widgets.InspectorPanel import InspectorPanel
-from .Image import Image
-from .PerspectiveWindow import PerspectiveWindow
-from .DeblurWindow import DeblurWindow
-from .GroupFacesWindow import GroupFacesWindow
+from .InspectorPanel import InspectorPanel
+from ..EventBus import EventBus
+from ..Widgets.GridBase import GridBase
+from ..ImageFeaturesService import ImageFeaturesService
+from ..QtHelpers import setSplitterStyle
+from .ImageGrid import ImageGrid
+from ..Image import Image
+from ..Perspective.PerspectiveWindow import PerspectiveWindow
+from ..Deblur.DeblurWindow import DeblurWindow
+from ..GroupFaces.GroupFacesWindow import GroupFacesWindow
 import glob
 import os
 
 
 class MainWindow(QtWidgets.QMainWindow):
+    """
+    The main window of the application.
+    """
 
     def __init__(self):
+        """
+        Initializes the MainWindow class.
+        """
         super().__init__()
 
         self.setWindowTitle("Phantom")

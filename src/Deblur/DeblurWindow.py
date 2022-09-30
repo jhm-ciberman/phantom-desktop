@@ -1,13 +1,24 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from .Image import Image
-from .Widgets.PixmapDisplay import PixmapDisplay
+from ..Image import Image
+from ..Widgets.PixmapDisplay import PixmapDisplay
 import numpy as np
-from .Services.DeblurFilter import DeblurFilter
+from .DeblurFilter import DeblurFilter
 import cv2
 
 
 class DeblurWindow(QtWidgets.QWidget):
+    """
+    A window that allows the user to deblur an image.
+    """
+
     def __init__(self, image: Image) -> None:
+        """
+        Initializes the DeblurWindow class.
+
+        Args:
+            image (Image): The image to deblur.
+        """
+
         super().__init__()
 
         self._image = image
@@ -64,7 +75,7 @@ class DeblurWindow(QtWidgets.QWidget):
 
     def _updatePreview(self) -> None:
         rawImage = self._image.get_pixels_rgba()
-        srcW, srcH = self._image.width, self._image.height
+        srcW, _ = self._image.width, self._image.height
 
         rect = self._imagePreview.imageRect()
         dstW, dstH = rect.width(), rect.height()
@@ -79,9 +90,6 @@ class DeblurWindow(QtWidgets.QWidget):
         # round to next odd number (> 0)
         sigmag = 1 if sigmag < 1 else int(sigmag) | 1
         iterations = self._blurIterations.value()
-
-        print("srcW: {}, srcH: {}, dstW: {}, dstH: {}, scale: {}, sigmag: {}, iterations: {}"
-              .format(srcW, srcH, dstW, dstH, scale, sigmag, iterations))
 
         result = DeblurFilter.lucy_richardson_deconv(self._previewBuffer, iterations, sigmag)
 
