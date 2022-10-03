@@ -298,7 +298,7 @@ class ProjectFileWriter(ProjectFileBase):
 
         with open(path, "wb") as f:
             if self._gzip:
-                f = gzip.GzipFile(fileobj=f)
+                f = gzip.open(f, "wt")
             json.dump(data, f, indent=indent)
 
 
