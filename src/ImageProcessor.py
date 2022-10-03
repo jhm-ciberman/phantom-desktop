@@ -54,26 +54,17 @@ class ImageProcessor:
         Returns:
             The processed face.
         """
+        # Detect the face landmarks.
+        shape = self._shape_predictor(image_rgb, face_rect)
+        encoding = self._face_encoder.compute_face_descriptor(image_rgb, shape, self.predictor_jitter)
 
+        # Return the face.
         face = Face()
-        face.confidence = confidence
-
         x, y = face_rect.left(), face_rect.top()
         w, h = face_rect.right() - x, face_rect.bottom() - y
         face.aabb = Rect(x, y, w, h)
-
-        # predict face parts
-        t = perf_counter_ns()
-        shape = self._shape_predictor(image_rgb, face_rect)
-        face.shape = np.array([[p.x, p.y] for p in shape.parts()])
-        face.shape_time = perf_counter_ns() - t
-
-        # encode face
-        t = perf_counter_ns()
-        encoding = self._face_encoder.compute_face_descriptor(image_rgb, shape, self.predictor_jitter)
         face.encoding = np.array(encoding)
-        face.encoding_time = perf_counter_ns() - t
-
+        face.confidence = confidence
         return face
 
     def process(self, image_rgb: dlib.array) -> ImageProcessorResult:
@@ -87,6 +78,6 @@ class ImageProcessor:
 
         detections, scores, _ = self._face_detector.run(image_rgb)
         faces = [self._process_face(image_rgb, face, score) for face, score in zip(detections, scores)]
-        time = perf_counter_ns() - t
 
+        time = perf_counter_ns() - t
         return ImageProcessorResult(faces, time)

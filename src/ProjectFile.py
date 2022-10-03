@@ -36,6 +36,9 @@ class ProjectBufferSection:
         Returns:
             int: The index of the data.
         """
+        if array is None:
+            return -1
+
         if array.dtype != self._dtype:
             raise ValueError(f"Expected dtype {self._dtype.str}, got {array.dtype}")
 
@@ -56,7 +59,7 @@ class ProjectBufferSection:
         Returns:
             np.array: The data.
         """
-        return self._data[index]
+        return self._data[index] if index >= 0 else None
 
     def to_json(self) -> dict[str, Any]:
         """
@@ -191,7 +194,7 @@ class ProjectFileBase:
         """
         # Buffer sections:
         self._encodings_buff = ProjectBufferSection("float64", 128)  # 128 doubles per encoding
-        self._shapes_buff = ProjectBufferSection("int32", 68 * 2)  # 68 points per shape, 2 ints per point
+        # self._shapes_buff = ProjectBufferSection("int32", 68 * 2)  # 68 points per shape, 2 ints per point
 
         # Model sections:
         self._images = ProjectModelsSection(Image)
@@ -242,9 +245,6 @@ class ProjectFileWriter(ProjectFileBase):
             "id": str(model.id),
             "aabb": model.aabb.to_tuple(),
             "encoding": self._encodings_buff.store(model.encoding),
-            "shape": self._shapes_buff.store(model.shape),
-            "shape_time": model.shape_time,
-            "encoding_time": model.encoding_time,
             "confidence": model.confidence
         }
 
@@ -260,10 +260,9 @@ class ProjectFileWriter(ProjectFileBase):
         return {
             "id": str(model.id),
             "src": model.full_path,
-            "faces_time": model.faces_time,
-            "processed": model.processed,
             "original_src": model.original_full_path,
             "faces": [str(face.id) for face in model.faces],
+            "processed": model.processed,
         }
 
     def _encode_project(self, project: Project) -> dict:
@@ -278,7 +277,6 @@ class ProjectFileWriter(ProjectFileBase):
             "faces": self._faces.to_json(self._encode_face),
             "buffers": {
                 "encodings": self._encodings_buff.to_json(),
-                "shapes": self._shapes_buff.to_json(),
             },
         }
 
@@ -296,10 +294,12 @@ class ProjectFileWriter(ProjectFileBase):
 
         project.file_path = path
 
-        with open(path, "wb") as f:
-            if self._gzip:
-                f = gzip.open(f, "wt")
-            json.dump(data, f, indent=indent)
+        if self._gzip:
+            with gzip.open(path, "wt") as f:
+                json.dump(data, f, indent=indent)
+        else:
+            with open(path, "w") as f:
+                json.dump(data, f, indent=indent)
 
 
 class UnsuportedFileVersionException(Exception):
@@ -335,8 +335,6 @@ class ProjectFileReader(ProjectFileBase):
     def _decode_face(self, data: dict) -> Face:
         face = Face(data["id"])
         face.aabb = Rect.from_tuple(data["aabb"])
-        face.shape_time = data["shape_time"]
-        face.encoding_time = data["encoding_time"]
         face.confidence = data["confidence"]
         return face
 
@@ -347,14 +345,13 @@ class ProjectFileReader(ProjectFileBase):
 
     def _decode_image(self, data: dict) -> Image:
         image = Image(data["src"], data["id"])
-        image.faces_time = data["faces_time"]
-        image.processed = data["processed"]
         image.original_full_path = data["original_src"]
+        image.processed = data["processed"]
         return image
 
     def _resolve_face(self, face: Face, data: dict):
         face.encoding = self._encodings_buff.load(data["encoding"])
-        face.shape = self._shapes_buff.load(data["shape"])
+        pass
 
     def _resolve_group(self, group: Group, data: dict):
         group.faces = [self._faces.get(id) for id in data["faces"]]
@@ -367,7 +364,6 @@ class ProjectFileReader(ProjectFileBase):
         # First, load the buffers:
         buffers = data["buffers"]
         self._encodings_buff.from_json(buffers["encodings"])
-        self._shapes_buff.from_json(buffers["shapes"])
 
         # Then, load the models without relations:
         self._images.from_json(data["images"], self._decode_image)
@@ -408,7 +404,6 @@ class ProjectFileReader(ProjectFileBase):
             data (dict[str, Any]): The json to load the buffers from.
         """
         self._encodings_buff.from_json(data["encodings"])
-        self._shapes_buff.from_json(data["shapes"])
 
     def _is_gzip(self, file) -> bool:
         file.seek(0)

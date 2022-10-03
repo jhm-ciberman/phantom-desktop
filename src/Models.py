@@ -5,7 +5,6 @@ import os
 from PySide6 import QtCore, QtGui
 import numpy as np
 from uuid import UUID, uuid4
-import dlib
 
 
 class Model:
@@ -66,12 +65,8 @@ class Face(Model):
     Represents a face in an image. This class is pickleable.
 
     Attributes:
-        score (float): The score of the face according to the face recognition model.
         aabb (Rect): The axis-aligned bounding box of the face.
         encoding (np.array): The encoding of the face (128 numbers).
-        shape (np.array): A flattened of points representing the shape of the face. (68 points)
-        predict_time (int): The time it took to predict the face parts in nanoseconds.
-        encoding_time (int): The time it took to encode the face parts in nanoseconds.
         image (Image): The image the face belongs to (None if the face is not part of an image).
         confidence (float): The confidence score of the face.
     """
@@ -84,47 +79,13 @@ class Face(Model):
             id (UUID, optional): The id of the face. If None, a new id will be generated. Defaults to None.
         """
         super().__init__(id)
-        self._aabb: 'Rect' = None
+        self.aabb: 'Rect' = None
         self.encoding: np.array = None  # a flattened list of 128 numbers
-        self.shape: np.array = None  # a flattened list of points x0,y0,x1,y1,x2,y2,etc.. (68 points)
-        self.shape_time: int = -1
-        self.encoding_time: int = -1
         self.image: Image = None
         self.confidence: float = 0.0
 
     def __repr__(self) -> str:
         return "Face(uuid={}, confidence={}, aabb={})".format(self.id, self.confidence, self.aabb)
-
-    @property
-    def aabb(self) -> Rect:
-        """
-        Gets the axis-aligned bounding box of the face.
-        """
-        if self._aabb is not None:
-            return self._aabb
-
-        if self.shape is None:
-            raise Exception("The face shape is not set.")
-
-        p = self.shape[0]
-        x0, y0 = p.x, p.y
-        x1, y1 = p.x, p.y
-
-        for p in self.shape:
-            x0 = min(x0, p.x)
-            y0 = min(y0, p.y)
-            x1 = max(x1, p.x)
-            y1 = max(y1, p.y)
-
-        self._aabb = Rect(x0, y0, x1 - x0, y1 - y0)
-        return self._aabb
-
-    @aabb.setter
-    def aabb(self, value: Rect) -> None:
-        """
-        Sets the axis-aligned bounding box of the face.
-        """
-        self._aabb = value
 
     def get_square_pixmap(self, size: int = 256, padding: float = 0.5) -> QtGui.QPixmap:
         """
@@ -327,7 +288,6 @@ class Image(Model):
 
         self._raw_image = raw_image
         self._faces: "list[Face]" = []
-        self.faces_time = -1
         self.processed = False
         self.original_full_path = self._full_path
 

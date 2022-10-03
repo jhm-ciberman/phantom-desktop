@@ -34,7 +34,7 @@ class GroupSelector(QtWidgets.QDialog):
         layout.addWidget(self._searchBox)
 
         self._groupsGrid = GridBase()
-        self._groupsGrid.itemSelected.connect(self._onGroupSelected)
+        self._groupsGrid.itemClicked.connect(self._onGroupSelected)
         layout.addWidget(self._groupsGrid)
 
         selectCancelLayout = QtWidgets.QHBoxLayout()
@@ -45,9 +45,11 @@ class GroupSelector(QtWidgets.QDialog):
         self._selectButton = QtWidgets.QPushButton("Select")
         self._selectButton.setEnabled(False)
         self._selectButton.clicked.connect(self._onSelectClicked)
+        selectCancelLayout.addWidget(self._selectButton)
 
         self._cancelButton = QtWidgets.QPushButton("Cancel")
         self._cancelButton.clicked.connect(self._onCancelClicked)
+        selectCancelLayout.addWidget(self._cancelButton)
 
         for group in groups:
             gridSize = self._groupsGrid.gridSize()
@@ -74,7 +76,7 @@ class GroupSelector(QtWidgets.QDialog):
         """
         item = self._groupsGrid.currentItem()
         group = item.data(QtCore.Qt.UserRole)  # type: Group
-        self.groupSelected.emit(group)
+        self._selectButton.setEnabled(group is not None)
 
     @QtCore.Slot()
     def _onSelectClicked(self) -> None:
@@ -97,7 +99,10 @@ class GroupSelector(QtWidgets.QDialog):
         Returns:
             Group: The selected group.
         """
-        return self._groupsGrid.selectedItem().data(QtCore.Qt.UserRole)  # type: Group
+        item = self._groupsGrid.selectedItems()[0]
+        if item is not None:
+            return item.data(QtCore.Qt.UserRole)  # type: Group
+        return None
 
     @staticmethod
     def getGroup(groups: list[Group], parent: QtWidgets.QWidget = None, title: str = None) -> Group:
