@@ -1,9 +1,35 @@
 from dataclasses import dataclass
+from typing import Any
 import cv2
 import os
 from PySide6 import QtCore, QtGui
 import numpy as np
 from uuid import UUID, uuid4
+import dlib
+
+
+class Model:
+    """
+    An abstract model entity that has a unique ID.
+    """
+
+    def __init__(self, id: UUID = None) -> None:
+        """
+        Initializes a new instance of the ProjectEntity class.
+
+        Args:
+            id (UUID, optional): The id of the entity. If None, a new id will be generated. Defaults to None.
+        """
+        self.id = id if id is not None else uuid4()
+        self.project = None
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, Model):
+            return self.id == other.id
+        return False
+
+    def __hash__(self) -> int:
+        return hash(self.id)
 
 
 @dataclass(frozen=True, repr=True)
@@ -21,38 +47,53 @@ class Rect:
     height: int
     """The height of the rectangle."""
 
+    def to_tuple(self) -> tuple:
+        """
+        Returns the rectangle as a touple.
+        """
+        return self.x, self.y, self.width, self.height
 
-class Face:
+    @staticmethod
+    def from_tuple(touple: tuple) -> 'Rect':
+        """
+        Creates a new instance of the Rect class from a touple.
+        """
+        return Rect(touple[0], touple[1], touple[2], touple[3])
+
+
+class Face(Model):
     """
     Represents a face in an image. This class is pickleable.
 
     Attributes:
-        uuid (uuid.UUID): The unique identifier of the face.
         score (float): The score of the face according to the face recognition model.
         aabb (Rect): The axis-aligned bounding box of the face.
-        encoding (numpy.ndarray): The encoding of the face.
-        shape (dlib.points): A list of points representing the shape of the face.
+        encoding (np.array): The encoding of the face (128 numbers).
+        shape (np.array): A flattened of points representing the shape of the face. (68 points)
         predict_time (int): The time it took to predict the face parts in nanoseconds.
         encoding_time (int): The time it took to encode the face parts in nanoseconds.
         image (Image): The image the face belongs to (None if the face is not part of an image).
         confidence (float): The confidence score of the face.
     """
 
-    def __init__(self, uuid: UUID = None) -> None:
+    def __init__(self, id: UUID = None) -> None:
         """
         Initializes a new instance of the Face class.
+
+        Args:
+            id (UUID, optional): The id of the face. If None, a new id will be generated. Defaults to None.
         """
-        self.uuid = uuid if uuid is not None else uuid4()
+        super().__init__(id)
         self._aabb: 'Rect' = None
-        self.encoding = None
-        self.shape = None
-        self.shape_time = -1
-        self.encoding_time = -1
-        self.image = None
+        self.encoding: np.array = None  # a flattened list of 128 numbers
+        self.shape: np.array = None  # a flattened list of points x0,y0,x1,y1,x2,y2,etc.. (68 points)
+        self.shape_time: int = -1
+        self.encoding_time: int = -1
+        self.image: Image = None
         self.confidence: float = 0.0
 
     def __repr__(self) -> str:
-        return "Face(uuid={}, confidence={}, aabb={})".format(self.uuid, self.confidence, self.aabb)
+        return "Face(uuid={}, confidence={}, aabb={})".format(self.id, self.confidence, self.aabb)
 
     @property
     def aabb(self) -> Rect:
@@ -148,7 +189,7 @@ class Face:
         return pixmap
 
 
-class Group:
+class Group(Model):
     """
     Represents a group of faces.
 
@@ -161,14 +202,14 @@ class Group:
         main_face_override (Face): Overrides the main_face property.
     """
 
-    def __init__(self, uuid: UUID = None) -> None:
+    def __init__(self, id: UUID = None) -> None:
         """
         Initializes the Group class.
 
         Args:
-            uuid (UUID): The UUID of the group.
+            id (UUID): The ID of the group. If None, a new ID will be generated. Defaults to None.
         """
-        self.uuid = uuid if uuid is not None else uuid4()
+        super().__init__(id)
         self.centroid: np.ndarray = None
         self._faces: list[Face] = []
         self.main_face_override: Face = None
@@ -249,7 +290,7 @@ class Group:
             self.main_face_override = other.main_face_override
 
 
-class Image:
+class Image(Model):
     """
     The Image class is the main Phantom Desktop image model.
     It represents an image loaded into memory. This class
@@ -258,25 +299,24 @@ class Image:
     channel being a uint8 array.
 
     Attributes:
-        uuid (UUID): The UUID of the image.
-        raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format.
+        raw_image (cv2.Mat): The raw image data in RGBA format.
         faces (list[Face]): The faces in the image.
         faces_time (int): The time it took to process the faces in nanoseconds.
         processed (bool): Whether or not the image has been processed by the face detector.
         original_full_path (str): The original full path of the image.
     """
 
-    def __init__(self, path: str, uuid: UUID = None, raw_image=None):
+    def __init__(self, path: str, id: UUID = None, raw_image: cv2.Mat = None):
         """
         Initializes the Image class.
 
         Args:
-            uuid (UUID): The UUID of the image.
+            id (UUID): The ID of the image. If None, a new ID will be generated. Defaults to None.
             path (str): The path to the image source (can be relative or absolute).
             raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format. If not provided,
               the image will be loaded from the path.
         """
-        self.uuid = uuid if uuid is not None else uuid4()
+        super().__init__(id)
         self._full_path = os.path.abspath(path)
 
         if raw_image is None:
@@ -393,3 +433,35 @@ class Image:
         self._faces = value
         for face in self._faces:
             face.image = self
+
+    def add_face(self, face: Face):
+        """
+        Adds a face to the image.
+        """
+        self._faces.append(face)
+        face.image = self
+
+    def remove_face(self, face: Face):
+        """
+        Removes a face from the image.
+        """
+        self._faces.remove(face)
+        face.image = None
+
+
+class Project:
+    """
+    Represents a project file.
+    """
+
+    def __init__(self, file_path: str = None):
+        """
+        Initializes the Project class.
+
+        Args:
+            file_path (str): The path to the project file.
+        """
+        super().__init__()
+        self.file_path = file_path
+        self.images: "list[Image]" = []
+        self.groups: "list[Group]" = []

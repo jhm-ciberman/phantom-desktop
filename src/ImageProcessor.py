@@ -1,6 +1,8 @@
 from time import perf_counter_ns
+
+import numpy as np
 from .Models import Face
-from .Models import Image, Rect
+from .Models import Rect
 from dataclasses import dataclass
 import dlib
 
@@ -63,12 +65,13 @@ class ImageProcessor:
         # predict face parts
         t = perf_counter_ns()
         shape = self._shape_predictor(image_rgb, face_rect)
-        face.shape = shape.parts()
+        face.shape = np.array([[p.x, p.y] for p in shape.parts()])
         face.shape_time = perf_counter_ns() - t
 
         # encode face
         t = perf_counter_ns()
-        face.encoding = self._face_encoder.compute_face_descriptor(image_rgb, shape, self.predictor_jitter)
+        encoding = self._face_encoder.compute_face_descriptor(image_rgb, shape, self.predictor_jitter)
+        face.encoding = np.array(encoding)
         face.encoding_time = perf_counter_ns() - t
 
         return face

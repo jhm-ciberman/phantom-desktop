@@ -1,5 +1,6 @@
 import multiprocessing
 from uuid import UUID
+import uuid
 from .ImageProcessor import ImageProcessor, ImageProcessorResult
 from .Models import Image
 import threading
@@ -13,8 +14,8 @@ from src.EventBus import EventBus
 class _WorkerEvent:
     """Represents an event that is raised by the worker."""
 
-    uuid: UUID
-    """The UUID of the image that was processed."""
+    id: UUID
+    """The UUID of the request"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,8 +38,8 @@ class _WorkerFailureEvent(_WorkerEvent):
 class _WorkerTask:
     """Represents a task that is executed by the worker."""
 
-    uuid: UUID
-    """The UUID of the image that is being processed."""
+    id: UUID
+    """The UUID of the request."""
     image_rgb: dlib.array
     """The image in RGB format."""
 
@@ -84,9 +85,9 @@ class _Worker(multiprocessing.Process):
 
             try:
                 result = self._image_processor.process(task.image_rgb)
-                event = _WorkerSuccessEvent(task.uuid, result)
+                event = _WorkerSuccessEvent(task.id, result)
             except Exception as e:
-                event = _WorkerFailureEvent(task.uuid, e)
+                event = _WorkerFailureEvent(task.id, e)
 
             self._event_queue.put(event)
 
@@ -116,7 +117,8 @@ class ImageFeaturesService:
         super().__init__()
         self._input_queue = multiprocessing.Queue()
         self._event_queue = multiprocessing.Queue()
-        self._pending_images = {}  # type: dict[UUID, Image]
+        self._id_to_image: dict[UUID, Image] = {}
+        self._image_to_id: dict[Image, UUID] = {}
         self._workers = []  # type: list[_Worker]
         self._max_workers = multiprocessing.cpu_count()
         self._is_running = False
@@ -126,12 +128,13 @@ class ImageFeaturesService:
 
     def _event_queue_worker(self):
         while True:
-            event = self._event_queue.get()
+            event = self._event_queue.get()  # type: _WorkerEvent
             if event is None:  # Poison pill pattern
                 break
 
-            image = self._pending_images[event.uuid]
-            del self._pending_images[event.uuid]
+            image = self._id_to_image[event.id]
+            del self._id_to_image[event.id]
+            del self._image_to_id[image]
 
             if isinstance(event, _WorkerSuccessEvent):
                 image.faces = event.result.faces
@@ -150,7 +153,7 @@ class ImageFeaturesService:
 
     def _addWorkerIfNeeded(self) -> bool:
         canAddWorker = self.workers_count() < self._max_workers
-        hasPendingImages = len(self._pending_images) > 0
+        hasPendingImages = len(self._id_to_image) > 0
 
         if canAddWorker and hasPendingImages:
             self._addWorker()
@@ -212,15 +215,25 @@ class ImageFeaturesService:
 
     def process(self, image: Image) -> None:
         """
-        Processes an image.
+        Processes an image. This method is non-blocking and not thread safe.
+
+        Args:
+            image: The image to process.
         """
-        if image.uuid in self._pending_images:
+        if image.processed:
+            return  # Image is already processed.
+
+        if image in self._image_to_id:
             raise ValueError("Image is already being processed.")
 
         self._addWorkerIfNeeded()
 
-        self._pending_images[image.uuid] = image
-        self._input_queue.put(_WorkerTask(image.uuid, image.get_pixels_rgb()))
+        # generate new a random uuid for this request.
+        # This id is used to comunicate with the worker process.
+        id = uuid.uuid4()
+        self._image_to_id[image] = id
+        self._id_to_image[id] = image
+        self._input_queue.put(_WorkerTask(id, image.get_pixels_rgb()))
 
     def __del__(self):
         self.stop()
@@ -235,7 +248,7 @@ class ImageFeaturesService:
         """
         Returns the number of images being processed.
         """
-        return len(self._pending_images)
+        return len(self._id_to_image)
 
     def workers_count(self) -> int:
         """

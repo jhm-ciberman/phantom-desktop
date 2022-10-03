@@ -1,11 +1,14 @@
 from PySide6 import QtGui, QtCore, QtWidgets
+
+from ..Application import Application
+from ..ProjectFile import ProjectFileWriter, ProjectFileReader
 from .InspectorPanel import InspectorPanel
 from ..EventBus import EventBus
 from ..Widgets.GridBase import GridBase
 from ..ImageFeaturesService import ImageFeaturesService
 from ..QtHelpers import setSplitterStyle
 from .ImageGrid import ImageGrid
-from ..Models import Image
+from ..Models import Image, Project
 from ..Perspective.PerspectiveWindow import PerspectiveWindow
 from ..Deblur.DeblurWindow import DeblurWindow
 from ..GroupFaces.GroupFacesWindow import GroupFacesWindow
@@ -81,11 +84,27 @@ class MainWindow(QtWidgets.QMainWindow):
             QtGui.QIcon("res/exit.png"), "Exit", self)
         self._exitAction.triggered.connect(self.close)
 
+        self._saveProjectAction = QtGui.QAction(
+            QtGui.QIcon("res/save.png"), "Save Project...", self)
+        self._saveProjectAction.triggered.connect(self._onSaveProjectPressed)
+
+        self._saveProjectAsAction = QtGui.QAction(
+            QtGui.QIcon("res/save_as.png"), "Save Project As...", self)
+        self._saveProjectAsAction.triggered.connect(self._onSaveProjectAsPressed)
+
+        self._openProjectAction = QtGui.QAction(
+            QtGui.QIcon("res/open.png"), "Open Project...", self)
+        self._openProjectAction.triggered.connect(self._onOpenProjectPressed)
+
         self._toolbar = QtWidgets.QToolBar()
         self._toolbar.setMovable(False)
         self._toolbar.setFloatable(False)
         self._toolbar.setIconSize(QtCore.QSize(48, 48))
         self._toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self._toolbar.addAction(self._openProjectAction)
+        self._toolbar.addAction(self._saveProjectAction)
+        self._toolbar.addAction(self._saveProjectAsAction)
+        self._toolbar.addSeparator()
         self._toolbar.addAction(self._addImagesAction)
         self._toolbar.addAction(self._addFolderAction)
         self._toolbar.addAction(self._exportImageAction)
@@ -101,9 +120,6 @@ class MainWindow(QtWidgets.QMainWindow):
         setSplitterStyle(splitter)
 
         self._imageGrid = ImageGrid()
-        for image_path in self._getTestImagePaths():
-            self._addImage(image_path)
-
         self._imageGrid.selectionChanged.connect(self._onImageGridSelectionChanged)
 
         self.inspector_panel = InspectorPanel()
@@ -120,9 +136,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._menuBar = self.menuBar()
         self._fileMenu = self._menuBar.addMenu("&File")
+        self._fileMenu.addAction(self._openProjectAction)
+        self._fileMenu.addAction(self._saveProjectAction)
+        self._fileMenu.addAction(self._saveProjectAsAction)
+        self._fileMenu.addSeparator()
         self._fileMenu.addAction(self._addImagesAction)
         self._fileMenu.addAction(self._addFolderAction)
         self._fileMenu.addAction(self._exportImageAction)
+        self._fileMenu.addSeparator()
         self._fileMenu.addAction(self._exitAction)
 
         self._editMenu = self._menuBar.addMenu("&Edit")
@@ -151,6 +172,15 @@ class MainWindow(QtWidgets.QMainWindow):
         EventBus.default().imageProcessed.connect(self._onImageProcessed)
         EventBus.default().imageProcessingFailed.connect(self._onImageProcessingFailed)
         ImageFeaturesService.instance().start()
+
+        # for image_path in self._getTestImagePaths():
+        #     self._addImage(image_path)
+
+    def project(self) -> Project:
+        """
+        Returns the current open project.
+        """
+        return Application.instance().currentProject()
 
     @QtCore.Slot(bool)
     def _onGridSizePresetPressed(self, checked):
@@ -294,6 +324,7 @@ class MainWindow(QtWidgets.QMainWindow):
             print(f"Failed to load image {image_path}: {e}")
 
         if image:
+            self.project().images.append(image)
             self._imageGrid.addImage(image)
             self._itemsQueuedCount += 1
             ImageFeaturesService.instance().process(image)
@@ -339,3 +370,50 @@ class MainWindow(QtWidgets.QMainWindow):
             window.close()
 
         event.accept()
+
+    @QtCore.Slot()
+    def _onOpenProjectPressed(self) -> None:
+        file_path, _filter = QtWidgets.QFileDialog.getOpenFileName(
+            self, "Select a project file", "", "Phantom Project (*.phantom)")
+
+        if file_path:
+            self._loadProject(file_path)
+
+    @QtCore.Slot()
+    def _onSaveProjectPressed(self) -> None:
+        project = self.project()
+        if project.file_path:
+            self._saveProject(project.file_path)
+        else:
+            self._onSaveProjectAsPressed()
+
+    @QtCore.Slot()
+    def _onSaveProjectAsPressed(self) -> None:
+        current_path = self.project().file_path
+        file_dir = os.path.dirname(current_path) if current_path else ""
+
+        file_path, _filter = QtWidgets.QFileDialog.getSaveFileName(
+            self, "Select a project file", file_dir, "Phantom Project (*.phantom)")
+
+        if file_path:
+            if not file_path.endswith(".phantom"):
+                file_path += ".phantom"
+
+            self._saveProject(file_path)
+
+    def _loadProject(self, file_path: str) -> None:
+        reader = ProjectFileReader()
+        project = reader.load(file_path)
+
+        # close all child windows
+        for window in self._childWindows:
+            window.close()
+
+        Application.instance().setCurrentProject(project)
+        self._imageGrid.clear()
+        for image in project.images:
+            self._imageGrid.addImage(image)
+
+    def _saveProject(self, file_path: str) -> None:
+        project = ProjectFileWriter(minify=True)
+        project.save(file_path, self.project())
