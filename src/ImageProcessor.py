@@ -1,5 +1,4 @@
 from time import perf_counter_ns
-
 import numpy as np
 from .Models import Face
 from .Models import Rect
@@ -9,15 +8,11 @@ import dlib
 
 @dataclass(frozen=True, slots=True)
 class ImageProcessorResult:
-    """
-    Represents the result of the image processor.
-
-    Attributes:
-        faces (list[Face]): The faces in the image.
-        time (int): The time it took to process the image in nanoseconds.
-    """
+    """Represents the result of the image processor."""
     faces: list[Face]
+    """The faces in the image."""
     time: int
+    """The time it took to process the image in nanoseconds."""
 
 
 class ImageProcessor:

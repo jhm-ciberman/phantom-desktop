@@ -1,14 +1,11 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-
+from ..Workspace import BatchProgress
 from ..Application import Application
-from ..ProjectFile import ProjectFileWriter, ProjectFileReader
 from .InspectorPanel import InspectorPanel
-from ..EventBus import EventBus
 from ..Widgets.GridBase import GridBase
-from ..ImageFeaturesService import ImageFeaturesService
 from ..QtHelpers import setSplitterStyle
 from .ImageGrid import ImageGrid
-from ..Models import Image, Project
+from ..Models import Image
 from ..Perspective.PerspectiveWindow import PerspectiveWindow
 from ..Deblur.DeblurWindow import DeblurWindow
 from ..GroupFaces.GroupFacesWindow import GroupFacesWindow
@@ -42,12 +39,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._progressBar.setTextVisible(False)
         # self._progressBar.setGeometry(30, 40, 200, 25)
         self.statusBar().addPermanentWidget(self._progressBar)
-
-        # We keep a count of how many items were queues for processing since
-        # the last time the progress bar finished. We only reset this number
-        # to 0 when the progress bar finishes.
-        self._itemsQueuedCount = 0
-        self._itemsProcessedCount = 0
 
         mainWidget = QtWidgets.QWidget()
         self._layout = QtWidgets.QVBoxLayout()
@@ -169,18 +160,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._onImageGridSelectionChanged()  # Refresh the UI for the first time.
 
-        EventBus.default().imageProcessed.connect(self._onImageProcessed)
-        EventBus.default().imageProcessingFailed.connect(self._onImageProcessingFailed)
-        ImageFeaturesService.instance().start()
-
+        self._workspace = Application.workspace()
+        self._workspace.batchProgressChanged.connect(self._onBatchProgressChanged)
+        self._workspace.imageAdded.connect(self._onImageAdded)
+        self._workspace.imageRemoved.connect(self._onImageRemoved)
+        self._workspace.projectChanged.connect(self._onProjectChanged)
         # for image_path in self._getTestImagePaths():
         #     self._addImage(image_path)
-
-    def project(self) -> Project:
-        """
-        Returns the current open project.
-        """
-        return Application.instance().currentProject()
 
     @QtCore.Slot(bool)
     def _onGridSizePresetPressed(self, checked):
@@ -295,14 +281,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def _onGroupFacesPressed(self) -> None:
-        selected = self._imageGrid.selectedImages()
-        if len(selected) == 1:
-            return
+        images = self._imageGrid.images()
 
-        if len(selected) == 0:
-            selected = self._imageGrid.images()
-
-        if not self._allImagesAreProcessed(selected):
+        if not self._workspace.batchProgress().isFinished:
             # Show a dialog
             msg = QtWidgets.QMessageBox()
             msg.setIcon(QtWidgets.QMessageBox.Information)
@@ -312,7 +293,7 @@ class MainWindow(QtWidgets.QMainWindow):
             msg.exec_()
             return
 
-        window = GroupFacesWindow(selected)
+        window = GroupFacesWindow(images)
         self._childWindows.append(window)
         window.showMaximized()
 
@@ -324,45 +305,34 @@ class MainWindow(QtWidgets.QMainWindow):
             print(f"Failed to load image {image_path}: {e}")
 
         if image:
-            self.project().images.append(image)
+            self._workspace.addImage(image)
+
+    @QtCore.Slot()
+    def _onImageAdded(self, image: Image) -> None:
+        self._imageGrid.addImage(image)
+
+    @QtCore.Slot()
+    def _onImageRemoved(self, image: Image) -> None:
+        self._imageGrid.removeImage(image)
+
+    @QtCore.Slot()
+    def _onProjectChanged(self) -> None:
+        self._imageGrid.clear()
+        for image in self._workspace.project().images:
             self._imageGrid.addImage(image)
-            self._itemsQueuedCount += 1
-            ImageFeaturesService.instance().process(image)
-            self._updateProgress()
 
-    def _allImagesAreProcessed(self, images: list[Image]) -> bool:
-        for image in images:
-            if not image.processed:
-                return False
-        return True
+    @QtCore.Slot(BatchProgress)
+    def _onBatchProgressChanged(self, batch: BatchProgress) -> None:
+        self._progressBar.setValue(batch.progress * 100)
 
-    @QtCore.Slot(Image)
-    def _onImageProcessed(self, image: Image) -> None:
-        self._itemsProcessedCount += 1
-        self._updateProgress()
-
-    @QtCore.Slot(Image, Exception)
-    def _onImageProcessingFailed(self, image: Image, error: Exception) -> None:
-        self._itemsProcessedCount += 1
-        self._updateProgress()
-        print(f"Failed to process image {image.full_path}: {error}")
-
-    def _updateProgress(self) -> None:
-        items = self._itemsProcessedCount
-        total = self._itemsQueuedCount if self._itemsQueuedCount > 0 else 1
-        progress = items / total
-        self._progressBar.setValue(progress * 100)
-
-        if items == 0:
+        if batch.total == 0:
             self._progressBar.setVisible(False)
             pass
-        elif items == total:
+        elif batch.value == batch.total:
             self._progressBar.setVisible(False)
-            self._itemsProcessedCount = 0
-            self._itemsQueuedCount = 0
             self.statusBar().showMessage("All images are processed")
         else:
-            self.statusBar().showMessage(f"Processing images... {items}/{total}")
+            self.statusBar().showMessage(f"Processing images... {batch.value}/{batch.total}")
             self._progressBar.setVisible(True)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
@@ -377,19 +347,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self, "Select a project file", "", "Phantom Project (*.phantom)")
 
         if file_path:
-            self._loadProject(file_path)
+            self._workspace.openProject(file_path)
 
     @QtCore.Slot()
     def _onSaveProjectPressed(self) -> None:
-        project = self.project()
-        if project.file_path:
-            self._saveProject(project.file_path)
+        if self._workspace.project().file_path:
+            self._workspace.saveProject()
         else:
             self._onSaveProjectAsPressed()
 
     @QtCore.Slot()
     def _onSaveProjectAsPressed(self) -> None:
-        current_path = self.project().file_path
+        current_path = self._workspace.project().file_path
         file_dir = os.path.dirname(current_path) if current_path else ""
 
         file_path, _filter = QtWidgets.QFileDialog.getSaveFileName(
@@ -399,21 +368,4 @@ class MainWindow(QtWidgets.QMainWindow):
             if not file_path.endswith(".phantom"):
                 file_path += ".phantom"
 
-            self._saveProject(file_path)
-
-    def _loadProject(self, file_path: str) -> None:
-        reader = ProjectFileReader()
-        project = reader.load(file_path)
-
-        # close all child windows
-        for window in self._childWindows:
-            window.close()
-
-        Application.instance().setCurrentProject(project)
-        self._imageGrid.clear()
-        for image in project.images:
-            self._imageGrid.addImage(image)
-
-    def _saveProject(self, file_path: str) -> None:
-        project = ProjectFileWriter(minify=True)
-        project.save(file_path, self.project())
+            self._workspace.saveProject(file_path)

@@ -56,4 +56,6 @@ This project uses Qt and thus, it tries to follow the Qt style for all classes t
 
 For more info please refer to [this](http://bitesofcode.blogspot.com/2011/10/pyqt-coding-style-guidelines.html) blog post.
 
-For Docstrings, we use the [Google style](https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings).
+For Docstrings, the project uses the [Google style](https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings).
+
+The project has some type hints, but it's only for basic IDE autocomplete. It's not intended for use with static type checkers.

@@ -280,7 +280,7 @@ class ProjectFileWriter(ProjectFileBase):
             },
         }
 
-    def save(self, path: str, project: Project) -> None:
+    def write(self, path: str, project: Project) -> None:
         """
         Saves the project to the specified path.
 
@@ -354,32 +354,13 @@ class ProjectFileReader(ProjectFileBase):
         pass
 
     def _resolve_group(self, group: Group, data: dict):
-        group.faces = [self._faces.get(id) for id in data["faces"]]
         group.main_face_override = self._faces.get(data["main_face_override"])
+        for face in [self._faces.get(id) for id in data["faces"]]:
+            group.add_face(face)
 
     def _resolve_image(self, image: Image, data: dict):
-        image.faces = [self._faces.get(id) for id in data["faces"]]
-
-    def _decode(self, data: dict) -> Project:
-        # First, load the buffers:
-        buffers = data["buffers"]
-        self._encodings_buff.from_json(buffers["encodings"])
-
-        # Then, load the models without relations:
-        self._images.from_json(data["images"], self._decode_image)
-        self._faces.from_json(data["faces"], self._decode_face)
-        self._groups.from_json(data["groups"], self._decode_group)
-
-        # Now that all models are loaded, resolve the relations:
-        self._images.resolve_relations(data["images"], self._resolve_image)
-        self._faces.resolve_relations(data["faces"], self._resolve_face)
-        self._groups.resolve_relations(data["groups"], self._resolve_group)
-
-        # Finally, create the project:
-        project = Project()
-        project.images = self._images.models
-        project.groups = self._groups.models
-        return project
+        for face in [self._faces.get(id) for id in data["faces"]]:
+            image.add_face(face)
 
     def _migrate(self, json: dict[str, Any]) -> dict[str, Any]:
         """
@@ -395,15 +376,6 @@ class ProjectFileReader(ProjectFileBase):
         if version == 1:
             return json
         raise UnsuportedFileVersionException(version, self._current_version, "File version is not supported.")
-
-    def _load_buffers(self, data: dict[str, Any]):
-        """
-        Loads the buffers from the specified json.
-
-        Args:
-            data (dict[str, Any]): The json to load the buffers from.
-        """
-        self._encodings_buff.from_json(data["encodings"])
 
     def _is_gzip(self, file) -> bool:
         file.seek(0)
@@ -429,12 +401,14 @@ class ProjectFileReader(ProjectFileBase):
             return self._load_json(file)
         raise Exception("File is not a valid project file.")
 
-    def load(self, path: str) -> Project:
+    def read(self, path: str, project: Project = None) -> Project:
         """
         Loads a project from the specified path.
 
         Args:
             path (str): The path to the project.
+            project (Project, optional): The project to load the data into.
+                If None, a new project will be created. Defaults to None.
 
         Returns:
             Project: The project.
@@ -448,7 +422,24 @@ class ProjectFileReader(ProjectFileBase):
         if version != self._current_version:
             raise UnsuportedFileVersionException(version, self._current_version, "File version is not supported.")
 
-        self._load_buffers(data["buffers"])
-        project = self._decode(data)
+        # First, load the buffers:
+        buffers = data["buffers"]
+        self._encodings_buff.from_json(buffers["encodings"])
+
+        # Then, load the models without relations:
+        self._images.from_json(data["images"], self._decode_image)
+        self._faces.from_json(data["faces"], self._decode_face)
+        self._groups.from_json(data["groups"], self._decode_group)
+
+        # Now that all models are loaded, resolve the relations:
+        self._images.resolve_relations(data["images"], self._resolve_image)
+        self._faces.resolve_relations(data["faces"], self._resolve_face)
+        self._groups.resolve_relations(data["groups"], self._resolve_group)
+
+        project = project or Project()
         project.file_path = path
+        for image in self._images.models:
+            project.add_image(image)
+        for group in self._groups.models:
+            project.add_group(group)
         return project

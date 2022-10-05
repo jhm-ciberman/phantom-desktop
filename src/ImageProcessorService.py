@@ -1,3 +1,4 @@
+from typing import Callable
 import multiprocessing
 from uuid import UUID
 import uuid
@@ -7,7 +8,6 @@ import threading
 import dlib
 from dataclasses import dataclass
 import queue
-from src.EventBus import EventBus
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,39 +92,43 @@ class _Worker(multiprocessing.Process):
             self._event_queue.put(event)
 
 
-class ImageFeaturesService:
+@dataclass(frozen=True, slots=True)
+class _ImageProcessingRequest:
+    """Represents a request to process an image."""
+    id: UUID
+    """The UUID of the request."""
+    image: Image
+    """The image to process."""
+    success: Callable[[Image], None]
+    """The callback to invoke when the image is processed successfully."""
+    failure: Callable[[Image, Exception], None]
+    """The callback to invoke when the image processing fails."""
+
+
+class ImageProcessorService:
     """
-    Singleton class that provides a simple interface to process multiple images in parallel
+    Class that provides a simple interface to process multiple images in parallel
     using multiprocessing. The class is not thread safe and should be only used from the UI thread.
     """
 
-    _instance = None
-
-    @staticmethod
-    def instance() -> "ImageFeaturesService":
-        """
-        Returns the singleton instance of the ImageProcessingService class.
-        """
-        if ImageFeaturesService._instance is None:
-            ImageFeaturesService._instance = ImageFeaturesService()
-        return ImageFeaturesService._instance
-
-    def __init__(self) -> None:
+    def __init__(self, max_workers: int = None) -> None:
         """
         Initializes a new instance of the ImageProcessingService class.
-        This constructor is private, use the instance() method to get the singleton instance.
+        The service is not started by default. Call start() to start the service.
+
+        Args:
+            max_workers (int): The maximum number of workers to use. If None, the number of workers
+                is equal to the number of CPU cores.
         """
         super().__init__()
         self._input_queue = multiprocessing.Queue()
         self._event_queue = multiprocessing.Queue()
-        self._id_to_image: dict[UUID, Image] = {}
-        self._image_to_id: dict[Image, UUID] = {}
+        self._requests: dict[UUID, _ImageProcessingRequest] = {}  # Used for O(1) mapping from the WorkerEvent to the Image
+        self._image_to_id: dict[Image, UUID] = {}  # Used for O(1) lookup for duplicated tasks
         self._workers = []  # type: list[_Worker]
-        self._max_workers = multiprocessing.cpu_count()
+        self._max_workers = max_workers or multiprocessing.cpu_count()
         self._is_running = False
-
         self._event_queue_thread = threading.Thread(target=self._event_queue_worker, daemon=True)
-        self._event_queue_thread.start()
 
     def _event_queue_worker(self):
         while True:
@@ -132,17 +136,19 @@ class ImageFeaturesService:
             if event is None:  # Poison pill pattern
                 break
 
-            image = self._id_to_image[event.id]
-            del self._id_to_image[event.id]
-            del self._image_to_id[image]
+            request = self._requests[event.id]
+            del self._requests[event.id]
+            del self._image_to_id[request.image]
 
             if isinstance(event, _WorkerSuccessEvent):
-                image.faces = event.result.faces
-                image.faces_time = event.result.time
+                image = request.image
+                image.clear_faces()
+                for face in event.result.faces:
+                    image.add_face(face)
                 image.processed = True
-                EventBus.default().imageProcessed.emit(image)
+                request.success(image)
             elif isinstance(event, _WorkerFailureEvent):
-                EventBus.default().imageProcessingFailed.emit(image, event.error)
+                request.failure(request.image, event.error)
 
     def _addWorker(self) -> None:
         i = len(self._workers)
@@ -153,7 +159,7 @@ class ImageFeaturesService:
 
     def _addWorkerIfNeeded(self) -> bool:
         canAddWorker = self.workers_count() < self._max_workers
-        hasPendingImages = len(self._id_to_image) > 0
+        hasPendingImages = len(self._requests) > 0
 
         if canAddWorker and hasPendingImages:
             self._addWorker()
@@ -168,10 +174,8 @@ class ImageFeaturesService:
         if self._is_running:
             return
 
+        self._event_queue_thread.start()
         self._is_running = True
-
-        while self._addWorkerIfNeeded():
-            pass
 
     def stop(self) -> None:
         """
@@ -213,15 +217,21 @@ class ImageFeaturesService:
         """
         return self._is_running
 
-    def process(self, image: Image) -> None:
+    def process(self, image: Image,
+                success: Callable[[Image], None] = None,
+                failure: Callable[[Image, Exception], None] = None) -> None:
         """
         Processes an image. This method is non-blocking and not thread safe.
 
         Args:
             image: The image to process.
+            success: The callback to invoke when the image is processed successfully.
+            failure: The callback to invoke when the image processing fails.
         """
         if image.processed:
-            return  # Image is already processed.
+            # Image is already processed.
+            success(image)
+            return
 
         if image in self._image_to_id:
             raise ValueError("Image is already being processed.")
@@ -232,7 +242,7 @@ class ImageFeaturesService:
         # This id is used to comunicate with the worker process.
         id = uuid.uuid4()
         self._image_to_id[image] = id
-        self._id_to_image[id] = image
+        self._requests[id] = _ImageProcessingRequest(id, image, success, failure)
         self._input_queue.put(_WorkerTask(id, image.get_pixels_rgb()))
 
     def __del__(self):
@@ -248,7 +258,7 @@ class ImageFeaturesService:
         """
         Returns the number of images being processed.
         """
-        return len(self._id_to_image)
+        return len(self._requests)
 
     def workers_count(self) -> int:
         """
@@ -257,3 +267,10 @@ class ImageFeaturesService:
         # First, remove all workers that are not running anymore.
         self._workers = [w for w in self._workers if w.is_alive()]
         return len(self._workers)
+
+    def remove_all_images(self) -> None:
+        """
+        Removes all images from the queue. No callbacks are invoked.
+        """
+        while not self._input_queue.empty():
+            self._input_queue.get()

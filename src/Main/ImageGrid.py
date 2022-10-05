@@ -1,5 +1,5 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from src.EventBus import EventBus
+from ..Application import Application
 from ..Models import Image
 from ..Widgets.GridBase import GridBase
 
@@ -28,7 +28,7 @@ class ImageGrid(GridBase):
         self._faceIcon = QtGui.QIcon("res/person.png")
 
         self.itemSelectionChanged.connect(self._onItemSelectionChanged)
-        EventBus.default().imageProcessed.connect(self._onImageProcessed)
+        Application.workspace().imageProcessed.connect(self._onImageProcessed)
 
     def addImage(self, image: Image) -> None:
         """

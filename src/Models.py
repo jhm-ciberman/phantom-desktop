@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Sequence
 import cv2
 import os
 from PySide6 import QtCore, QtGui
@@ -189,7 +189,7 @@ class Group(Model):
         return max(self._faces, key=lambda face: face.confidence)
 
     @property
-    def faces(self) -> list[Face]:
+    def faces(self) -> Sequence[Face]:
         """
         Gets the faces in the group.
         """
@@ -198,27 +198,18 @@ class Group(Model):
     def count_unique_images(self) -> int:
         """
         Gets the number of unique images the group is part of.
-
-        Returns:
-            int: The number of unique images.
         """
         return len(set([face.image for face in self._faces]))
 
     def add_face(self, face: Face) -> None:
         """
         Adds a face to the group.
-
-        Args:
-            face (Face): The face to add.
         """
         self._faces.append(face)
 
     def remove_face(self, face: Face) -> None:
         """
         Removes a face from the group.
-
-        Args:
-            face (Face): The face to remove.
         """
         if self.main_face_override == face:
             self.main_face_override = None
@@ -235,9 +226,6 @@ class Group(Model):
     def merge(self, other: "Group") -> None:
         """
         Merges another group into this group.
-
-        Args:
-            other (Group): The group to merge.
         """
         # Combine faces
         self._faces.extend(other.faces)
@@ -267,29 +255,43 @@ class Image(Model):
         original_full_path (str): The original full path of the image.
     """
 
-    def __init__(self, path: str, id: UUID = None, raw_image: cv2.Mat = None):
+    def __init__(self, path: str, id: UUID = None, load: bool = True) -> None:
         """
         Initializes the Image class.
 
         Args:
             id (UUID): The ID of the image. If None, a new ID will be generated. Defaults to None.
             path (str): The path to the image source (can be relative or absolute).
-            raw_image (numpy.ndarray[numpy.uint8]): The raw image data in RGBA format. If not provided,
-              the image will be loaded from the path.
+            load (bool): Whether or not to load the image into memory. Defaults to True.
         """
         super().__init__(id)
         self._full_path = os.path.abspath(path)
-
-        if raw_image is None:
-            raw_image = cv2.imread(path, flags=cv2.IMREAD_UNCHANGED)
-            if raw_image is None:
-                raise Exception(f"Could not load image from path: {path}")
-            raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
-
-        self._raw_image = raw_image
+        self._is_loaded = False
+        self._raw_image = None
         self._faces: "list[Face]" = []
         self.processed = False
         self.original_full_path = self._full_path
+
+        if load:
+            self.load()
+
+    def load(self) -> None:
+        """
+        Loads the image into memory.
+        """
+        if not self._is_loaded:
+            raw_image = cv2.imread(self._full_path, cv2.IMREAD_UNCHANGED)
+            if raw_image is None:
+                raise Exception(f"Failed to load image: {self._full_path}")
+            self._raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
+            self._is_loaded = True
+
+    def unload(self) -> None:
+        """
+        Unloads the image from memory.
+        """
+        self._raw_image = None
+        self._is_loaded = False
 
     @property
     def full_path(self) -> str:
@@ -347,10 +349,22 @@ class Image(Model):
         """
         return os.path.dirname(self.original_full_path) + os.path.sep
 
+    @property
+    def is_loaded(self) -> bool:
+        """
+        Gets whether or not the image is loaded into memory.
+        """
+        return self._is_loaded
+
+    def _assert_loaded(self) -> None:
+        if not self.is_loaded:
+            raise Exception("The image is not loaded. Call the load() method to load the image before accessing it.")
+
     def save(self, path: str):
         """
         Saves the image to a path.
         """
+        self._assert_loaded()
         raw_bgra = cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2BGRA)
         cv2.imwrite(path, raw_bgra)
 
@@ -358,24 +372,28 @@ class Image(Model):
         """
         Returns a QImage of the image.
         """
+        self._assert_loaded()
         return QtGui.QImage(self._raw_image.data, self.width, self.height, QtGui.QImage.Format_RGBA8888)
 
     def get_pixmap(self) -> QtGui.QPixmap:
         """
         Returns a QPixmap of the image.
         """
+        self._assert_loaded()
         return QtGui.QPixmap(self.get_image())
 
     def get_pixels_rgb(self) -> np.ndarray:
         """
         Returns the raw image data in RGB format. (No alpha channel)
         """
+        self._assert_loaded()
         return cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2RGB)
 
     def get_pixels_rgba(self) -> np.ndarray:
         """
         Returns the raw image data in RGBA format.
         """
+        self._assert_loaded()
         return self._raw_image
 
     @property
@@ -385,14 +403,11 @@ class Image(Model):
         """
         return self._faces
 
-    @faces.setter
-    def faces(self, value: list[Face]):
+    def clear_faces(self) -> None:
         """
-        Sets the faces in the image.
+        Removes all faces from the image.
         """
-        self._faces = value
-        for face in self._faces:
-            face.image = self
+        self._faces.clear()
 
     def add_face(self, face: Face):
         """
@@ -423,5 +438,64 @@ class Project:
         """
         super().__init__()
         self.file_path = file_path
-        self.images: "list[Image]" = []
-        self.groups: "list[Group]" = []
+        self._images: "list[Image]" = []
+        self._images_ids: "dict[UUID, Image]" = {}  # Enables O(1) lookup by ID
+        self._groups: "list[Group]" = []
+        self._groups_ids: "dict[UUID, Group]" = {}  # Enables O(1) lookup by ID
+
+        if file_path is not None:
+            self.load(file_path)
+
+    @property
+    def images(self) -> Sequence[Image]:
+        """Gets the images in the project."""
+        return self._images
+
+    def add_image(self, image: Image):
+        """Adds an image to the project."""
+        self._images.append(image)
+        self._images_ids[image.id] = image
+
+    def remove_image(self, image: Image):
+        """Removes an image from the project."""
+        self._images.remove(image)
+        del self._images_ids[image.id]
+
+    def has_image(self, image: Image) -> bool:
+        """Returns True if the project contains the image."""
+        return image.id in self._images_ids
+
+    @property
+    def groups(self) -> Sequence[Group]:
+        """Gets the groups in the project."""
+        return self._groups
+
+    def add_group(self, group: Group):
+        """Adds a group to the project."""
+        self._groups.append(group)
+
+    def remove_group(self, group: Group):
+        """Removes a group from the project."""
+        self._groups.remove(group)
+
+    def has_group(self, group: Group) -> bool:
+        """Returns True if the project contains the group."""
+        return group.id in self._groups_ids
+
+    def save(self, file_path: str = None):
+        """Saves the project to a file."""
+        if file_path is not None:
+            self.file_path = file_path
+        if self.file_path is None:
+            raise Exception("The project file path is not set.")
+        from .ProjectFile import ProjectFileWriter  # Avoid circular import
+        ProjectFileWriter().write(self.file_path, self)
+
+    def load(self, file_path: str = None):
+        """Loads the project from a file."""
+        if file_path is not None:
+            self.file_path = file_path
+        if self.file_path is None:
+            raise Exception("The project file path is not set.")
+        from .ProjectFile import ProjectFileReader  # Avoid circular import
+        ProjectFileReader().read(self.file_path, self)

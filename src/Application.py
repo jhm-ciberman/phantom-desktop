@@ -1,5 +1,6 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from .Models import Project
+from .Workspace import Workspace
+import sys
 
 
 class Application(QtWidgets.QApplication):
@@ -11,11 +12,26 @@ class Application(QtWidgets.QApplication):
 
     @staticmethod
     def instance() -> "Application":
+        """
+        Returns the application instance.
+        """
         if Application._instance is None:
             raise Exception("Application instance not created yet")
         return Application._instance
 
+    @staticmethod
+    def workspace() -> Workspace:
+        """
+        Returns the ProjectManager instance.
+        """
+        # ProjectManager is not a singleton because this will enable
+        # in a future to have multiple projects open at the same time.
+        return Application.instance()._projectManager
+
     def __init__(self, args):
+        """
+        Initializes a new instance of the Application class.
+        """
         super().__init__(args)
         if Application._instance is not None:
             raise Exception("Application instance already created")
@@ -35,38 +51,28 @@ class Application(QtWidgets.QApplication):
             QStatusBar { background-color: #f0f0f0; }
         """)
 
-        self._project: Project = Project()
+        from .ImageProcessorService import ImageProcessorService  # Avoid circular imports
+        self._imageProcessorService = ImageProcessorService()
+        self._projectManager = Workspace(self._imageProcessorService)
 
     def run(self):
-        from .ImageFeaturesService import ImageFeaturesService
-        from .Main.MainWindow import MainWindow
-        import sys
+        """
+        Runs the application.
+        """
+        from .Main.MainWindow import MainWindow  # Avoid circular importss
         win = MainWindow()
         win.showMaximized()
 
+        self._imageProcessorService.start()
+
         exitCode = self.exec()
 
-        ImageFeaturesService.instance().terminate()
+        self._imageProcessorService.terminate()
 
         sys.exit(exitCode)
 
-    def icon(self):
+    def icon(self) -> QtGui.QIcon:
+        """
+        Returns the application icon.
+        """
         return self._icon
-
-    def setCurrentProject(self, project: Project):
-        """
-        Sets the current project.
-
-        Args:
-            project (Project): The project to set as current.
-        """
-        self._project = project
-
-    def currentProject(self) -> Project:
-        """
-        Returns the current project.
-
-        Returns:
-            Project: The current project.
-        """
-        return self._project

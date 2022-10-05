@@ -101,7 +101,7 @@ class GroupSelector(QtWidgets.QDialog):
         """
         item = self._groupsGrid.selectedItems()[0]
         if item is not None:
-            return item.data(QtCore.Qt.UserRole)  # type: Group
+            return item.data(QtCore.Qt.UserRole)
         return None
 
     @staticmethod
