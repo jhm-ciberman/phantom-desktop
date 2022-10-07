@@ -73,15 +73,6 @@ class Workspace(QtCore.QObject):
     batchProgressChanged = QtCore.Signal(BatchProgress)
     """Signal emited when the progress of the batch processing changes."""
 
-    groupAdded = QtCore.Signal(Group)
-    """Signal emitted when a group is added to the current project."""
-
-    groupRemoved = QtCore.Signal(Group)
-    """Signal emitted when a group is removed from the current project."""
-
-    groupChanged = QtCore.Signal(Group)
-    """Signal emitted when a group is changed in the current project."""
-
     def __init__(self, imageProcessorService: ImageProcessorService):
         """
         Initializes a new instance of the Workspace class.
@@ -117,7 +108,7 @@ class Workspace(QtCore.QObject):
         """
         return self._dirty
 
-    def setDirty(self, dirty: bool):
+    def setDirty(self, dirty: bool = True):
         """
         Sets the dirty state of the current project.
         """
@@ -163,7 +154,7 @@ class Workspace(QtCore.QObject):
         """
         Closes the current project.
         """
-        self.setProject(None)
+        pass
 
     def newProject(self):
         """
@@ -228,19 +219,3 @@ class Workspace(QtCore.QObject):
         """
         self.imageProcessingFailed.emit(image, error)
         self._removeImageFromBatch(image)
-
-    def addGroup(self, group: Group):
-        """
-        Adds a group to the current project.
-        """
-        self._project.add_group(group)
-        self.setDirty(True)
-        self.groupAdded.emit(group)
-
-    def removeGroup(self, group: Group):
-        """
-        Removes a group from the current project.
-        """
-        self._project.remove_group(group)
-        self.setDirty(True)
-        self.groupRemoved.emit(group)

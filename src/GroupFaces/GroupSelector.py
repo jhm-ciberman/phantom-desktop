@@ -1,4 +1,4 @@
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from ..Widgets.GridBase import GridBase
 from ..Models import Group
 
@@ -9,7 +9,8 @@ class GroupSelector(QtWidgets.QDialog):
     with their main face.
     """
 
-    def __init__(self, groups: list[Group], parent: QtWidgets.QWidget = None, title: str = None) -> None:
+    def __init__(self, groups: list[Group], parent: QtWidgets.QWidget = None,
+                 title: str = None, showNewGroupOption: bool = False) -> None:
         """
         Initialize a new instance of the _GroupSelector class.
 
@@ -17,6 +18,7 @@ class GroupSelector(QtWidgets.QDialog):
             groups (list[Group]): The groups to display.
             parent (QWidget): The parent widget.
             title (str): The title of the widget.
+            showNewGroupOption (bool): Whether to show the option to create a new group.
         """
         super().__init__(parent)
 
@@ -51,8 +53,13 @@ class GroupSelector(QtWidgets.QDialog):
         self._cancelButton.clicked.connect(self._onCancelClicked)
         selectCancelLayout.addWidget(self._cancelButton)
 
+        gridSize = self._groupsGrid.gridSize()
+        if showNewGroupOption:
+            pixmap = self._getNewGroupPixmap(gridSize.width(), gridSize.height())
+            text = "New group"
+            self._groupsGrid.addItemCore(pixmap, text, Group())
+
         for group in groups:
-            gridSize = self._groupsGrid.gridSize()
             pixmap = group.main_face.get_avatar_pixmap(gridSize.width(), gridSize.height())
             text = group.name if group.name else ""
             self._groupsGrid.addItemCore(pixmap, text, group)
@@ -104,8 +111,24 @@ class GroupSelector(QtWidgets.QDialog):
             return item.data(QtCore.Qt.UserRole)
         return None
 
+    def _getNewGroupPixmap(self, width: int, height: int) -> QtGui.QPixmap:
+        """
+        Get the pixmap for the new group option.
+
+        Args:
+            width (int): The width of the pixmap.
+            height (int): The height of the pixmap.
+
+        Returns:
+            QPixmap: The pixmap.
+        """
+        pixmap = QtGui.QPixmap("res/add.png")
+        pixmap = pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        return pixmap
+
     @staticmethod
-    def getGroup(groups: list[Group], parent: QtWidgets.QWidget = None, title: str = None) -> Group:
+    def getGroup(groups: list[Group], parent: QtWidgets.QWidget = None,
+                 title: str = None, showNewGroupOption: bool = False) -> Group:
         """
         Get a group from the user.
 
@@ -113,11 +136,12 @@ class GroupSelector(QtWidgets.QDialog):
             groups (list[Group]): The groups to display.
             parent (QWidget): The parent widget.
             title (str): The title of the widget.
+            showNewGroupOption (bool): Whether to show the option to create a new group.
 
         Returns:
             Group: The selected group.
         """
-        dialog = GroupSelector(groups, parent, title)
-        if dialog.exec_() == QtWidgets.QDialog.Accepted:
+        dialog = GroupSelector(groups, parent, title, showNewGroupOption)
+        if dialog.exec():
             return dialog.selectedGroup()
         return None

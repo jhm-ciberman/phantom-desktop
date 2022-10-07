@@ -83,6 +83,7 @@ class Face(Model):
         self.encoding: np.array = None  # a flattened list of 128 numbers
         self.image: Image = None
         self.confidence: float = 0.0
+        self.group: "Group" = None  # The group the face belongs to, or None if the face is not part of a group.
 
     def __repr__(self) -> str:
         return "Face(uuid={}, confidence={}, aabb={})".format(self.id, self.confidence, self.aabb)
@@ -171,7 +172,7 @@ class Group(Model):
             id (UUID): The ID of the group. If None, a new ID will be generated. Defaults to None.
         """
         super().__init__(id)
-        self.centroid: np.ndarray = None
+        self.centroid: np.ndarray = None  # a flattened list of 128 numbers
         self._faces: list[Face] = []
         self.main_face_override: Face = None
         self.name: str = None
@@ -205,7 +206,11 @@ class Group(Model):
         """
         Adds a face to the group.
         """
+        if face.group is not None:
+            raise Exception("The face is already part of a group.")
+
         self._faces.append(face)
+        face.group = self
 
     def remove_face(self, face: Face) -> None:
         """
@@ -215,17 +220,25 @@ class Group(Model):
             self.main_face_override = None
 
         self._faces.remove(face)
+        face.group = None
 
     def clear_faces(self) -> None:
         """
         Removes all faces from the group.
         """
+        for face in self._faces:
+            face.group = None
         self._faces.clear()
         self.main_face_override = None
+        self.centroid = None
 
-    def merge(self, other: "Group") -> None:
+    def merge(self, other: "Group", recompute_centroid: bool = True) -> None:
         """
         Merges another group into this group.
+
+        Args:
+            other (Group): The other group.
+            recompute_centroid (bool): If True, the centroid will be recomputed. Defaults to True.
         """
         # Combine faces
         self._faces.extend(other.faces)
@@ -237,6 +250,24 @@ class Group(Model):
         # Copy the main face override if target group has no main face override
         if not self.main_face_override:
             self.main_face_override = other.main_face_override
+
+        # Recompute centroid
+        if recompute_centroid:
+            self.recompute_centroid()
+
+    def recompute_centroid(self) -> None:
+        """
+        Recomputes the centroid of the group.
+        """
+        if not self._faces:
+            return
+
+        if (len(self._faces) == 1):  # Early exit if there is only one face
+            self.centroid = self._faces[0].encoding
+            return
+
+        # Compute the centroid
+        self.centroid = np.mean([face.encoding for face in self._faces], axis=0)
 
 
 class Image(Model):
@@ -460,10 +491,29 @@ class Project:
         """Removes an image from the project."""
         self._images.remove(image)
         del self._images_ids[image.id]
+        if image.faces:
+            for face in image.faces:
+                self.remove_face_from_groups(face)
 
     def has_image(self, image: Image) -> bool:
         """Returns True if the project contains the image."""
         return image.id in self._images_ids
+
+    def remove_face_from_groups(self, face: Face):
+        """Removes a face from all groups."""
+        for group in self._groups:
+            if face in group.faces:
+                group.remove_face(face)
+
+    def add_face_to_best_group(self, face: Face):
+        """Adds a face to the best group."""
+        from .GroupFaces.ClusteringService import find_best_group
+        group = find_best_group(face, self._groups)
+        if group is None:
+            group = Group()
+            self.add_group(group)
+        group.add_face(face)
+        group.recompute_centroid()
 
     @property
     def groups(self) -> Sequence[Group]:
@@ -473,14 +523,40 @@ class Project:
     def add_group(self, group: Group):
         """Adds a group to the project."""
         self._groups.append(group)
+        self._groups_ids[group.id] = group
 
     def remove_group(self, group: Group):
         """Removes a group from the project."""
         self._groups.remove(group)
+        del self._groups_ids[group.id]
 
     def has_group(self, group: Group) -> bool:
         """Returns True if the project contains the group."""
         return group.id in self._groups_ids
+
+    def get_faces(self) -> Sequence[Face]:
+        """Gets all the faces in the project."""
+        faces = []
+        for image in self._images:
+            faces.extend(image.faces)
+        return faces
+
+    def get_faces_without_group(self) -> Sequence[Face]:
+        """Gets all the faces in the project that are not in a group."""
+        faces = []
+        for image in self._images:
+            for face in image.faces:
+                if not face.group:
+                    faces.append(face)
+        return faces
+
+    def regroup_faces(self):
+        """Regroups all the faces in the project."""
+        from .GroupFaces.ClusteringService import cluster
+        self._groups = []
+        self._groups_ids = {}
+        for group in cluster(self.get_faces()):
+            self.add_group(group)
 
     def save(self, file_path: str = None):
         """Saves the project to a file."""
@@ -499,3 +575,8 @@ class Project:
             raise Exception("The project file path is not set.")
         from .ProjectFile import ProjectFileReader  # Avoid circular import
         ProjectFileReader().read(self.file_path, self)
+
+    @property
+    def is_empty(self) -> bool:
+        """Returns True if the project is empty."""
+        return len(self._images) == 0

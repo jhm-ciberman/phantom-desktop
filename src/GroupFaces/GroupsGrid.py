@@ -57,8 +57,10 @@ class GroupsGrid(GridBase):
         """
         self.clear()
         self._groups = groups.copy()
-        # Sort groups by number of faces in them, so that the largest groups are at the top
-        self._groups.sort(key=lambda g: len(g.faces), reverse=True)
+        # Sort groups by the following criteria:
+        # 1. If the group has a name, it is displayed first.
+        # 2. In second place, the group with the most faces is displayed.
+        self._groups.sort(key=lambda group: (group.name is not None, len(group.faces)), reverse=True)
 
         for group in self._groups:
             if len(group.faces) == 0:
@@ -68,33 +70,6 @@ class GroupsGrid(GridBase):
             text = group.name if group.name else ""
             self.addItemCore(pixmap, text)
 
-    def updateGroup(self, group: Group) -> None:
-        """
-        Update the group in the grid.
-
-        Args:
-            group (Group): The group to update.
-        """
-        index = self._groups.index(group)
-        item = self.item(index)
-        if item is None:
-            return
-        w, h = self.iconSize().width(), self.iconSize().height()
-        pixmap = group.main_face.get_avatar_pixmap(w, h)
-        text = group.name if group.name else ""
-        self.setItemCore(item, pixmap, text)
-
-    def removeGroup(self, group: Group) -> None:
-        """
-        Remove the group from the grid.
-
-        Args:
-            group (Group): The group to remove.
-        """
-        index = self._groups.index(group)
-        self.takeItem(index)
-        self._groups.remove(group)
-
     def groups(self) -> list[Group]:
         """
         Get the groups that are displayed.
@@ -103,6 +78,16 @@ class GroupsGrid(GridBase):
             list[Group]: The groups that are displayed.
         """
         return self._groups
+
+    def selectGroup(self, group: Group) -> None:
+        """
+        Select the group in the grid.
+
+        Args:
+            group (Group): The group to select.
+        """
+        index = self._groups.index(group)
+        self.setCurrentRow(index)
 
     @QtCore.Slot(QtWidgets.QListWidgetItem)
     def _onItemClicked(self, item: QtWidgets.QListWidgetItem) -> None:

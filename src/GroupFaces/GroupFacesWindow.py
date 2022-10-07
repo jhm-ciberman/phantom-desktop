@@ -1,11 +1,11 @@
 from PySide6 import QtCore, QtWidgets
+from ..Application import Application
 from .FacesGrid import FacesGrid
 from .GroupDetailsHeader import GroupDetailsHeaderWidget
 from .GroupSelector import GroupSelector
 from .GroupsGrid import GroupsGrid
 from ..Models import Group, Face, Image
 from ..QtHelpers import setSplitterStyle
-from .ClusteringService import cluster
 
 
 class GroupFacesWindow(QtWidgets.QWidget):
@@ -13,14 +13,16 @@ class GroupFacesWindow(QtWidgets.QWidget):
     A window that allows the user to group faces.
     """
 
-    def __init__(self, images: list[Image]) -> None:
+    def __init__(self) -> None:
         """
         Initialize a new instance of the GroupFacesWindow class.
         """
         super().__init__()
 
-        self._images = images
-        self._groups = self._groupImages(images)  # type: list[Group]
+        self._workspace = Application.workspace()
+        self._workspace.imageAdded.connect(self._onImageAdded)
+        self._workspace.imageRemoved.connect(self._onImageRemoved)
+
         self._selectedGroup = None  # type: Group
 
         self.setMinimumSize(800, 600)
@@ -65,24 +67,60 @@ class GroupFacesWindow(QtWidgets.QWidget):
         self.detailsHeader.renameGroupTriggered.connect(self._onRenameGroupTriggered)
         self.detailsHeader.combineGroupTriggered.connect(self._onCombineGroupTriggered)
 
-        self.groupsGrid.setGroups(self._groups)
-        if len(self._groups) > 0:
-            self._onGroupClicked(self._groups[0])
+        # Initialize the groups
+        self._groupImagesIfRequired()
 
-    def _groupImages(self, images: list[Image]) -> list[Group]:
+    def _refreshGroups(self) -> None:
+        groups = self._workspace.project().groups
+        self.groupsGrid.setGroups(groups)
+        if self._selectedGroup is None and len(self.groupsGrid.groups()) > 0:
+            self._onGroupClicked(groups[0])
+
+    def _groupImagesIfRequired(self) -> None:
         """
-        Group the images.
-
-        Args:
-            images (list[Image]): The images to group.
-
-        Returns:
-            list[Group]: The groups.
+        Group the images in the current project if required.
         """
-        faces = []
-        for image in images:
-            faces.extend(image.faces)
-        return cluster(faces)
+        project = self._workspace.project()
+        faces_without_groups = project.get_faces_without_group()
+        if len(faces_without_groups) == 0:
+            self._refreshGroups()
+            return  # The faces have already been grouped
+
+        # If the groups are not clustered, then cluster them
+        if len(project.groups) == 0:
+            project.regroup_faces()
+        else:
+            # Otherwise, add the faces to the best matching group (or create a new group)
+            for face in faces_without_groups:
+                project.add_face_to_best_group(face, project.groups[0])
+
+        self._workspace.setDirty()  # The project has changed
+        self._refreshGroups()
+
+    @QtCore.Slot(Image)
+    def _onImageAdded(self, image: Image) -> None:
+        """
+        Called when an image is added to the project.
+        """
+        if len(image.faces) == 0:
+            return
+
+        # We will try to find a group for the new image (or a new group if no group is found)
+        project = self._workspace.project()
+        for face in image.faces:
+            project.add_face_to_best_group(face)
+        self._workspace.setDirty()
+        self._refreshGroups()
+
+    def _onImageRemoved(self, image: Image) -> None:
+        """
+        Called when an image is removed from the project.
+        """
+        project = self._workspace.project()
+        for face in image.faces:
+            project.remove_face_from_groups(face)
+        self._workspace.setDirty()
+        self._refreshGroups()
 
     @QtCore.Slot(Face)
     def _onMoveToGroupTriggered(self, face: Face) -> None:
@@ -92,14 +130,26 @@ class GroupFacesWindow(QtWidgets.QWidget):
         Args:
             face (Face): The face to move.
         """
-        groupsToShow = [group for group in self._groups if group != self._selectedGroup]
-        group = GroupSelector.getGroup(groupsToShow, self, "Select a group to move the face to")
+        if len(face.group.faces) == 1:
+            QtWidgets.QMessageBox.warning(self, "Cannot Move Face", "You cannot move the last face in a group.")
+            return
+
+        project = self._workspace.project()
+        groupsToShow = [group for group in project.groups if group != self._selectedGroup]
+        group = GroupSelector.getGroup(groupsToShow, self, "Select a group to move the face to", showNewGroupOption=True)
+
+        if len(group.faces) == 0:  # The user wants to create a new group
+            name, ok = QtWidgets.QInputDialog.getText(self, "Group Name", "Enter a name for the new group:")
+            if not ok:
+                return
+            group.name = name.strip()
+            project.add_group(group)
+
         if group:
             self._selectedGroup.remove_face(face)
             group.add_face(face)
             self.detailsGrid.refresh()
-            self.groupsGrid.updateGroup(self._selectedGroup)
-            self.groupsGrid.updateGroup(group)
+            self._refreshGroups()
 
     @QtCore.Slot(Group)
     def _onRenameGroupTriggered(self, group: Group) -> None:
@@ -112,8 +162,9 @@ class GroupFacesWindow(QtWidgets.QWidget):
         name, ok = QtWidgets.QInputDialog.getText(self, "Group Name", "Enter a name for the group:", text=group.name)
         if ok:
             group.name = name
-            self.groupsGrid.updateGroup(group)
+            self._refreshGroups()
             self.detailsHeader.refresh()
+            self._workspace.setDirty()
 
     @QtCore.Slot(Face)
     def _onRemoveFromGroupTriggered(self, face: Face) -> None:
@@ -123,9 +174,16 @@ class GroupFacesWindow(QtWidgets.QWidget):
         Args:
             face (Face): The face to remove.
         """
+        if len(self._selectedGroup.faces) == 1:
+            QtWidgets.QMessageBox.warning(self, "Cannot Remove Face", "You cannot remove the last face from a group.")
+            return
+        newGroup = Group()
         self._selectedGroup.remove_face(face)
+        newGroup.add_face(face)
+        newGroup.recompute_centroid()
+        self._workspace.project().add_group(newGroup)
         self.detailsGrid.refresh()
-        self.groupsGrid.updateGroup(self._selectedGroup)
+        self._refreshGroups()
 
     @QtCore.Slot(Group)
     def _onGroupClicked(self, group: Group) -> None:
@@ -138,6 +196,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
         self._selectedGroup = group
         self.detailsGrid.setFaces(group.faces)
         self.detailsHeader.setGroup(group)
+        self.groupsGrid.selectGroup(group)
 
     @QtCore.Slot(Face)
     def _onFaceClicked(self, face: Face) -> None:
@@ -159,7 +218,8 @@ class GroupFacesWindow(QtWidgets.QWidget):
         """
         self._selectedGroup.main_face_override = face
         self.detailsGrid.refresh()
-        self.groupsGrid.updateGroup(self._selectedGroup)
+        self._refreshGroups()
+        self._workspace.setDirty()
 
     @QtCore.Slot(Group)
     def _onCombineGroupTriggered(self, groupToCombine: Group) -> None:
@@ -169,13 +229,15 @@ class GroupFacesWindow(QtWidgets.QWidget):
         Args:
             groupToCombine (Group): The group to combine.
         """
-        groupsToShow = [group for group in self._groups if group != groupToCombine]
-        groupToCombineWith = GroupSelector.getGroup(groupsToShow, self, "Select a group to combine with")
+        project = self._workspace.project()
+        groupsToShow = [group for group in project.groups if group != groupToCombine]
+        groupToCombineWith = GroupSelector.getGroup(
+            groupsToShow, self, "Select a group to combine with")
 
         if groupToCombineWith:
             groupToCombineWith.merge(groupToCombine)
-
-            self._groups.remove(groupToCombine)
-            self.groupsGrid.removeGroup(groupToCombine)
-            self.detailsGrid.refresh()
-            self.groupsGrid.updateGroup(groupToCombineWith)
+            project.remove_group(groupToCombine)
+            if self._selectedGroup == groupToCombine:
+                self._onGroupClicked(groupToCombineWith)
+            self._refreshGroups()
+            self._workspace.setDirty()

@@ -133,7 +133,7 @@ class ProjectModelsSection:
         Returns:
             Model: The object.
         """
-        return self._data[id]
+        return self._data[id] if id in self._data else None
 
     @property
     def models(self) -> list[Model]:
@@ -254,6 +254,7 @@ class ProjectFileWriter(ProjectFileBase):
             "name": model.name,
             "faces": [str(face.id) for face in model.faces],
             "main_face_override": str(model.main_face_override.id) if model.main_face_override else None,
+            "centroid": self._encodings_buff.store(model.centroid),
         }
 
     def _encode_image(self, model: Image) -> dict:
@@ -357,6 +358,7 @@ class ProjectFileReader(ProjectFileBase):
         group.main_face_override = self._faces.get(data["main_face_override"])
         for face in [self._faces.get(id) for id in data["faces"]]:
             group.add_face(face)
+        group.centroid = self._encodings_buff.load(data["centroid"])
 
     def _resolve_image(self, image: Image, data: dict):
         for face in [self._faces.get(id) for id in data["faces"]]:

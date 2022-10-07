@@ -57,35 +57,50 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._exportImageAction = QtGui.QAction(
             QtGui.QIcon("res/image_save.png"), "Export Image", self)
+        self._exportImageAction.setEnabled(False)
         self._exportImageAction.triggered.connect(self._onExportImagePressed)
 
         self._correctPerspectiveAction = QtGui.QAction(
             QtGui.QIcon("res/correct_perspective.png"), "Correct Perspective", self)
+        self._correctPerspectiveAction.setEnabled(False)
         self._correctPerspectiveAction.triggered.connect(self._onCorrectPerspectivePressed)
 
         self._deblurAction = QtGui.QAction(
             QtGui.QIcon("res/deblur.png"), "Deblur Filter", self)
+        self._deblurAction.setEnabled(False)
         self._deblurAction.triggered.connect(self._onDeblurPressed)
 
         self._groupFacesAction = QtGui.QAction(
             QtGui.QIcon("res/group_faces.png"), "Group Similar Faces", self)
+        self._groupFacesAction.setEnabled(False)
         self._groupFacesAction.triggered.connect(self._onGroupFacesPressed)
 
-        self._exitAction = QtGui.QAction(
-            QtGui.QIcon("res/exit.png"), "Exit", self)
-        self._exitAction.triggered.connect(self.close)
+        self._newProjectAction = QtGui.QAction(
+            QtGui.QIcon("res/new_project.png"), "New Project", self)
+        self._newProjectAction.setShortcut("Ctrl+N")
+        self._newProjectAction.triggered.connect(self._onNewProjectPressed)
+
+        self._openProjectAction = QtGui.QAction(
+            QtGui.QIcon("res/open.png"), "Open Project...", self)
+        self._openProjectAction.setShortcut("Ctrl+O")
+        self._openProjectAction.triggered.connect(self._onOpenProjectPressed)
 
         self._saveProjectAction = QtGui.QAction(
             QtGui.QIcon("res/save.png"), "Save Project...", self)
+        self._saveProjectAction.setEnabled(False)
+        self._saveProjectAction.setShortcut("Ctrl+S")
         self._saveProjectAction.triggered.connect(self._onSaveProjectPressed)
 
         self._saveProjectAsAction = QtGui.QAction(
             QtGui.QIcon("res/save_as.png"), "Save Project As...", self)
+        self._saveProjectAsAction.setEnabled(False)
+        self._saveProjectAsAction.setShortcut("Ctrl+Shift+S")
         self._saveProjectAsAction.triggered.connect(self._onSaveProjectAsPressed)
 
-        self._openProjectAction = QtGui.QAction(
-            QtGui.QIcon("res/open.png"), "Open Project...", self)
-        self._openProjectAction.triggered.connect(self._onOpenProjectPressed)
+        self._exitAction = QtGui.QAction(
+            QtGui.QIcon("res/exit.png"), "Exit", self)
+        self._exitAction.setShortcut("Ctrl+Q")
+        self._exitAction.triggered.connect(self.close)
 
         self._toolbar = QtWidgets.QToolBar()
         self._toolbar.setMovable(False)
@@ -127,6 +142,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._menuBar = self.menuBar()
         self._fileMenu = self._menuBar.addMenu("&File")
+        self._fileMenu.addAction(self._newProjectAction)
         self._fileMenu.addAction(self._openProjectAction)
         self._fileMenu.addAction(self._saveProjectAction)
         self._fileMenu.addAction(self._saveProjectAsAction)
@@ -165,8 +181,26 @@ class MainWindow(QtWidgets.QMainWindow):
         self._workspace.imageAdded.connect(self._onImageAdded)
         self._workspace.imageRemoved.connect(self._onImageRemoved)
         self._workspace.projectChanged.connect(self._onProjectChanged)
+        self._workspace.isDirtyChanged.connect(self._onIsDirtyChanged)
+
         # for image_path in self._getTestImagePaths():
         #     self._addImage(image_path)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+
+        if self._workspace.isDirty():
+            reply = QtWidgets.QMessageBox.question(
+                self, "Save Project", "Do you want to save the project before closing? Unsaved changes will be lost.",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No | QtWidgets.QMessageBox.Cancel)
+
+            if reply == QtWidgets.QMessageBox.Yes:
+                self._onSaveProjectPressed()
+            elif reply == QtWidgets.QMessageBox.Cancel:
+                event.ignore()
+                return
+
+        self._workspace.closeProject()
+        super().closeEvent(event)
 
     @QtCore.Slot(bool)
     def _onGridSizePresetPressed(self, checked):
@@ -209,7 +243,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._exportImageAction.setEnabled(count > 0)
         self._correctPerspectiveAction.setEnabled(count == 1)
         self._deblurAction.setEnabled(count == 1)
-        self._groupFacesAction.setEnabled(count > 1 or count == 0)
 
     @QtCore.Slot()
     def _onAddImagesPressed(self) -> None:
@@ -281,19 +314,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def _onGroupFacesPressed(self) -> None:
-        images = self._imageGrid.images()
-
         if not self._workspace.batchProgress().isFinished:
-            # Show a dialog
-            msg = QtWidgets.QMessageBox()
-            msg.setIcon(QtWidgets.QMessageBox.Information)
-            msg.setText("Some images are not processed yet. Please wait until all images are processed.")
-            msg.setWindowTitle("Phantom is processing the images")
-            msg.setStandardButtons(QtWidgets.QMessageBox.Ok)
-            msg.exec_()
+            QtWidgets.QMessageBox.information(
+                self, "Phantom is processing the images",
+                "Please wait for Phantom to finish processing the images and try again.")
             return
 
-        window = GroupFacesWindow(images)
+        faces = self._workspace.project().get_faces()
+        if len(faces) == 0:
+            QtWidgets.QMessageBox.information(
+                self, "No faces found", "No faces were found in the project. Please add some images to the project.")
+            return
+
+        window = GroupFacesWindow()
         self._childWindows.append(window)
         window.showMaximized()
 
@@ -310,16 +343,25 @@ class MainWindow(QtWidgets.QMainWindow):
     @QtCore.Slot()
     def _onImageAdded(self, image: Image) -> None:
         self._imageGrid.addImage(image)
+        self._onNumberOfImagesChanged()
 
     @QtCore.Slot()
     def _onImageRemoved(self, image: Image) -> None:
         self._imageGrid.removeImage(image)
+        self._onNumberOfImagesChanged()
 
     @QtCore.Slot()
     def _onProjectChanged(self) -> None:
         self._imageGrid.clear()
-        for image in self._workspace.project().images:
+        images = self._workspace.project().images
+        for image in images:
             self._imageGrid.addImage(image)
+        self._onNumberOfImagesChanged()
+
+    def _onNumberOfImagesChanged(self) -> None:
+        imagesCount = len(self._workspace.project().images)
+        self._groupFacesAction.setEnabled(imagesCount > 0)
+        self._imageGrid.setEnabled(imagesCount > 0)
 
     @QtCore.Slot(BatchProgress)
     def _onBatchProgressChanged(self, batch: BatchProgress) -> None:
@@ -335,12 +377,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.statusBar().showMessage(f"Processing images... {batch.value}/{batch.total}")
             self._progressBar.setVisible(True)
 
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        for window in self._childWindows:
-            window.close()
-
-        event.accept()
-
     @QtCore.Slot()
     def _onOpenProjectPressed(self) -> None:
         file_path, _filter = QtWidgets.QFileDialog.getOpenFileName(
@@ -350,7 +386,19 @@ class MainWindow(QtWidgets.QMainWindow):
             self._workspace.openProject(file_path)
 
     @QtCore.Slot()
+    def _onNewProjectPressed(self) -> None:
+        if self._workspace.isDirty():
+            result = QtWidgets.QMessageBox.question(
+                self, "Unsaved changes", "The project has unsaved changes. Do you want to save them?")
+            if result == QtWidgets.QMessageBox.Yes:
+                self._onSaveProjectPressed()
+        self._workspace.newProject()
+
+    @QtCore.Slot()
     def _onSaveProjectPressed(self) -> None:
+        if self._workspace.project().is_empty:
+            return
+
         if self._workspace.project().file_path:
             self._workspace.saveProject()
         else:
@@ -358,6 +406,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def _onSaveProjectAsPressed(self) -> None:
+        if self._workspace.project().is_empty:
+            return
         current_path = self._workspace.project().file_path
         file_dir = os.path.dirname(current_path) if current_path else ""
 
@@ -369,3 +419,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 file_path += ".phantom"
 
             self._workspace.saveProject(file_path)
+
+    @QtCore.Slot(bool)
+    def _onIsDirtyChanged(self, is_dirty: bool) -> None:
+        self._saveProjectAction.setEnabled(is_dirty)
+        self._saveProjectAsAction.setEnabled(is_dirty)
