@@ -1,4 +1,7 @@
 from PySide6 import QtCore, QtWidgets
+from .ClusteringService import MergeOportunity
+
+from .MergingWizard import MergingWizard
 from ..Application import Application
 from .FacesGrid import FacesGrid
 from .GroupDetailsHeader import GroupDetailsHeaderWidget
@@ -38,8 +41,17 @@ class GroupFacesWindow(QtWidgets.QWidget):
         setSplitterStyle(splitter)
         layout.addWidget(splitter)
 
-        self.groupsGrid = GroupsGrid()
-        splitter.addWidget(self.groupsGrid)
+        leftColumnWidget = QtWidgets.QWidget()
+        leftColumnLayout = QtWidgets.QVBoxLayout()
+        leftColumnLayout.setContentsMargins(0, 0, 0, 0)
+        leftColumnWidget.setLayout(leftColumnLayout)
+        splitter.addWidget(leftColumnWidget)
+
+        self._mergingWizard = MergingWizard(self._workspace.project(), leftColumnWidget)
+        leftColumnLayout.addWidget(self._mergingWizard)
+
+        self._groupsGrid = GroupsGrid()
+        leftColumnLayout.addWidget(self._groupsGrid)
 
         detailsWidget = QtWidgets.QWidget()
         detailsLayout = QtWidgets.QVBoxLayout()
@@ -57,23 +69,25 @@ class GroupFacesWindow(QtWidgets.QWidget):
         splitter.setStretchFactor(1, 3)
 
         # Connect signals
-        self.groupsGrid.groupClicked.connect(self._onGroupClicked)
-        self.groupsGrid.renameGroupTriggered.connect(self._onRenameGroupTriggered)
-        self.groupsGrid.combineGroupTriggered.connect(self._onCombineGroupTriggered)
+        self._groupsGrid.groupClicked.connect(self._onGroupClicked)
+        self._groupsGrid.renameGroupTriggered.connect(self._onRenameGroupTriggered)
+        self._groupsGrid.combineGroupTriggered.connect(self._onCombineGroupTriggered)
         self.detailsGrid.faceClicked.connect(self._onFaceClicked)
         self.detailsGrid.moveToGroupTriggered.connect(self._onMoveToGroupTriggered)
         self.detailsGrid.removeFromGroupTriggered.connect(self._onRemoveFromGroupTriggered)
         self.detailsGrid.useAsMainFaceTriggered.connect(self._onUseAsMainFaceTriggered)
         self.detailsHeader.renameGroupTriggered.connect(self._onRenameGroupTriggered)
         self.detailsHeader.combineGroupTriggered.connect(self._onCombineGroupTriggered)
+        self._mergingWizard.groupsMerged.connect(self._onGroupsMerged)
+        self._mergingWizard.groupsDontMerged.connect(self._onGroupsDontMerged)
 
         # Initialize the groups
         self._groupImagesIfRequired()
 
     def _refreshGroups(self) -> None:
         groups = self._workspace.project().groups
-        self.groupsGrid.setGroups(groups)
-        if self._selectedGroup is None and len(self.groupsGrid.groups()) > 0:
+        self._groupsGrid.setGroups(groups)
+        if self._selectedGroup is None and len(self._groupsGrid.groups()) > 0:
             self._onGroupClicked(groups[0])
 
     def _groupImagesIfRequired(self) -> None:
@@ -96,6 +110,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
 
         self._workspace.setDirty()  # The project has changed
         self._refreshGroups()
+        self._mergingWizard.recalculateMergeOpportunities()
 
     @QtCore.Slot(Image)
     def _onImageAdded(self, image: Image) -> None:
@@ -196,7 +211,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
         self._selectedGroup = group
         self.detailsGrid.setFaces(group.faces)
         self.detailsHeader.setGroup(group)
-        self.groupsGrid.selectGroup(group)
+        self._groupsGrid.selectGroup(group)
 
     @QtCore.Slot(Face)
     def _onFaceClicked(self, face: Face) -> None:
@@ -241,3 +256,24 @@ class GroupFacesWindow(QtWidgets.QWidget):
                 self._onGroupClicked(groupToCombineWith)
             self._refreshGroups()
             self._workspace.setDirty()
+
+    @QtCore.Slot(MergeOportunity)
+    def _onGroupsMerged(self, mergeOportunity: MergeOportunity) -> None:
+        """
+        Called when two groups are merged.
+
+        Args:
+            mergeOportunity (MergeOportunity): The merge oportunity.
+        """
+        self._refreshGroups()
+        self._workspace.setDirty()
+
+    @QtCore.Slot(MergeOportunity)
+    def _onGroupsDontMerged(self, mergeOportunity: MergeOportunity) -> None:
+        """
+        Called when two groups are not merged.
+
+        Args:
+            mergeOportunity (MergeOportunity): The merge oportunity.
+        """
+        self._workspace.setDirty()

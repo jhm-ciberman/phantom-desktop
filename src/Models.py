@@ -162,6 +162,10 @@ class Group(Model):
         main_face (Face): The face that is the most representative of the group.
           By default, the face with the highest confidence score is returned.
         main_face_override (Face): Overrides the main_face property.
+        dont_merge_with (set[Group]): A set of groups that should not be merged with this group.
+          This is used by the face merger wizard to avoid asking the user twice if they want to merge
+          two groups.
+
     """
 
     def __init__(self, id: UUID = None) -> None:
@@ -176,6 +180,7 @@ class Group(Model):
         self._faces: list[Face] = []
         self.main_face_override: Face = None
         self.name: str = None
+        self.dont_merge_with: set[Group] = set()
 
     @property
     def main_face(self) -> Face:

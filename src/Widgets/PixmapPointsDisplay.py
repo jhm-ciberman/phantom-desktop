@@ -1,4 +1,4 @@
-from PySide6 import QtGui, QtCore
+from PySide6 import QtGui, QtCore, QtWidgets
 from .PixmapDisplay import PixmapDisplay
 
 
@@ -13,11 +13,11 @@ class PixmapPointsDisplay(PixmapDisplay):
     finished = QtCore.Signal()
     """Emited when the user has finished editing the points."""
 
-    def __init__(self):
+    def __init__(self, parent: QtWidgets.QWidget = None, pixmap: QtGui.QPixmap = None):
         """
         Initializes the PixmapPreview class.
         """
-        super().__init__()
+        super().__init__(parent, pixmap)
         self.setMinimumHeight(200)
         self.setMinimumWidth(200)
         self.setMouseTracking(True)

@@ -101,7 +101,10 @@ class _TextOverDelegate(QtWidgets.QStyledItemDelegate):
     def paint(self, painter, option, index):
         super().paint(painter, option, index)
         itemIndex = index.row()
-        image = self._imageGrid.images()[itemIndex]
+        images = self._imageGrid.images()
+        if itemIndex >= len(images):
+            return
+        image = images[itemIndex]
         icon = self._getIcon(image)
 
         if icon is not None:

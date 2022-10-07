@@ -1,10 +1,11 @@
+from dataclasses import dataclass
 import numpy as np
 from sklearn.cluster import DBSCAN
 from ..Models import Face, Group
 
-cluster_max_distance = 0.425
+cluster_eps = 0.425
 
-nearest_candidate_max_distance = 0.6
+merging_oportunity_max_distance = 0.5
 
 
 def cluster(faces: list[Face]) -> list[Group]:
@@ -26,7 +27,7 @@ def cluster(faces: list[Face]) -> list[Group]:
     # I tuned them to have more groups because I think it's easier in the UI
     # to combine two groups than to split one face by face.
     # min_samples=1 because I want to have groups with only one face.
-    db = DBSCAN(eps=cluster_max_distance, min_samples=1).fit(encodings)
+    db = DBSCAN(eps=cluster_eps, min_samples=1).fit(encodings)
 
     groups_by_label = {}  # type: dict[int, Group]
 
@@ -79,37 +80,64 @@ def find_best_group(face: Face, groups: list[Group]) -> Group:
     return best_group
 
 
-def find_nearest_groups(groups: list[Group]) -> tuple[Group, Group]:
+@dataclass(frozen=True, slots=True)
+class MergeOportunity:
+    """Represents a pair of groups that are close to each other."""
+    group1: Group
+    """The first group."""
+    group2: Group
+    """The second group."""
+    distance: float
+    """The distance between the two groups."""
+
+    def __eq__(self, __o: object) -> bool:
+        if not isinstance(__o, MergeOportunity):
+            return False
+        return self.group1 == __o.group1 and self.group2 == __o.group2
+
+    def __hash__(self) -> int:
+        return hash((self.group1, self.group2))
+
+
+def find_merge_oportunities(
+        groups: list[Group],
+        ignored_oportunities: list[MergeOportunity] = None,
+        max_oportunities: int = 10) -> list[MergeOportunity]:
     """
-    Finds the two nearest groups.
+    Finds a list of pairs of groups that are close to each other. The list is sorted by distance.
+    Duplicate pairs are removed.
 
     Args:
         groups (list[Group]): The groups to search in.
+        max_oportunities (int, optional): The maximum number of oportunities to find. Defaults to 10.
 
     Returns:
-        tuple[Group, Group]: The two nearest groups.
+        list[MergeOportunity]: The list of pairs of groups that are close to each other.
     """
-    best_distance = np.inf
-    best_groups = None
+    pairs = []
+    ignored = ignored_oportunities or []
 
-    # O(n^2) algorithm, but n is small (usually < 100)
-    for group1 in groups:
-        for group2 in groups:
-            if group1 == group2:
+    for group in groups:
+        if group.centroid is None:
+            group.recompute_centroid()
+
+    for i in range(len(groups)):
+        for j in range(i + 1, len(groups)):
+            group1 = groups[i]
+            group2 = groups[j]
+
+            if group1 in group2.dont_merge_with:
                 continue
 
-            if group1.centroid is None:
-                group1.recompute_centroid()
-            if group2.centroid is None:
-                group2.recompute_centroid()
+            centroid1 = group1.centroid
+            centroid2 = group2.centroid
+            distance = np.linalg.norm(centroid1 - centroid2)
 
-            distance = np.linalg.norm(group1.centroid - group2.centroid)
+            if distance < merging_oportunity_max_distance:
+                oportunity = MergeOportunity(group1, group2, distance)
+                if oportunity not in ignored:
+                    pairs.append(oportunity)
 
-            if distance > nearest_candidate_max_distance:
-                continue  # too far, the face is probably not the same person
+    pairs.sort(key=lambda p: p.distance)
 
-            if distance < best_distance:
-                best_distance = distance
-                best_groups = (group1, group2)
-
-    return best_groups
+    return pairs[:max_oportunities]

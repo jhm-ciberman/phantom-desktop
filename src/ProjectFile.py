@@ -255,6 +255,7 @@ class ProjectFileWriter(ProjectFileBase):
             "faces": [str(face.id) for face in model.faces],
             "main_face_override": str(model.main_face_override.id) if model.main_face_override else None,
             "centroid": self._encodings_buff.store(model.centroid),
+            "dont_merge_with": [str(group.id) for group in model.dont_merge_with],
         }
 
     def _encode_image(self, model: Image) -> dict:
@@ -336,18 +337,18 @@ class ProjectFileReader(ProjectFileBase):
     def _decode_face(self, data: dict) -> Face:
         face = Face(data["id"])
         face.aabb = Rect.from_tuple(data["aabb"])
-        face.confidence = data["confidence"]
+        face.confidence = data.get("confidence")
         return face
 
     def _decode_group(self, data: dict) -> Group:
         group = Group(data["id"])
-        group.name = data["name"]
+        group.name = data.get("name", "")
         return group
 
     def _decode_image(self, data: dict) -> Image:
         image = Image(data["src"], data["id"])
-        image.original_full_path = data["original_src"]
-        image.processed = data["processed"]
+        image.original_full_path = data.get("original_src", image.full_path)
+        image.processed = data.get("processed", False)
         return image
 
     def _resolve_face(self, face: Face, data: dict):
@@ -355,13 +356,15 @@ class ProjectFileReader(ProjectFileBase):
         pass
 
     def _resolve_group(self, group: Group, data: dict):
-        group.main_face_override = self._faces.get(data["main_face_override"])
-        for face in [self._faces.get(id) for id in data["faces"]]:
+        group.main_face_override = self._faces.get(data.get("main_face_override"))
+        for face in [self._faces.get(id) for id in data.get("faces", [])]:
             group.add_face(face)
-        group.centroid = self._encodings_buff.load(data["centroid"])
+        group.centroid = self._encodings_buff.load(data.get("centroid"))
+        for other_group in data.get("dont_merge_with", []):
+            group.dont_merge_with.append(self._groups.get(other_group))
 
     def _resolve_image(self, image: Image, data: dict):
-        for face in [self._faces.get(id) for id in data["faces"]]:
+        for face in [self._faces.get(id) for id in data.get("faces", [])]:
             image.add_face(face)
 
     def _migrate(self, json: dict[str, Any]) -> dict[str, Any]:
