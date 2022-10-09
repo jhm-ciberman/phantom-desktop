@@ -459,6 +459,14 @@ class Image(Model):
         self._faces.remove(face)
         face.image = None
 
+    def read_file_bytes(self) -> bytes:
+        """
+        Returns the raw bytes of the image file as read from disk. (Including metadata)
+        This is different from get_pixels_rgba() which returns the raw image data in RGBA format.
+        """
+        with open(self.full_path, "rb") as file:
+            return file.read()
+
 
 class Project:
     """

@@ -4,6 +4,7 @@ from PIL import Image as PILImage
 from PIL.ExifTags import TAGS
 from ..Widgets.PropertiesTable import PropertiesTable
 from ..Models import Image
+import hashlib
 
 
 class InspectorPanel(QtWidgets.QWidget):
@@ -83,6 +84,20 @@ class InspectorPanel(QtWidgets.QWidget):
             label = str(selected_count) + " Images Selected"
             self._table.addHeader(label)
 
+    def _getHashes(self, image: Image) -> dict[str, str]:
+        """
+        Gets the hashes of the image.
+        """
+        bytes = image.read_file_bytes()
+
+        hashes = {}
+        hashes["md5"] = hashlib.md5(bytes).hexdigest()
+        hashes["sha1"] = hashlib.sha1(bytes).hexdigest()
+        hashes["sha256"] = hashlib.sha256(bytes).hexdigest()
+        hashes["sha512"] = hashlib.sha512(bytes).hexdigest()
+
+        return hashes
+
     def _inspectImage(self, image: Image):
         self._pixmapDisplay.setPixmap(image.get_pixmap())
 
@@ -99,6 +114,11 @@ class InspectorPanel(QtWidgets.QWidget):
         frames = getattr(pil_image, "n_frames", 1)
         if frames > 1:
             self._table.addRow("Number of Frames", frames)
+
+        self._table.addHeader("Hashes")
+        hashes = self._getHashes(image)
+        for hash_type, hash in hashes.items():
+            self._table.addRow(hash_type.upper(), hash)
 
         self._table.addHeader("EXIF Data")
         exif = self._getExif(pil_image)
