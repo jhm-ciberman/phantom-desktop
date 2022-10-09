@@ -1,5 +1,6 @@
 from typing import Any
 from PySide6 import QtCore, QtGui, QtWidgets
+from src.l10n import __
 
 
 class SizePreset:
@@ -33,13 +34,13 @@ class GridBase(QtWidgets.QListWidget):
             self.pixmap = pixmap
             self.text = text
 
-    smallPreset = SizePreset("Small", QtCore.QSize(100, 100), QtCore.QSize(80, 80))
+    smallPreset = SizePreset(__("Small"), QtCore.QSize(100, 100), QtCore.QSize(80, 80))
 
-    mediumPreset = SizePreset("Medium", QtCore.QSize(150, 150), QtCore.QSize(120, 120))
+    mediumPreset = SizePreset(__("Medium"), QtCore.QSize(150, 150), QtCore.QSize(120, 120))
 
-    bigPreset = SizePreset("Big", QtCore.QSize(200, 200), QtCore.QSize(160, 160))
+    bigPreset = SizePreset(__("Big"), QtCore.QSize(200, 200), QtCore.QSize(160, 160))
 
-    hugePreset = SizePreset("Huge", QtCore.QSize(250, 250), QtCore.QSize(200, 200))
+    hugePreset = SizePreset(__("Huge"), QtCore.QSize(250, 250), QtCore.QSize(200, 200))
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """

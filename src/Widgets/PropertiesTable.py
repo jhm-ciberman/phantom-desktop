@@ -1,4 +1,5 @@
 from PySide6 import QtWidgets
+from src.l10n import __
 
 
 class _Header(QtWidgets.QWidget):
@@ -42,7 +43,7 @@ class PropertiesTable(QtWidgets.QTableWidget):
         """
         super().__init__(parent)
         self.setColumnCount(2)
-        self.setHorizontalHeaderLabels(["Property", "Value"])
+        self.setHorizontalHeaderLabels([__("Property"), __("Value")])
         self.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
         self.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
         self.verticalHeader().setDefaultSectionSize(20)

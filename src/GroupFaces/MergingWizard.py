@@ -2,6 +2,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from .ClusteringService import find_merge_oportunities, MergeOportunity
 from ..Widgets.PixmapDisplay import PixmapDisplay
 from ..Models import Group, Project
+from src.l10n import __
 
 
 class _IconButton(QtWidgets.QPushButton):
@@ -73,18 +74,18 @@ class _AreSamePersonWidget(QtWidgets.QFrame):
         headerLayout = QtWidgets.QHBoxLayout()
         layout.addLayout(headerLayout)
 
-        title = QtWidgets.QLabel("Improve the results")
+        title = QtWidgets.QLabel(__("Improve the results"))
         title.setAlignment(QtCore.Qt.AlignLeft)
         title.setStyleSheet("font-size: 14px; font-weight: bold; color: #0b3e66;")
         headerLayout.addWidget(title)
 
-        self._progressLabel = QtWidgets.QLabel("Question 1 of 2", self)
+        self._progressLabel = QtWidgets.QLabel("", self)
         self._progressLabel.setAlignment(QtCore.Qt.AlignRight)
         self._progressLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self._progressLabel.setStyleSheet("font-size: 12px; color: gray;")
         headerLayout.addWidget(self._progressLabel)
 
-        description = QtWidgets.QLabel("Are they the same person or different people?")
+        description = QtWidgets.QLabel(__("Are they the same person or different people?"))
         description.setAlignment(QtCore.Qt.AlignCenter)
         description.setStyleSheet("font-size: 16px; color: black;")
         layout.addSpacing(5)
@@ -109,11 +110,11 @@ class _AreSamePersonWidget(QtWidgets.QFrame):
         questionLayout = QtWidgets.QHBoxLayout()
         layout.addLayout(questionLayout)
 
-        self._yesButton = _IconButton("Same person", "res/yes.png", self)
+        self._yesButton = _IconButton(__("Same person"), "res/yes.png", self)
         self._yesButton.clicked.connect(self.yesClicked)
-        self._noButton = _IconButton("Different people", "res/no.png", self)
+        self._noButton = _IconButton(__("Different people"), "res/no.png", self)
         self._noButton.clicked.connect(self.noClicked)
-        self._skipButton = _IconButton("I'm not sure", "res/unknown.png", self)
+        self._skipButton = _IconButton(__("I'm not sure"), "res/unknown.png", self)
         self._skipButton.clicked.connect(self.skipClicked)
 
         questionLayout.addStretch(1)
@@ -147,7 +148,7 @@ class _AreSamePersonWidget(QtWidgets.QFrame):
             current (int): The current progress.
             total (int): The total progress.
         """
-        self._progressLabel.setText(f"Question {current} of {total}")
+        self._progressLabel.setText(__("Question {current} of {total}", current=current, total=total))
 
 
 class _DoneWidget(QtWidgets.QFrame):
@@ -181,7 +182,7 @@ class _DoneWidget(QtWidgets.QFrame):
         self.setFrameShape(QtWidgets.QFrame.Panel)
         self.setFrameShadow(QtWidgets.QFrame.Raised)
 
-        title = QtWidgets.QLabel("Improve the results")
+        title = QtWidgets.QLabel(__("Improve the results"))
         title.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         title.setAlignment(QtCore.Qt.AlignLeft)
         title.setStyleSheet("font-size: 14px; font-weight: bold; color: #37c451;")
@@ -194,7 +195,7 @@ class _DoneWidget(QtWidgets.QFrame):
         icon.setPixmap(QtGui.QPixmap("res/smiling_sun.png"))
         icon.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
 
-        description = QtWidgets.QLabel("Thank you. All done for now.")
+        description = QtWidgets.QLabel(__("Thank you. All done for now."))
         description.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         description.setStyleSheet("font-size: 14px; color: black;")
 
@@ -207,10 +208,10 @@ class _DoneWidget(QtWidgets.QFrame):
         buttonsLayout = QtWidgets.QHBoxLayout()
         layout.addLayout(buttonsLayout)
 
-        self._doneButton = QtWidgets.QPushButton("Close")
+        self._doneButton = QtWidgets.QPushButton(__("Close"))
         self._doneButton.clicked.connect(self.onDone)
 
-        self._keepAnsweringButton = QtWidgets.QPushButton("Keep answering")
+        self._keepAnsweringButton = QtWidgets.QPushButton(__("Keep answering"))
         self._keepAnsweringButton.clicked.connect(self.onKeepAnswering)
 
         buttonsLayout.addStretch(1)
@@ -296,7 +297,6 @@ class MergingWizard(QtWidgets.QWidget):
         self._mergeOportunities = find_merge_oportunities(self._project.groups, self._ignoredOportunities)
         total = len(self._mergeOportunities)
         self._currentIndex = 0
-        print(f"Found {total} merge opportunities.")
 
         if autoStart and total > 0:
             self.nextQuestion()

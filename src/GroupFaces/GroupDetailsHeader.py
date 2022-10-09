@@ -1,6 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from ..Widgets.PixmapDisplay import PixmapDisplay
 from ..Models import Group
+from src.l10n import __
 
 
 class GroupDetailsHeaderWidget(QtWidgets.QWidget):
@@ -50,13 +51,13 @@ class GroupDetailsHeaderWidget(QtWidgets.QWidget):
         self._nameLabel.setText("")
         infoLayoutTop.addWidget(self._nameLabel)
 
-        self._editNameButton = QtWidgets.QPushButton(QtGui.QIcon("res/edit.png"), "Edit name")
+        self._editNameButton = QtWidgets.QPushButton(QtGui.QIcon("res/edit.png"), __("Edit name"))
         self._editNameButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self._editNameButton.setContentsMargins(40, 0, 0, 0)
         self._editNameButton.clicked.connect(self._onEditNameClicked)
         infoLayoutTop.addWidget(self._editNameButton)
 
-        self._combineGroupButton = QtWidgets.QPushButton("Combine group")
+        self._combineGroupButton = QtWidgets.QPushButton(__("Combine group"))
         self._combineGroupButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self._combineGroupButton.setContentsMargins(20, 0, 0, 0)
         self._combineGroupButton.clicked.connect(self._onCombineGroupClicked)
@@ -80,10 +81,13 @@ class GroupDetailsHeaderWidget(QtWidgets.QWidget):
 
         w, h = self._mainFaceIcon.size().width(), self._mainFaceIcon.size().height()
         self._mainFaceIcon.setPixmap(group.main_face.get_avatar_pixmap(w, h))
-        name = group.name if group.name else "Add a name to this person"
+        name = group.name if group.name else __("Add a name to this person")
         self._nameLabel.setText(name)
         uniqueImagesCount = group.count_unique_images()
-        self._subtitleLabel.setText(f"{uniqueImagesCount} photos" if uniqueImagesCount > 1 else "1 photo")
+        if uniqueImagesCount > 1:
+            self._subtitleLabel.setText(__("{count} images", count=uniqueImagesCount))
+        else:
+            self._subtitleLabel.setText(__("{count} image", count=uniqueImagesCount))
         titleColor = "black" if group.name else "#0078d7"
         self._nameLabel.setStyleSheet(f"color: {titleColor};")
 

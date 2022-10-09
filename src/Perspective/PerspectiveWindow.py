@@ -1,5 +1,4 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-
 from ..QtHelpers import setSplitterStyle
 from ..Widgets.PixmapDisplay import PixmapDisplay
 from ..Models import Image
@@ -7,6 +6,7 @@ from ..Widgets.PixmapPointsDisplay import PixmapPointsDisplay
 from .PerspectiveTransform import perspective_transform
 import cv2
 import numpy as np
+from src.l10n import __
 
 
 class PerspectiveWindow(QtWidgets.QWidget):
@@ -72,27 +72,24 @@ class PerspectiveWindow(QtWidgets.QWidget):
 
         self._interpolationMode = QtWidgets.QComboBox()
         options = [
-            ("Nearest (Pixelated)", cv2.INTER_NEAREST),
-            ("Linear (Default)", cv2.INTER_LINEAR),  # default
-            ("Area", cv2.INTER_AREA),
-            ("Cubic", cv2.INTER_CUBIC),
-            ("Lanczos4", cv2.INTER_LANCZOS4)
+            (__("Nearest (Pixelated)"), cv2.INTER_NEAREST),
+            (__("Linear (Default)"), cv2.INTER_LINEAR),  # default
+            (__("Area"), cv2.INTER_AREA),
+            (__("Cubic"), cv2.INTER_CUBIC),
+            (__("Lanczos4"), cv2.INTER_LANCZOS4)
         ]
         for name, value in options:
             self._interpolationMode.addItem(name, value)
         self._interpolationMode.setCurrentIndex(1)
 
         self._rotationModeSmart = QtWidgets.QToolButton()
-        self._rotationModeSmart.setText("Smart")
+        self._rotationModeSmart.setText(__("Smart"))
         self._rotationModeSmart.setCheckable(True)
         self._rotationModeSmart.setChecked(True)
-        self._rotationModeSmart.setToolTip("""
-            <p>When checked, the output image will be rotated to match the rotation of the input image.</p>
-        """)
         self._rotationModeSmart.clicked.connect(self._onRotationModeChanged)
 
-        self._rotateCCW = QtWidgets.QPushButton("Rotate CCW")
-        self._rotateCW = QtWidgets.QPushButton("Rotate CW")
+        self._rotateCCW = QtWidgets.QPushButton(__("Rotate CCW"))
+        self._rotateCW = QtWidgets.QPushButton(__("Rotate CW"))
         self._rotateCCW.clicked.connect(self._onRotateCCW)
         self._rotateCW.clicked.connect(self._onRotateCW)
 
@@ -102,36 +99,36 @@ class PerspectiveWindow(QtWidgets.QWidget):
         rotationLayout.addWidget(self._rotateCW)
 
         aspectRatios = [
-            ("Custom", None),
-            ("Original", image.width / image.height),
-            ("Square (1:1)", 1),
-            ("4:3", 4 / 3),
-            ("16:9", 16 / 9),
-            ("16:10", 16 / 10),
-            ("21:9", 21 / 9),
-            ("2:1", 2 / 1),
-            ("3:2", 3 / 2),
-            ("A4 (210mm x 297mm)", 210 / 297),
-            ("Letter (8.5in x 11in)", 8.5 / 11),
-            ("Business Card (3.5in x 2in)", 3.5 / 2),
-            ("Credit Card (3.375in x 2.125in)", 3.375 / 2.125),
-            ("Legal (8.5in x 14in)", 8.5 / 14),
-            ("Tabloid (11in x 17in)", 11 / 17),
-            ("Ledger (17in x 11in)", 17 / 11),
-            ("Executive (7.25in x 10.5in)", 7.25 / 10.5),
-            ("Postcard (4in x 6in)", 4 / 6),
-            ("Double Postcard (5in x 4in)", 5 / 4),
+            (__("Custom"), None),
+            (__("Original"), image.width / image.height),
+            (__("Square (1:1)"), 1),
+            (__("4:3"), 4 / 3),
+            (__("16:9"), 16 / 9),
+            (__("16:10"), 16 / 10),
+            (__("21:9"), 21 / 9),
+            (__("2:1"), 2 / 1),
+            (__("3:2"), 3 / 2),
+            (__("A4 (210mm x 297mm)"), 210 / 297),
+            (__("Letter (8.5in x 11in)"), 8.5 / 11),
+            (__("Business Card (3.5in x 2in)"), 3.5 / 2),
+            (__("Credit Card (3.375in x 2.125in)"), 3.375 / 2.125),
+            (__("Legal (8.5in x 14in)"), 8.5 / 14),
+            (__("Tabloid (11in x 17in)"), 11 / 17),
+            (__("Ledger (17in x 11in)"), 17 / 11),
+            (__("Executive (7.25in x 10.5in)"), 7.25 / 10.5),
+            (__("Postcard (4in x 6in)"), 4 / 6),
+            (__("Double Postcard (5in x 4in)"), 5 / 4),
         ]
 
         self._aspectRatio = QtWidgets.QComboBox()
         for name, ratio in aspectRatios:
             self._aspectRatio.addItem(name, ratio)
 
-        formLayout.addRow("Aspect ratio", self._aspectRatio)
-        formLayout.addRow("Output width", self._outputWidth)
-        formLayout.addRow("Output height", self._outputHeight)
-        formLayout.addRow("Interpolation Mode", self._interpolationMode)
-        formLayout.addRow("Rotation", rotationLayout)
+        formLayout.addRow(__("Aspect ratio"), self._aspectRatio)
+        formLayout.addRow(__("Output width"), self._outputWidth)
+        formLayout.addRow(__("Output height"), self._outputHeight)
+        formLayout.addRow(__("Interpolation Mode"), self._interpolationMode)
+        formLayout.addRow(__("Rotation"), rotationLayout)
 
         self._aspectRatio.currentIndexChanged.connect(self._onPreviewConfigChanged)
         self._interpolationMode.currentIndexChanged.connect(self._onPreviewConfigChanged)

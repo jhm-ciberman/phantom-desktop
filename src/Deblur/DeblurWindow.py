@@ -4,6 +4,7 @@ from ..Widgets.PixmapDisplay import PixmapDisplay
 import numpy as np
 from .DeblurFilter import DeblurFilter
 import cv2
+from src.l10n import __
 
 
 class DeblurWindow(QtWidgets.QWidget):
@@ -66,8 +67,8 @@ class DeblurWindow(QtWidgets.QWidget):
         self._blurIterations.setValue(10)
         self._blurIterations.valueChanged.connect(self._onSettingsChanged)
 
-        optionsLayout.addRow("Blur radius", self._blurRadius)
-        optionsLayout.addRow("Iterations", self._blurIterations)
+        optionsLayout.addRow(__("Blur radius"), self._blurRadius)
+        optionsLayout.addRow(__("Iterations"), self._blurIterations)
 
     @QtCore.Slot()
     def _onSettingsChanged(self) -> None:

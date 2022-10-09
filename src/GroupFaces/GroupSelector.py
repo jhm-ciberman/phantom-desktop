@@ -1,6 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from ..Widgets.GridBase import GridBase
 from ..Models import Group
+from src.l10n import __
 
 
 class GroupSelector(QtWidgets.QDialog):
@@ -30,7 +31,7 @@ class GroupSelector(QtWidgets.QDialog):
         self.setLayout(layout)
 
         self._searchBox = QtWidgets.QLineEdit()
-        self._searchBox.setPlaceholderText("Search")
+        self._searchBox.setPlaceholderText(__("Search"))
         self._searchBox.textChanged.connect(self._onSearchTextChanged)
         self._searchBox.setClearButtonEnabled(True)
         layout.addWidget(self._searchBox)
@@ -44,19 +45,19 @@ class GroupSelector(QtWidgets.QDialog):
 
         selectCancelLayout.addStretch()
 
-        self._selectButton = QtWidgets.QPushButton("Select")
+        self._selectButton = QtWidgets.QPushButton(__("Select"))
         self._selectButton.setEnabled(False)
         self._selectButton.clicked.connect(self._onSelectClicked)
         selectCancelLayout.addWidget(self._selectButton)
 
-        self._cancelButton = QtWidgets.QPushButton("Cancel")
+        self._cancelButton = QtWidgets.QPushButton(__("Cancel"))
         self._cancelButton.clicked.connect(self._onCancelClicked)
         selectCancelLayout.addWidget(self._cancelButton)
 
         gridSize = self._groupsGrid.gridSize()
         if showNewGroupOption:
             pixmap = self._getNewGroupPixmap(gridSize.width(), gridSize.height())
-            text = "New group"
+            text = __("New group")
             self._groupsGrid.addItemCore(pixmap, text, Group())
 
         for group in groups:

@@ -179,6 +179,8 @@ class Workspace(QtCore.QObject):
             path (str): The path where to save the project. If None the project is saved to the
                 current path.
         """
+        if not path.endswith(".phantom"):
+            path += ".phantom"
         self._project.save(path)
         self.setDirty(False)
 

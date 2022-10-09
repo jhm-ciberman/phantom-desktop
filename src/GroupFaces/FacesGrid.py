@@ -1,6 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from ..Widgets.GridBase import GridBase
 from ..Models import Face
+from src.l10n import __
 
 
 class FacesGrid(GridBase):
@@ -31,13 +32,13 @@ class FacesGrid(GridBase):
         self._faces = []  # type: list[Face]
         self.itemClicked.connect(self._onItemClicked)
 
-        self._moveToGroupAction = QtGui.QAction("Move to group...", self)
+        self._moveToGroupAction = QtGui.QAction(__("Move to group..."), self)
         self._moveToGroupAction.triggered.connect(self._onMoveToGroupActionTriggered)
 
-        self._removeFromGroupAction = QtGui.QAction("Remove from group", self)
+        self._removeFromGroupAction = QtGui.QAction(__("Remove from group"), self)
         self._removeFromGroupAction.triggered.connect(self._onRemoveFromGroupActionTriggered)
 
-        self._useAsMainFaceAction = QtGui.QAction("Use as main face", self)
+        self._useAsMainFaceAction = QtGui.QAction(__("Use as main face"), self)
         self._useAsMainFaceAction.triggered.connect(self._onUseAsMainFaceActionTriggered)
 
         self._contextMenu = QtWidgets.QMenu(self)

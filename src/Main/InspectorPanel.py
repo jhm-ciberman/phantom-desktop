@@ -5,6 +5,7 @@ from PIL.ExifTags import TAGS
 from ..Widgets.PropertiesTable import PropertiesTable
 from ..Models import Image
 import hashlib
+from src.l10n import __
 
 
 class InspectorPanel(QtWidgets.QWidget):
@@ -64,7 +65,7 @@ class InspectorPanel(QtWidgets.QWidget):
         """
         Converts a boolean value to a string.
         """
-        return "Yes" if value else "No"
+        return __("Yes") if value else __("No")
 
     def _refreshInfo(self):
         """
@@ -81,7 +82,7 @@ class InspectorPanel(QtWidgets.QWidget):
             self._inspectImage(image)
         else:
             self._pixmapDisplay.setPixmap(None)
-            label = str(selected_count) + " Images Selected"
+            label = __("Selected {count} images", count=selected_count)
             self._table.addHeader(label)
 
     def _getHashes(self, image: Image) -> dict[str, str]:
@@ -103,41 +104,41 @@ class InspectorPanel(QtWidgets.QWidget):
 
         pil_image = PILImage.open(image.full_path)
 
-        self._table.addHeader("Basic Information")
-        self._table.addRow("Filename", image.basename)
-        self._table.addRow("Folder", image.folder_path)
-        self._table.addRow("Image Width", pil_image.width)
-        self._table.addRow("Image Height", pil_image.height)
-        self._table.addRow("Image Format", pil_image.format_description)
-        self._table.addRow("Color Channels", pil_image.mode)
-        self._table.addRow("Animated", self._bool(getattr(pil_image, "is_animated", False)))
+        self._table.addHeader(__("Basic Information"))
+        self._table.addRow(__("Filename"), image.basename)
+        self._table.addRow(__("Folder"), image.folder_path)
+        self._table.addRow(__("Image Width"), pil_image.width)
+        self._table.addRow(__("Image Height"), pil_image.height)
+        self._table.addRow(__("Image Format"), pil_image.format_description)
+        self._table.addRow(__("Color Channels"), pil_image.mode)
+        self._table.addRow(__("Animated"), self._bool(getattr(pil_image, "is_animated", False)))
         frames = getattr(pil_image, "n_frames", 1)
         if frames > 1:
-            self._table.addRow("Number of Frames", frames)
+            self._table.addRow(__("Number of Frames"), frames)
 
-        self._table.addHeader("Hashes")
+        self._table.addHeader(__("Hashes"))
         hashes = self._getHashes(image)
         for hash_type, hash in hashes.items():
             self._table.addRow(hash_type.upper(), hash)
 
-        self._table.addHeader("EXIF Data")
+        self._table.addHeader(__("EXIF Data"))
         exif = self._getExif(pil_image)
         if (len(exif) == 0):
-            self._table.addInfo("No EXIF data available.")
+            self._table.addInfo(__("No EXIF data available."))
         else:
             for key, value in exif.items():
                 self._table.addRow(key, value)
 
-        self._table.addHeader("Face detection")
+        self._table.addHeader(__("Face detection"))
         count = len(image.faces)
         if not image.processed:
-            self._table.addInfo("Waiting for processing...")
+            self._table.addInfo(__("Waiting for processing..."))
         elif (count == 0):
-            self._table.addInfo("No faces detected.")
+            self._table.addInfo(__("No faces detected."))
         elif (count == 1):
-            self._table.addInfo("1 face detected.")
-            self._table.addRow("Confidence", image.faces[0].confidence)
+            self._table.addInfo(__("1 face detected."))
+            self._table.addRow(__("Confidence"), image.faces[0].confidence)
         else:
-            self._table.addInfo(str(count) + " faces detected.")
+            self._table.addInfo(__("{count} faces detected.", count=count))
             for i, face in enumerate(image.faces):
-                self._table.addRow(f"Face {i + 1} Confidence", face.confidence)
+                self._table.addRow(__("Face {index} Confidence", index=i + 1), face.confidence)

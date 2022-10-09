@@ -1,6 +1,5 @@
 from PySide6 import QtCore, QtWidgets
 from .ClusteringService import MergeOportunity
-
 from .MergingWizard import MergingWizard
 from ..Application import Application
 from .FacesGrid import FacesGrid
@@ -9,6 +8,7 @@ from .GroupSelector import GroupSelector
 from .GroupsGrid import GroupsGrid
 from ..Models import Group, Face, Image
 from ..QtHelpers import setSplitterStyle
+from src.l10n import __
 
 
 class GroupFacesWindow(QtWidgets.QWidget):
@@ -29,7 +29,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
         self._selectedGroup = None  # type: Group
 
         self.setMinimumSize(800, 600)
-        self.setWindowTitle("Group Faces - Phantom")
+        self.setWindowTitle(__("Group Faces") + " - Phantom")
 
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -146,15 +146,15 @@ class GroupFacesWindow(QtWidgets.QWidget):
             face (Face): The face to move.
         """
         if len(face.group.faces) == 1:
-            QtWidgets.QMessageBox.warning(self, "Cannot Move Face", "You cannot move the last face in a group.")
+            QtWidgets.QMessageBox.warning(self, __("Cannot Move Face"), __("You cannot move the last face in a group."))
             return
 
         project = self._workspace.project()
         groupsToShow = [group for group in project.groups if group != self._selectedGroup]
-        group = GroupSelector.getGroup(groupsToShow, self, "Select a group to move the face to", showNewGroupOption=True)
+        group = GroupSelector.getGroup(groupsToShow, self, __("Select a group to move the face to"), showNewGroupOption=True)
 
         if len(group.faces) == 0:  # The user wants to create a new group
-            name, ok = QtWidgets.QInputDialog.getText(self, "Group Name", "Enter a name for the new group:")
+            name, ok = QtWidgets.QInputDialog.getText(self, __("Group Name"), __("Enter a name for the new group:"))
             if not ok:
                 return
             group.name = name.strip()
@@ -174,7 +174,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
         Args:
             group (Group): The group to rename.
         """
-        name, ok = QtWidgets.QInputDialog.getText(self, "Group Name", "Enter a name for the group:", text=group.name)
+        name, ok = QtWidgets.QInputDialog.getText(self, __("Group Name"), __("Enter a name for the group:"), text=group.name)
         if ok:
             group.name = name
             self._refreshGroups()
@@ -190,7 +190,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
             face (Face): The face to remove.
         """
         if len(self._selectedGroup.faces) == 1:
-            QtWidgets.QMessageBox.warning(self, "Cannot Remove Face", "You cannot remove the last face from a group.")
+            QtWidgets.QMessageBox.warning(self, __("Cannot Remove Face"), __("You cannot remove the last face from a group."))
             return
         newGroup = Group()
         self._selectedGroup.remove_face(face)

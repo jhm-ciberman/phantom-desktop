@@ -1,6 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from ..Widgets.GridBase import GridBase
 from ..Models import Group
+from src.l10n import __
 
 
 class GroupsGrid(GridBase):
@@ -29,10 +30,10 @@ class GroupsGrid(GridBase):
         self.itemClicked.connect(self._onItemClicked)
         self.itemDoubleClicked.connect(self._onItemDoubleClicked)
 
-        self._combineGroupAction = QtGui.QAction("Combine group with...", self)
+        self._combineGroupAction = QtGui.QAction(__("Combine group with..."), self)
         self._combineGroupAction.triggered.connect(self._onCombineGroupTriggered)
 
-        self._renameGroupAction = QtGui.QAction(QtGui.QIcon("res/edit.png"), "Rename group", self)
+        self._renameGroupAction = QtGui.QAction(QtGui.QIcon("res/edit.png"), __("Rename group"), self)
         self._renameGroupAction.triggered.connect(self._onRenameGroupTriggered)
 
         self._contextMenu = QtWidgets.QMenu(self)
