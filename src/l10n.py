@@ -89,7 +89,7 @@ class LocalizationService:
         self._strings = {}
         self._warned_strings = set()
         self._loadStringsForLocale(self._locale)
-        if self._fallback_locale:
+        if self._fallback_locale and self._locale != self._fallback_locale:
             self._loadStringsForLocale(self._fallback_locale)
 
     def _loadStringsForLocale(self, locale: str):
