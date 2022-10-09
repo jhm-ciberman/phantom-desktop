@@ -123,7 +123,7 @@ class GroupSelector(QtWidgets.QDialog):
         Returns:
             QPixmap: The pixmap.
         """
-        pixmap = QtGui.QPixmap("res/add.png")
+        pixmap = QtGui.QPixmap("res/img/add.png")
         pixmap = pixmap.scaled(width, height, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         return pixmap
 

@@ -46,59 +46,59 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layout.setSpacing(0)
 
         self._addImagesAction = QtGui.QAction(
-            QtGui.QIcon("res/image_add.png"), __("Add Images"), self)
+            QtGui.QIcon("res/img/image_add.png"), __("Add Images"), self)
         self._addImagesAction.setToolTip(__("Add images to current project"))
         self._addImagesAction.triggered.connect(self._onAddImagesPressed)
 
         self._addFolderAction = QtGui.QAction(
-            QtGui.QIcon("res/folder_add.png"), __("Add From Folder"), self)
+            QtGui.QIcon("res/img/folder_add.png"), __("Add From Folder"), self)
         self._addFolderAction.setToolTip(__("Add images from folder to current project"))
         self._addFolderAction.triggered.connect(self._onAddFolderPressed)
 
         self._exportImageAction = QtGui.QAction(
-            QtGui.QIcon("res/image_save.png"), __("Export Image"), self)
+            QtGui.QIcon("res/img/image_save.png"), __("Export Image"), self)
         self._exportImageAction.setEnabled(False)
         self._exportImageAction.triggered.connect(self._onExportImagePressed)
 
         self._correctPerspectiveAction = QtGui.QAction(
-            QtGui.QIcon("res/correct_perspective.png"), __("Correct Perspective"), self)
+            QtGui.QIcon("res/img/correct_perspective.png"), __("Correct Perspective"), self)
         self._correctPerspectiveAction.setEnabled(False)
         self._correctPerspectiveAction.triggered.connect(self._onCorrectPerspectivePressed)
 
         self._deblurAction = QtGui.QAction(
-            QtGui.QIcon("res/deblur.png"), __("Deblur Filter"), self)
+            QtGui.QIcon("res/img/deblur.png"), __("Deblur Filter"), self)
         self._deblurAction.setEnabled(False)
         self._deblurAction.triggered.connect(self._onDeblurPressed)
 
         self._groupFacesAction = QtGui.QAction(
-            QtGui.QIcon("res/group_faces.png"), __("Group Similar Faces"), self)
+            QtGui.QIcon("res/img/group_faces.png"), __("Group Similar Faces"), self)
         self._groupFacesAction.setEnabled(False)
         self._groupFacesAction.triggered.connect(self._onGroupFacesPressed)
 
         self._newProjectAction = QtGui.QAction(
-            QtGui.QIcon("res/new_project.png"), __("New Project"), self)
+            QtGui.QIcon("res/img/new_project.png"), __("New Project"), self)
         self._newProjectAction.setShortcut("Ctrl+N")
         self._newProjectAction.triggered.connect(self._onNewProjectPressed)
 
         self._openProjectAction = QtGui.QAction(
-            QtGui.QIcon("res/open.png"), __("Open Project..."), self)
+            QtGui.QIcon("res/img/open.png"), __("Open Project..."), self)
         self._openProjectAction.setShortcut("Ctrl+O")
         self._openProjectAction.triggered.connect(self._onOpenProjectPressed)
 
         self._saveProjectAction = QtGui.QAction(
-            QtGui.QIcon("res/save.png"), __("Save Project..."), self)
+            QtGui.QIcon("res/img/save.png"), __("Save Project..."), self)
         self._saveProjectAction.setEnabled(False)
         self._saveProjectAction.setShortcut("Ctrl+S")
         self._saveProjectAction.triggered.connect(self._onSaveProjectPressed)
 
         self._saveProjectAsAction = QtGui.QAction(
-            QtGui.QIcon("res/save_as.png"), __("Save Project As..."), self)
+            QtGui.QIcon("res/img/save_as.png"), __("Save Project As..."), self)
         self._saveProjectAsAction.setEnabled(False)
         self._saveProjectAsAction.setShortcut("Ctrl+Shift+S")
         self._saveProjectAsAction.triggered.connect(self._onSaveProjectAsPressed)
 
         self._exitAction = QtGui.QAction(
-            QtGui.QIcon("res/exit.png"), __("Exit"), self)
+            QtGui.QIcon("res/img/exit.png"), __("Exit"), self)
         self._exitAction.setShortcut("Ctrl+Q")
         self._exitAction.triggered.connect(self.close)
 

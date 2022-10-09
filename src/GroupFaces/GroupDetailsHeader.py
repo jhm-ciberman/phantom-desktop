@@ -51,7 +51,7 @@ class GroupDetailsHeaderWidget(QtWidgets.QWidget):
         self._nameLabel.setText("")
         infoLayoutTop.addWidget(self._nameLabel)
 
-        self._editNameButton = QtWidgets.QPushButton(QtGui.QIcon("res/edit.png"), __("Edit name"))
+        self._editNameButton = QtWidgets.QPushButton(QtGui.QIcon("res/img/edit.png"), __("Edit name"))
         self._editNameButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self._editNameButton.setContentsMargins(40, 0, 0, 0)
         self._editNameButton.clicked.connect(self._onEditNameClicked)

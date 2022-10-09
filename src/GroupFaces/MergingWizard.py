@@ -110,11 +110,11 @@ class _AreSamePersonWidget(QtWidgets.QFrame):
         questionLayout = QtWidgets.QHBoxLayout()
         layout.addLayout(questionLayout)
 
-        self._yesButton = _IconButton(__("Same person"), "res/yes.png", self)
+        self._yesButton = _IconButton(__("Same person"), "res/img/yes.png", self)
         self._yesButton.clicked.connect(self.yesClicked)
-        self._noButton = _IconButton(__("Different people"), "res/no.png", self)
+        self._noButton = _IconButton(__("Different people"), "res/img/no.png", self)
         self._noButton.clicked.connect(self.noClicked)
-        self._skipButton = _IconButton(__("I'm not sure"), "res/unknown.png", self)
+        self._skipButton = _IconButton(__("I'm not sure"), "res/img/unknown.png", self)
         self._skipButton.clicked.connect(self.skipClicked)
 
         questionLayout.addStretch(1)
@@ -192,7 +192,7 @@ class _DoneWidget(QtWidgets.QFrame):
         layout.addLayout(horLayout)
 
         icon = QtWidgets.QLabel()
-        icon.setPixmap(QtGui.QPixmap("res/smiling_sun.png"))
+        icon.setPixmap(QtGui.QPixmap("res/img/smiling_sun.png"))
         icon.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
 
         description = QtWidgets.QLabel(__("Thank you. All done for now."))

@@ -33,7 +33,7 @@ class GroupsGrid(GridBase):
         self._combineGroupAction = QtGui.QAction(__("Combine group with..."), self)
         self._combineGroupAction.triggered.connect(self._onCombineGroupTriggered)
 
-        self._renameGroupAction = QtGui.QAction(QtGui.QIcon("res/edit.png"), __("Rename group"), self)
+        self._renameGroupAction = QtGui.QAction(QtGui.QIcon("res/img/edit.png"), __("Rename group"), self)
         self._renameGroupAction.triggered.connect(self._onRenameGroupTriggered)
 
         self._contextMenu = QtWidgets.QMenu(self)

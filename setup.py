@@ -22,7 +22,7 @@ executables = [
         './main.py',
         base=base,
         target_name='Phantom',
-        icon='./res/icon.ico',
+        icon='./res/img/icon.ico',
     )
 ]
 

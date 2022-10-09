@@ -24,8 +24,8 @@ class ImageGrid(GridBase):
         self.setSelectionBehavior(QtWidgets.QListView.SelectionBehavior.SelectItems)
         self.setItemDelegate(_TextOverDelegate(self))
 
-        self._loadingIcon = QtGui.QIcon("res/loading.png")
-        self._faceIcon = QtGui.QIcon("res/person.png")
+        self._loadingIcon = QtGui.QIcon("res/img/loading.png")
+        self._faceIcon = QtGui.QIcon("res/img/person.png")
 
         self.itemSelectionChanged.connect(self._onItemSelectionChanged)
         Application.workspace().imageProcessed.connect(self._onImageProcessed)
