@@ -1,5 +1,4 @@
 from PySide6 import QtGui, QtCore, QtWidgets
-from ..QtHelpers import setSplitterStyle
 from ..Widgets.PixmapDisplay import PixmapDisplay
 from ..Models import Image
 from ..Widgets.PixmapPointsDisplay import PixmapPointsDisplay
@@ -29,7 +28,6 @@ class PerspectiveWindow(QtWidgets.QWidget):
         splitter = QtWidgets.QSplitter()
         splitter.setOrientation(QtCore.Qt.Horizontal)
         splitter.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        setSplitterStyle(splitter)
         layout.addWidget(splitter)
 
         # Left side: points editor

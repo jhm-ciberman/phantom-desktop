@@ -3,7 +3,6 @@ from ..Workspace import BatchProgress
 from ..Application import Application
 from .InspectorPanel import InspectorPanel
 from ..Widgets.GridBase import GridBase
-from ..QtHelpers import setSplitterStyle
 from .ImageGrid import ImageGrid
 from ..Models import Image
 from ..Perspective.PerspectiveWindow import PerspectiveWindow
@@ -123,7 +122,6 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
         splitter.setContentsMargins(10, 10, 10, 10)
-        setSplitterStyle(splitter)
 
         self._imageGrid = ImageGrid()
         self._imageGrid.selectionChanged.connect(self._onImageGridSelectionChanged)

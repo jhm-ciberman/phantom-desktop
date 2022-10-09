@@ -7,7 +7,6 @@ from .GroupDetailsHeader import GroupDetailsHeaderWidget
 from .GroupSelector import GroupSelector
 from .GroupsGrid import GroupsGrid
 from ..Models import Group, Face, Image
-from ..QtHelpers import setSplitterStyle
 from src.l10n import __
 
 
@@ -38,7 +37,6 @@ class GroupFacesWindow(QtWidgets.QWidget):
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
         splitter.setContentsMargins(10, 10, 10, 10)
-        setSplitterStyle(splitter)
         layout.addWidget(splitter)
 
         leftColumnWidget = QtWidgets.QWidget()
