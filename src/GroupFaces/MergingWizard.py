@@ -48,6 +48,9 @@ class _AreSamePersonWidget(QtWidgets.QFrame):
     skipClicked = QtCore.Signal()
     """Signal emitted when the user clicks the skip button."""
 
+    hideClicked = QtCore.Signal()
+    """Signal emitted when the user clicks the hide button."""
+
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """
         Initialize a new instance of the AreSamePersonWidget class.
@@ -84,6 +87,12 @@ class _AreSamePersonWidget(QtWidgets.QFrame):
         self._progressLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self._progressLabel.setStyleSheet("font-size: 12px; color: gray;")
         headerLayout.addWidget(self._progressLabel)
+
+        self._hideButton = QtWidgets.QPushButton(__("Hide"), self)
+        self._hideButton.setIcon(QtGui.QIcon("res/img/collapse.png"))
+        self._hideButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self._hideButton.clicked.connect(self.hideClicked)
+        headerLayout.addWidget(self._hideButton)
 
         description = QtWidgets.QLabel(__("Are they the same person or different people?"))
         description.setAlignment(QtCore.Qt.AlignCenter)
@@ -149,6 +158,45 @@ class _AreSamePersonWidget(QtWidgets.QFrame):
             total (int): The total progress.
         """
         self._progressLabel.setText(__("Question {current} of {total}", current=current, total=total))
+
+
+class _CollapsedWidget(QtWidgets.QFrame):
+    """
+    A simple header that shows the title: "Merge faces wizard" and a "Show" button.
+    """
+    showClicked = QtCore.Signal()
+    """Signal emitted when the user clicks the show button."""
+
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        """
+        Initialize a new instance of the CollapsedWidget class.
+
+        Args:
+            parent (QWidget): The parent widget.
+        """
+        super().__init__(parent)
+
+        self.setObjectName("CollapsedWidget")
+        self.setStyleSheet("QFrame#CollapsedWidget { border: 2px solid #0078d7; border-radius: 5px; }")
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setSpacing(10)
+        self.setContentsMargins(5, 5, 5, 5)
+        self.setLayout(layout)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.setFrameShape(QtWidgets.QFrame.Panel)
+        self.setFrameShadow(QtWidgets.QFrame.Raised)
+
+        title = QtWidgets.QLabel(__("Merge faces wizard"))
+        title.setAlignment(QtCore.Qt.AlignLeft)
+        title.setStyleSheet("font-size: 14px; font-weight: bold; color: #0b3e66;")
+        layout.addWidget(title)
+
+        self._showButton = QtWidgets.QPushButton(__("Show"), self)
+        self._showButton.setIcon(QtGui.QIcon("res/img/expand.png"))
+        self._showButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self._showButton.clicked.connect(self.showClicked)
+        layout.addWidget(self._showButton)
 
 
 class _DoneWidget(QtWidgets.QFrame):
@@ -272,12 +320,18 @@ class MergingWizard(QtWidgets.QWidget):
         self._areSamePersonWidget.yesClicked.connect(self._onYesClicked)
         self._areSamePersonWidget.noClicked.connect(self._onNoClicked)
         self._areSamePersonWidget.skipClicked.connect(self._onSkipClicked)
+        self._areSamePersonWidget.hideClicked.connect(self._onHideClicked)
         self._stackedWidget.addWidget(self._areSamePersonWidget)
 
         self._doneWidget = _DoneWidget(self)
-        self._doneWidget.onDone.connect(self._onDone)
+        self._doneWidget.onDone.connect(self._onHideClicked)
         self._doneWidget.onKeepAnswering.connect(self._onKeepAnswering)
         self._stackedWidget.addWidget(self._doneWidget)
+
+        self._collapsedWidget = _CollapsedWidget(self)
+        self._collapsedWidget.showClicked.connect(self._onShowClicked)
+        layout.addWidget(self._collapsedWidget)
+        self._collapsedWidget.hide()
 
         self._stackedWidget.setCurrentWidget(self._areSamePersonWidget)
 
@@ -356,11 +410,20 @@ class MergingWizard(QtWidgets.QWidget):
         self.nextQuestion()
 
     @QtCore.Slot()
-    def _onDone(self) -> None:
+    def _onHideClicked(self) -> None:
         """
         Called when the user clicks on the done button.
         """
-        self.hide()
+        self._stackedWidget.hide()
+        self._collapsedWidget.show()
+
+    @QtCore.Slot()
+    def _onShowClicked(self) -> None:
+        """
+        Called when the user clicks on the show button.
+        """
+        self._collapsedWidget.hide()
+        self._stackedWidget.show()
 
     @QtCore.Slot()
     def _onKeepAnswering(self) -> None:
