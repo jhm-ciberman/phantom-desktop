@@ -18,16 +18,45 @@ def __(key_or_string: str, **kwargs) -> str:
 class LocalizationService:
     """
     The localization service provides a way to localize strings.
-    Localized strings are stored in JSON files in the res/lang directory.
-    Each file should be named after the language code (ISO 639-1 standard
-    with an optional ISO 3166-1 alpha-2 country code).  For example: en, en-US, fr, fr-CA, de, de-DE, etc.
+    Localized strings are stored in JSON files in the "res/lang/" directory.
+    Each file should be named after the ISO 639-1 language code with an
+    optional ISO 3166-1 alpha-2 country code.
+    For example: "en.json", "en-US.json", "fr.json", "fr-CA.json", "de.json", "de-DE.json", etc.
 
     The JSON file should be a dictionary of key/value pairs.  The keys should be the string to localize,
-    and the values should be the localized string.  For example:
+    and the values should be the localized string. Nested dictionaries are also supported.
+    You can mix and match nested dictionaries with regular key/value pairs. For example:
+
     {
-        "Hello": "Bonjour",
-        "Goodbye": "Au revoir"
+        "Hello, how are you?": "Bonjour, comment allez-vous?",
+        "Okay": "D'accord",
+        "Cancel": "Annuler",
+        "{count} of {total} items selected": "{count} sur {total} éléments sélectionnés"
+        "menu_options": {
+            "new_game": "Nouvelle partie",
+            "load_game": "Charger une partie",
+            "options": "Options",
+            "quit": "Quitter"
+            "score": "Votre score est de {score} points."
+        },
+        "Are you sure you want to quit?": "Êtes-vous sûr de vouloir quitter?"
+        "Select difficulty": "Sélectionnez la difficulté"
     }
+
+    To localize a string, use the __() helper function. For example:
+
+    print(__("Hello, how are you?"))
+    print(__("{count} of {total} items selected", count=5, total=10))
+    print(__("menu_options.new_game"))
+    print(__("menu_options.score", score=100))
+
+    Will print:
+
+    Bonjour, comment allez-vous?
+    5 sur 10 éléments sélectionnés
+    Nouvelle partie
+    Votre score est de 100 points.
+
     """
 
     _instance = None
@@ -49,7 +78,7 @@ class LocalizationService:
         self._locale: str = "en"
         self._fallback_locale: str = "en"
         self._warned_strings: set[str] = set()
-        self._loadStrings()
+        self._load_strings()
 
     @staticmethod
     def instance() -> "LocalizationService":
@@ -80,19 +109,19 @@ class LocalizationService:
         """
         self._locale = locale
         self._fallback_locale = fallback_locale
-        self._loadStrings()
+        self._load_strings()
 
-    def _loadStrings(self):
+    def _load_strings(self):
         """
         Loads the strings.
         """
         self._strings = {}
         self._warned_strings = set()
-        self._loadStringsForLocale(self._locale)
+        self._load_strings_for_locale(self._locale)
         if self._fallback_locale and self._locale != self._fallback_locale:
-            self._loadStringsForLocale(self._fallback_locale)
+            self._load_strings_for_locale(self._fallback_locale)
 
-    def _loadStringsForLocale(self, locale: str):
+    def _load_strings_for_locale(self, locale: str):
         """
         Loads the strings for the given locale.
 
@@ -150,11 +179,11 @@ class LocalizationService:
             result = self._strings[key_or_string]
         else:
             result = key_or_string
-            self._warnMissingString(key_or_string)
+            self._warn_missing_string(key_or_string)
 
         return result.format(**kwargs)
 
-    def _warnMissingString(self, key: str):
+    def _warn_missing_string(self, key: str):
         """
         Warns that a string is missing.
 
