@@ -80,7 +80,7 @@ class Face(Model):
         """
         super().__init__(id)
         self.aabb: 'Rect' = None
-        self.encoding: np.array = None  # a flattened list of 128 numbers
+        self.encoding: np.ndarray = None  # a flattened list of 128 numbers
         self.image: Image = None
         self.confidence: float = 0.0
         self.group: "Group" = None  # The group the face belongs to, or None if the face is not part of a group.

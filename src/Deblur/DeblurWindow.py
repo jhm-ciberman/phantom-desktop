@@ -92,7 +92,9 @@ class DeblurWindow(QtWidgets.QWidget):
         sigmag = 1 if sigmag < 1 else int(sigmag) | 1
         iterations = self._blurIterations.value()
 
-        result = DeblurFilter.lucy_richardson_deconv(self._previewBuffer, iterations, sigmag)
+        # result = DeblurFilter.lucy_richardson_deconv(self._previewBuffer, iterations, sigmag)
+        psf = DeblurFilter.gaussian_psf(sigmag, sigmag)
+        result = DeblurFilter.lucy_richardson_deconv_skcv2(self._previewBuffer, psf, iterations)
 
         image = QtGui.QImage(result.data, result.shape[1], result.shape[0], QtGui.QImage.Format_RGBA8888)
         pixmap = QtGui.QPixmap.fromImage(image)

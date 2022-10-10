@@ -21,11 +21,11 @@ class ProjectBufferSection:
             dtype (str): The dtype of the arrays that will be stored in the buffer.
             stride (int): The length of the arrays that will be stored in the buffer.
         """
-        self._data: list[np.array] = []
+        self._data: list[np.ndarray] = []
         self._dtype = dtype
         self._stride = stride
 
-    def store(self, array: np.array) -> int:
+    def store(self, array: np.ndarray) -> int:
         """
         Stores the specified array in the section
         and returns it's index.
