@@ -159,14 +159,58 @@ class PointSpreadFunction:
         Returns:
             The PSF
         """
+        if sigma <= 0:
+            raise ValueError('sigma must be greater than 0')
+
         if size is None:
             size = int(2 * np.ceil(3 * sigma) + 1)
+
+        if size < 1:
+            raise ValueError('Size must be greater than 0')
 
         x = np.arange(0, size, 1, float)
         y = x[:, np.newaxis]
         x0 = y0 = size // 2
         pfs = np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))
         return pfs / np.sum(pfs)
+
+    @staticmethod
+    def box_blur(size: int) -> np.ndarray:
+        """
+        Creates a box blur point spread function.
+
+        Args:
+            size: int The size of the box blur
+
+        Returns:
+            The PSF
+        """
+        if size < 1:
+            raise ValueError('Size must be greater than 0')
+
+        return np.ones((size, size)) / (size * size)
+
+    @staticmethod
+    def disk_blur(size: int) -> np.ndarray:
+        """
+        Creates a disk blur point spread function.
+
+        Args:
+            size: int The size of the disk blur. This is the diameter of the disk.
+
+        Returns:
+            The PSF
+        """
+        if size < 1:
+            raise ValueError('Size must be greater than 0')
+
+        psf = np.zeros((size, size))
+        center = size // 2
+        for i in range(size):
+            for j in range(size):
+                if np.sqrt((i - center) ** 2 + (j - center) ** 2) <= center:
+                    psf[i, j] = 1
+        return psf / psf.sum()
 
     @staticmethod
     def motion_blur(angle: float, length: int, width: int = 1) -> np.ndarray:
@@ -181,62 +225,69 @@ class PointSpreadFunction:
         Returns:
             The PSF
         """
-        psf = np.zeros((length, length))
-        angle = np.deg2rad(angle)
-        center = length // 2
-        for i in range(width):
-            psf[center - width // 2 + i, :] = np.sin(angle)
-        return psf / psf.sum()
+        # 1. Initialize the canvas to (length + 2) x (length + 2)
+        # 2. Generate a line of ones with the specified length and width in the center of the canvas
+        # 3. Rotate the line by the specified angle
+        # 4. Normalize the PSF
 
-    @staticmethod
-    def box_blur(size: int) -> np.ndarray:
-        """
-        Creates a box blur point spread function.
+        if length < 1:
+            raise ValueError('Length must be greater than 0')
 
-        Args:
-            size: int The size of the box blur
+        if width < 1:
+            raise ValueError('Width must be greater than 0')
 
-        Returns:
-            The PSF
-        """
-        return np.ones((size, size)) / (size * size)
-
-    @staticmethod
-    def disk_blur(size: int) -> np.ndarray:
-        """
-        Creates a disk blur point spread function.
-
-        Args:
-            size: int The size of the disk blur. This is the diameter of the disk.
-
-        Returns:
-            The PSF
-        """
+        size = length + 4
         psf = np.zeros((size, size))
         center = size // 2
-        for i in range(size):
-            for j in range(size):
-                if np.sqrt((i - center) ** 2 + (j - center) ** 2) <= center:
-                    psf[i, j] = 1
+        psf[center - width // 2:center + width // 2 + 1, center - length // 2:center + length // 2 + 1] = 1
+        psf = PointSpreadFunction._rotate(psf, angle)
+        psf = PointSpreadFunction._trim_padding(psf)
         return psf / psf.sum()
 
     @staticmethod
-    def normalize(psf: np.ndarray, min_value: float = 0, max_value: float = 1) -> np.ndarray:
+    def _rotate(image: np.ndarray, angle: float) -> np.ndarray:
         """
-        Normalizes a point spread function.
+        Rotates an image by the specified angle.
 
         Args:
-            psf: np.ndarray The PSF to normalize
-            min_value: float The minimum value of the PSF
-            max_value: float The maximum value of the PSF
+            image: The image to rotate
+            angle: The angle to rotate the image by in degrees
 
         Returns:
-            The normalized PSF
+            The rotated image
         """
-        psf = psf - psf.min()
+        image_center = tuple(np.array(image.shape[1::-1]) / 2)
+        rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
+        return cv2.warpAffine(image, rot_mat, image.shape[1::-1], flags=cv2.INTER_LINEAR)
+
+    @staticmethod
+    def _trim_padding(image: np.ndarray) -> np.ndarray:
+        """
+        Trims the padding from an image. The padding is any area that is all zeros
+        in each side of the image (top, bottom, left, right).
+
+        Args:
+            image: The image to trim the padding from
+
+        Returns:
+            The trimmed image
+        """
+        non_zero = np.nonzero(image)
+        return image[np.min(non_zero[0]):np.max(non_zero[0]) + 1, np.min(non_zero[1]):np.max(non_zero[1]) + 1]
+
+    @staticmethod
+    def to_grayscale(psf: np.ndarray) -> np.ndarray:
+        """
+        Converts a PSF to a grayscale image with values in the range [0, 255] as uint8.
+
+        Args:
+            psf: np.ndarray The color PSF
+
+        Returns:
+            The grayscale PSF as a uint8 image
+        """
         psf = psf / psf.max()
-        psf = psf * (max_value - min_value) + min_value
-        return psf
+        return (psf * 255).astype(np.uint8)
 
 
 class ProgressiveDeblurTask:
@@ -331,6 +382,13 @@ class ProgressiveDeblurTask:
 
     def _run_cycle(self):
         scale = self._scales[self._cycle_index]
+
+        # If the pfs size or image size after scaling is too small, skip this cycle
+        pfs_w, pfs_h = self._psf.shape[:2]
+        img_w, img_h = self._image.shape[:2]
+        if pfs_w * scale < 1 or pfs_h * scale < 1 or img_w * scale < 1 or img_h * scale < 1:
+            return
+
         scaled_psf = cv2.resize(self._psf, (0, 0), fx=scale, fy=scale)
         scaled_image = cv2.resize(self._image, (0, 0), fx=scale, fy=scale)
         deblur = LucyRichardsonDeconvolution(scaled_image, scaled_psf, self._num_iter)
