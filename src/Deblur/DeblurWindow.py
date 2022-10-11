@@ -2,8 +2,7 @@ from PySide6 import QtGui, QtCore, QtWidgets
 from ..Models import Image
 from ..Widgets.PixmapDisplay import PixmapDisplay
 import numpy as np
-from .DeblurFilter import DeblurFilter
-import cv2
+from .LucyRichardsonDeconvolution import ProgressiveDeblurTask, PointSpreadFunction
 from src.l10n import __
 
 
@@ -11,6 +10,18 @@ class DeblurWindow(QtWidgets.QWidget):
     """
     A window that allows the user to deblur an image.
     """
+
+    # The preview is updated in a separate thread, but all Qt calls must be done in the main thread.
+    # The ProgressiveDeblurTask uses callbacks that are executed in a
+    # separate thread, so we use the Qt signal/slot mechanism because Qt guarantees that
+    # signals are executed in the main thread. These signals are only used from inside the
+    # class, so they are private.
+
+    _taskPreviewCalled = QtCore.Signal(np.ndarray)
+
+    _taskProgressCalled = QtCore.Signal()
+
+    _taskFinishedCalled = QtCore.Signal()
 
     def __init__(self, image: Image) -> None:
         """
@@ -23,8 +34,10 @@ class DeblurWindow(QtWidgets.QWidget):
         super().__init__()
 
         self._image = image
+        self._previewBuffer: np.ndarray = None
+        self._previewProgress: float = 0.0
 
-        self._previewBuffer = np.zeros((1, 1, 4), dtype=np.uint8)  # type: cv2.Mat
+        self._deblurTask: ProgressiveDeblurTask = None
 
         self.setWindowTitle(str(image.basename) + " - Phantom")
         self.setMinimumSize(800, 600)
@@ -43,7 +56,7 @@ class DeblurWindow(QtWidgets.QWidget):
         frame = QtWidgets.QFrame()
         frame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         frame.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        frame.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        frame.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Expanding)
         frame.setMinimumWidth(200)
         frame.setMinimumHeight(200)
 
@@ -54,48 +67,98 @@ class DeblurWindow(QtWidgets.QWidget):
         optionsLayout = QtWidgets.QFormLayout()
         frame.setLayout(optionsLayout)
 
-        # Deblur options: blur radius and iterations
+        # Deblur options: blur radius
         self._blurRadius = QtWidgets.QSpinBox()
         self._blurRadius.setMinimum(1)
         self._blurRadius.setMaximum(100)
         self._blurRadius.setValue(5)
         self._blurRadius.valueChanged.connect(self._onSettingsChanged)
 
+        # Deblur options: blur iterations
         self._blurIterations = QtWidgets.QSpinBox()
         self._blurIterations.setMinimum(1)
-        self._blurIterations.setMaximum(100)
+        self._blurIterations.setMaximum(5000)
         self._blurIterations.setValue(10)
         self._blurIterations.valueChanged.connect(self._onSettingsChanged)
 
+        # Deblur options: progress bar
+        self._progressBar = QtWidgets.QProgressBar()
+        self._progressBar.setRange(0, 100)
+        self._progressBar.setValue(0)
+
         optionsLayout.addRow(__("Blur radius"), self._blurRadius)
         optionsLayout.addRow(__("Iterations"), self._blurIterations)
+        optionsLayout.addRow(self._progressBar)
+
+        # self._simplePreviewLabel = QtWidgets.QLabel()
+        # self._simplePreviewLabel.setPixmap(self._image.get_pixmap())
+        # self._simplePreviewLabel.setAlignment(QtCore.Qt.AlignCenter)
+        # self._simplePreviewLabel.setScaledContents(True)
+        # self._simplePreviewLabel.setFixedSize(200, 200)
+        # optionsLayout.addRow(__("Preview"), self._simplePreviewLabel)
+
+        self._taskPreviewCalled.connect(self._onPreview)
+        self._taskProgressCalled.connect(self._onProgress)
+        self._taskFinishedCalled.connect(self._onFinished)
 
     @QtCore.Slot()
     def _onSettingsChanged(self) -> None:
         self._updatePreview()
 
     def _updatePreview(self) -> None:
-        rawImage = self._image.get_pixels_rgba()
-        srcW, _ = self._image.width, self._image.height
+        if self._deblurTask is not None:
+            self._deblurTask.cancel()
 
+        rawImage = self._image.get_pixels_rgb()
         rect = self._imagePreview.imageRect()
         dstW, dstH = rect.width(), rect.height()
-        previewShape = (dstH, dstW, 4)
-        if self._previewBuffer.shape != previewShape:
-            self._previewBuffer = np.zeros(previewShape, dtype=np.uint8)
-            # draw the image into the buffer
-            cv2.resize(rawImage, (dstW, dstH), self._previewBuffer, interpolation=cv2.INTER_AREA)
-
-        scale = dstW / srcW
-        sigmag = self._blurRadius.value() / scale
-        # round to next odd number (> 0)
-        sigmag = 1 if sigmag < 1 else int(sigmag) | 1
+        sigmag = self._blurRadius.value()
         iterations = self._blurIterations.value()
+        psf = PointSpreadFunction.gaussian(sigmag)
 
-        # result = DeblurFilter.lucy_richardson_deconv(self._previewBuffer, iterations, sigmag)
-        psf = DeblurFilter.gaussian_psf(sigmag, sigmag)
-        result = DeblurFilter.lucy_richardson_deconv_skcv2(self._previewBuffer, psf, iterations)
+        print(f"rawImage.shape = {rawImage.shape}")
+        print(f"dstW = {dstW}, dstH = {dstH}")
+        self._deblurTask = ProgressiveDeblurTask(
+            rawImage,
+            (dstW, dstH),
+            psf,
+            num_iter=iterations,
+            on_preview=self._onPreviewFromTask,
+            on_progress=self._onProgressFromTask,
+            on_finished=self._onFinishedFromTask,
+        )
+        self._deblurTask.start()
 
-        image = QtGui.QImage(result.data, result.shape[1], result.shape[0], QtGui.QImage.Format_RGBA8888)
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        if self._deblurTask is not None:
+            self._deblurTask.cancel()
+
+    def _onPreviewFromTask(self, preview: np.ndarray, current: int, total: int) -> None:
+        self._previewBuffer = preview
+        self._taskPreviewCalled.emit(preview)
+
+    def _onProgressFromTask(self, progress: float) -> None:
+        self._previewProgress = progress
+        self._taskProgressCalled.emit()
+
+    def _onFinishedFromTask(self) -> None:
+        self._taskFinishedCalled.emit()
+
+    @QtCore.Slot(np.ndarray)
+    def _onPreview(self, preview: np.ndarray) -> None:
+        w, h = preview.shape[1], preview.shape[0]
+        bytesPerLine = w * 3
+        image = QtGui.QImage(preview.data, w, h, bytesPerLine, QtGui.QImage.Format_RGB888)
         pixmap = QtGui.QPixmap.fromImage(image)
         self._imagePreview.setPixmap(pixmap)
+
+    @QtCore.Slot()
+    def _onProgress(self) -> None:
+        self._progressBar.setValue(self._previewProgress * 100)
+
+    @QtCore.Slot()
+    def _onFinished(self) -> None:
+        self._progressBar.setValue(100)
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        self._updatePreview()
