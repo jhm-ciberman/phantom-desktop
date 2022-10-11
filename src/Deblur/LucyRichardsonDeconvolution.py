@@ -289,6 +289,20 @@ class PointSpreadFunction:
         psf = psf / psf.max()
         return (psf * 255).astype(np.uint8)
 
+    @staticmethod
+    def from_file(path: str) -> np.ndarray:
+        """
+        Loads a PSF from an image file.
+
+        Args:
+            path: str The path to the image file
+
+        Returns:
+            The PSF
+        """
+        psf = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        return psf / psf.sum()
+
 
 class ProgressiveDeblurTask:
     """

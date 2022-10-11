@@ -1,4 +1,5 @@
 from PySide6 import QtGui, QtCore, QtWidgets
+import cv2
 from .SliderWithSpinBox import SliderWithSpinBox
 from ..Models import Image
 from ..Widgets.PixmapDisplay import PixmapDisplay
@@ -171,6 +172,73 @@ class DiskBlurPsfConfig(_PsfConfig):
         self._onPsfChanged()
 
 
+class CustomPsfConfig(_PsfConfig):
+    """
+    Contains the options for a custom psf. This option contains a button to open a file dialog to select a custom 
+    image to be used as a psf. It also shows the file path (with elipsis)
+    """
+    def __init__(self, parent: QtWidgets.QWidget = None):
+        super().__init__(parent)
+        text = __("Select a grayscale image to use as kernel for the deconvolution")
+        self._label = QtWidgets.QLabel(text)
+        self._label.setWordWrap(True)
+        self._label.setAlignment(QtCore.Qt.AlignLeft)
+
+        self._filePath = QtWidgets.QLineEdit()
+        self._filePath.setReadOnly(True)
+        self._filePath.setPlaceholderText(__("No file selected"))
+        self._filePath.setFrame(False)
+
+        self._selectFileButton = QtWidgets.QPushButton(__("Select file"))
+        self._selectFileButton.clicked.connect(self._onSelectFile)
+
+        self._scale = QtWidgets.QDoubleSpinBox()
+        self._scale.setRange(1, 300)
+        self._scale.setSingleStep(1)
+        self._scale.setValue(100.0)
+        self._scale.setEnabled(False)
+        self._scale.setSuffix("%")
+        self._scale.valueChanged.connect(self._onConfigChanged)
+
+        layout = QtWidgets.QFormLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addRow(self._label)
+        layout.addRow(self._filePath)
+        layout.addRow(self._selectFileButton)
+        spacer = QtWidgets.QSpacerItem(0, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        layout.addItem(spacer)
+        layout.addRow(__("Scale:"), self._scale)
+        self.setLayout(layout)
+
+        self._psf = np.array([[1]])  # default psf
+        self._unscaledPsf = self._psf
+
+    def title(self) -> str:
+        return __("Custom")
+
+    @QtCore.Slot()
+    def _onSelectFile(self) -> None:
+        title = __("Select Kernel")
+        filters = __("Image files") + " (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)"
+        filePath, _ = QtWidgets.QFileDialog.getOpenFileName(self, title, "", filters)
+        if filePath:
+            self._filePath.setText(filePath)
+            self._psf = PointSpreadFunction.from_file(filePath)
+            self._unscaledPsf = self._psf
+            self._scale.setEnabled(True)
+            self._onConfigChanged()
+
+    @QtCore.Slot()
+    def _onConfigChanged(self) -> None:
+        scale = self._scale.value() / 100.0
+        # resizes the psf to the desired scale
+        self._psf = cv2.resize(self._unscaledPsf, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        self._onPsfChanged()
+
+
+
+
+
 class _PropertiesPanel(QtWidgets.QFrame):
     """
     A properties panel for the DeblurWindow that shows:
@@ -197,6 +265,7 @@ class _PropertiesPanel(QtWidgets.QFrame):
             MotionBlurPsfConfig(self),
             BoxBlurPsfConfig(self),
             DiskBlurPsfConfig(self),
+            CustomPsfConfig(self),
         ]
 
         for option in options:
