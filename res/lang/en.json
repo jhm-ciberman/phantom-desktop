@@ -37,12 +37,57 @@
         "linear": "Linear (Default)",
         "nearest": "Nearest (Pixelated)"
     },
+    "@project_manager": {
+        "add_images": {
+            "message": "The selected folder contains {count} images. Do you want to add all of them to the project?",
+            "title": "Add images"
+        },
+        "adding_images": {
+            "subtitle": "Loaded {current} of {total} images",
+            "title": "Adding images to the project"
+        },
+        "exporting_images": {
+            "subtitle": "Exported {current} of {total} images",
+            "title": "Exporting images"
+        },
+        "loading_project": {
+            "subtitle": "Please wait...",
+            "title": "Loading project"
+        },
+        "many_images_found": {
+            "message": "The selected folder contains {count} images. Adding all of them to the project may take a long time and require a lot of memory. Do you want to continue?",
+            "title": "Large folder"
+        },
+        "no_images_found": {
+            "message": "The selected folder does not contain any images. Please select a different folder. The following image formats are supported: {formats}.",
+            "title": "No images found"
+        },
+        "no_images_to_export": {
+            "message": "The project does not contain any images. Please add some images to the project before exporting.",
+            "title": "No images to export"
+        },
+        "saving_project": {
+            "subtitle": "Please wait...",
+            "title": "Saving project"
+        },
+        "select_export_file_caption": "Select where to save the exported image",
+        "select_export_folder_caption": "Select a folder to export the images to",
+        "select_folder_caption": "Select a folder to add to the project",
+        "select_images_caption": "Select images to add to the project",
+        "select_project_open_caption": "Select a project to open",
+        "select_project_save_caption": "Select where to save the project",
+        "unsaved_changes": {
+            "message": "The project has unsaved changes. Do you want to save the project before continuing?",
+            "title": "Unsaved changes"
+        }
+    },
     "Add From Folder...": "Add From Folder...",
     "Add Images...": "Add Images...",
     "Add a name to this person": "Add a name to this person",
     "Add images from folder to current project": "Add images from folder to current project",
     "Add images to current project": "Add images to current project",
     "Add images to the project": "Add images to the project",
+    "Adding images to the project": "Adding images to the project",
     "Angle:": "Angle:",
     "Animated": "Animated",
     "Are they the same person or different people?": "Are they the same person or different people?",
@@ -69,6 +114,7 @@
     "Export Image...": "Export Image...",
     "Face detection": "Face detection",
     "Face {index} Confidence": "Face {index} Confidence",
+    "File Size": "File Size",
     "Filename": "Filename",
     "Folder": "Folder",
     "Found {count} images in the selected folder. Do you want to add them to the project?": "Found {count} images in the selected folder. Do you want to add them to the project?",
@@ -83,6 +129,7 @@
     "Image Height": "Image Height",
     "Image Width": "Image Width",
     "Image files": "Image files",
+    "Image {current} of {count}": "Image {current} of {count}",
     "Images": "Images",
     "Improve the results": "Improve the results",
     "Interpolation Mode": "Interpolation Mode",
@@ -91,6 +138,7 @@
     "Keep answering": "Keep answering",
     "Kernel size:": "Kernel size:",
     "Length:": "Length:",
+    "Loading project": "Loading project",
     "Merge faces wizard": "Merge faces wizard",
     "More iterations means better results, but takes longer.": "More iterations means better results, but takes longer.",
     "Motion blur": "Motion blur",
@@ -105,8 +153,9 @@
     "Output height": "Output height",
     "Output width": "Output width",
     "Phantom Project": "Phantom Project",
+    "Please wait...": "Please wait...",
     "Processing finished": "Processing finished",
-    "Processing images {value}/{total}": "Processing images {value}/{total}",
+    "Processing images {current}/{total}": "Processing images {current}/{total}",
     "Property": "Property",
     "Question {current} of {total}": "Question {current} of {total}",
     "Remove from group": "Remove from group",
@@ -137,6 +186,7 @@
     "Use as main face": "Use as main face",
     "Value": "Value",
     "Width:": "Width:",
+    "Working": "Working",
     "You cannot move the last face in a group.": "You cannot move the last face in a group.",
     "{count} faces detected.": "{count} faces detected.",
     "{count} image": "{count} image",

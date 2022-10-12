@@ -6,6 +6,7 @@ from ..Widgets.PropertiesTable import PropertiesTable
 from ..Models import Image
 import hashlib
 from src.l10n import __
+import os
 
 
 class InspectorPanel(QtWidgets.QWidget):
@@ -84,6 +85,16 @@ class InspectorPanel(QtWidgets.QWidget):
         """
         return __("Yes") if value else __("No")
 
+    def _humanizeBytes(self, bytes: int) -> str:
+        """
+        Converts a number of bytes to a human-readable string.
+        """
+        for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB"]:
+            if abs(bytes) < 1024.0:
+                return "%3.1f %s" % (bytes, unit)
+            bytes /= 1024.0
+        return "%.1f %s" % (bytes, "YB")
+
     def _refreshInfo(self):
         """
         Refreshes the information displayed in the inspector panel.
@@ -124,17 +135,19 @@ class InspectorPanel(QtWidgets.QWidget):
     def _inspectImage(self, image: Image):
         self._pixmapDisplay.setPixmap(image.get_pixmap())
 
-        pil_image = PILImage.open(image.full_path)
+        pilImage = PILImage.open(image.full_path)
+        fileSize = os.path.getsize(image.full_path)
 
         self._table.addHeader(__("Basic Information"))
         self._table.addRow(__("Filename"), image.basename)
         self._table.addRow(__("Folder"), image.folder_path)
-        self._table.addRow(__("Image Width"), pil_image.width)
-        self._table.addRow(__("Image Height"), pil_image.height)
-        self._table.addRow(__("Image Format"), pil_image.format_description)
-        self._table.addRow(__("Color Channels"), pil_image.mode)
-        self._table.addRow(__("Animated"), self._bool(getattr(pil_image, "is_animated", False)))
-        frames = getattr(pil_image, "n_frames", 1)
+        self._table.addRow(__("Image Width"), pilImage.width)
+        self._table.addRow(__("Image Height"), pilImage.height)
+        self._table.addRow(__("File Size"), self._humanizeBytes(fileSize))
+        self._table.addRow(__("Image Format"), pilImage.format_description)
+        self._table.addRow(__("Color Channels"), pilImage.mode)
+        self._table.addRow(__("Animated"), self._bool(getattr(pilImage, "is_animated", False)))
+        frames = getattr(pilImage, "n_frames", 1)
         if frames > 1:
             self._table.addRow(__("Number of Frames"), frames)
 
@@ -144,7 +157,7 @@ class InspectorPanel(QtWidgets.QWidget):
             self._table.addRow(hash_type.upper(), hash)
 
         self._table.addHeader(__("EXIF Data"))
-        exif = self._getExif(pil_image)
+        exif = self._getExif(pilImage)
         if (len(exif) == 0):
             self._table.addInfo(__("No EXIF data available."))
         else:

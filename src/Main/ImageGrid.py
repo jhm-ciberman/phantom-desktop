@@ -81,6 +81,8 @@ class ImageGrid(GridBase):
         """
         Updates the grid when an image is processed.
         """
+        if image not in self._images:
+            return
         index = self._images.index(image)
         self.update(self.model().index(index, 0))
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Callable
 from PySide6 import QtCore
 from .ImageProcessorService import ImageProcessorService
 from .Models import Group, Image, Project
@@ -58,11 +59,11 @@ class Workspace(QtCore.QObject):
     isDirtyChanged = QtCore.Signal(bool)
     """Signal emitted when the current project dirty state changes."""
 
-    imageAdded = QtCore.Signal(Image)
-    """Signal emitted when an image is added to the current project."""
+    imagesAdded = QtCore.Signal(list)  # List[Image]
+    """Signal emitted when one or more images are added to the project."""
 
-    imageRemoved = QtCore.Signal(Image)
-    """Signal emitted when an image is removed from the current project."""
+    imagesRemoved = QtCore.Signal(list)  # List[Image]
+    """Signal emitted when one or more images are removed from the project."""
 
     imageProcessed = QtCore.Signal(Image)
     """Signal emited when an image is processed successfully by the ImageProcessor."""
@@ -184,24 +185,48 @@ class Workspace(QtCore.QObject):
         self._project.save(path)
         self.setDirty(False)
 
-    def addImage(self, image_or_path: Image | str) -> Image:
+    def addImage(self, imageOrPath: Image | str) -> Image:
         """
         Adds an image to the current project.
 
         Args:
-            image_or_path (Image | str): The image to add or the path of the image to add.
+            imageOrPath (Image | str): The image to add or the path of the image to add.
         """
-        if isinstance(image_or_path, str):
-            image = Image(image_or_path)
+        if isinstance(imageOrPath, str):
+            image = Image(imageOrPath)
 
         self._project.add_image(image)
 
-        self.imageAdded.emit(image)
+        self.imagesAdded.emit([image])
         self._addImageToBatch(image)
         self.setDirty(True)
 
         self._imageProcessorService.process(image, self._onImageSuccess, self._onImageError)
         return image
+
+    def addImages(self, paths: list[str], onImageLoaded: Callable[[Image, int, int], None] = None):
+        """
+        Adds a list of images to the current project.
+
+        Args:
+            paths (list[str]): The paths of the images to add.
+            onImageLoaded (Callable[[Image, int, int], None]): A callback that is called when an image
+                is loaded. The callback receives the image, the index of the image in the list and the
+                total number of images.
+        """
+        onImageLoaded = onImageLoaded or (lambda image, index, total: None)
+        images = []
+        count = len(paths)
+        for index, path in enumerate(paths):
+            image = Image(path)
+            self._project.add_image(image)
+            images.append(image)
+            onImageLoaded(image, index, count)
+            self._addImageToBatch(image)
+            self._imageProcessorService.process(image, self._onImageSuccess, self._onImageError)
+
+        self.imagesAdded.emit(images)
+        self.setDirty(True)
 
     def removeImage(self, image: Image):
         """
@@ -209,7 +234,7 @@ class Workspace(QtCore.QObject):
         """
         self._project.remove_image(image)
 
-        self.imageRemoved.emit(image)
+        self.imagesRemoved.emit([image])
         self._removeImageFromBatch(image)
         self.setDirty(True)
 

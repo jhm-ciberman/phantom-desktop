@@ -174,8 +174,8 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._workspace = Application.workspace()
         self._workspace.batchProgressChanged.connect(self._onBatchProgressChanged)
-        self._workspace.imageAdded.connect(self._onImageAdded)
-        self._workspace.imageRemoved.connect(self._onImageRemoved)
+        self._workspace.imagesAdded.connect(self._onImagesAdded)
+        self._workspace.imagesRemoved.connect(self._onImagesRemoved)
         self._workspace.projectChanged.connect(self._onProjectChanged)
         self._workspace.isDirtyChanged.connect(self._onIsDirtyChanged)
 
@@ -183,18 +183,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
 
-        if self._workspace.isDirty():
-            reply = QtWidgets.QMessageBox.question(
-                self, __("Save Project"), __("Do you want to save the project before closing? Unsaved changes will be lost."),
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No | QtWidgets.QMessageBox.Cancel)
+        if not self._projectManager.closeProject(self):
+            event.ignore()
 
-            if reply == QtWidgets.QMessageBox.Yes:
-                self._onSaveProjectPressed()
-            elif reply == QtWidgets.QMessageBox.Cancel:
-                event.ignore()
-                return
-
-        self._workspace.closeProject()
         super().closeEvent(event)
 
     @QtCore.Slot(bool)
@@ -270,14 +261,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self._childWindows.append(window)
         window.showMaximized()
 
-    @QtCore.Slot()
-    def _onImageAdded(self, image: Image) -> None:
-        self._imageGrid.addImage(image)
+    @QtCore.Slot(list)
+    def _onImagesAdded(self, images: list[Image]) -> None:
+        for image in images:
+            self._imageGrid.addImage(image)
         self._onNumberOfImagesChanged()
 
-    @QtCore.Slot()
-    def _onImageRemoved(self, image: Image) -> None:
-        self._imageGrid.removeImage(image)
+    @QtCore.Slot(list)
+    def _onImagesRemoved(self, images: list[Image]) -> None:
+        for image in images:
+            self._imageGrid.removeImage(image)
         self._onNumberOfImagesChanged()
 
     @QtCore.Slot()
@@ -304,7 +297,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._progressBar.setVisible(False)
             self.statusBar().showMessage(__("Processing finished"))
         else:
-            self.statusBar().showMessage(__("Processing images {value}/{total}", value=batch.value, total=batch.total))
+            self.statusBar().showMessage(__("Processing images {current}/{total}", current=batch.value, total=batch.total))
             self._progressBar.setVisible(True)
 
     @QtCore.Slot()

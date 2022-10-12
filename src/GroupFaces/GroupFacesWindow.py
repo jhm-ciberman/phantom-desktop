@@ -22,8 +22,8 @@ class GroupFacesWindow(QtWidgets.QWidget):
         super().__init__()
 
         self._workspace = Application.workspace()
-        self._workspace.imageAdded.connect(self._onImageAdded)
-        self._workspace.imageRemoved.connect(self._onImageRemoved)
+        self._workspace.imagesAdded.connect(self._onImagesAdded)
+        self._workspace.imagesRemoved.connect(self._onImageRemoved)
 
         self._selectedGroup = None  # type: Group
 
@@ -110,27 +110,39 @@ class GroupFacesWindow(QtWidgets.QWidget):
         self._refreshGroups()
         self._mergingWizard.recalculateMergeOpportunities()
 
-    @QtCore.Slot(Image)
-    def _onImageAdded(self, image: Image) -> None:
+    def _collectFaces(self, images: list[Image]) -> list[Face]:
         """
-        Called when an image is added to the project.
+        Collect all the faces from the specified images.
         """
-        if len(image.faces) == 0:
+        faces = []
+        for image in images:
+            faces.extend(image.faces)
+        return faces
+
+    @QtCore.Slot(list)
+    def _onImagesAdded(self, images: list[Image]) -> None:
+        """
+        Called when one or more images are added to the project.
+        """
+        faces = self._collectFaces(images)
+        if len(faces) == 0:
             return
 
         # We will try to find a group for the new image (or a new group if no group is found)
         project = self._workspace.project()
-        for face in image.faces:
+        for face in faces:
             project.add_face_to_best_group(face)
         self._workspace.setDirty()
         self._refreshGroups()
 
-    def _onImageRemoved(self, image: Image) -> None:
+    @QtCore.Slot(list)
+    def _onImageRemoved(self, images: list[Image]) -> None:
         """
-        Called when an image is removed from the project.
+        Called when one or more images are removed from the project.
         """
+        faces = self._collectFaces(images)
         project = self._workspace.project()
-        for face in image.faces:
+        for face in faces:
             project.remove_face_from_groups(face)
         self._workspace.setDirty()
         self._refreshGroups()
