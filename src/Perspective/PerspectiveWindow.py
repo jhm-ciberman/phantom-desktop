@@ -70,11 +70,11 @@ class PerspectiveWindow(QtWidgets.QWidget):
 
         self._interpolationMode = QtWidgets.QComboBox()
         options = [
-            (__("Nearest (Pixelated)"), cv2.INTER_NEAREST),
-            (__("Linear (Default)"), cv2.INTER_LINEAR),  # default
-            (__("Area"), cv2.INTER_AREA),
-            (__("Cubic"), cv2.INTER_CUBIC),
-            (__("Lanczos4"), cv2.INTER_LANCZOS4)
+            (__("@interpolation_modes.nearest"), cv2.INTER_NEAREST),
+            (__("@interpolation_modes.linear"), cv2.INTER_LINEAR),  # default
+            (__("@interpolation_modes.area"), cv2.INTER_AREA),
+            (__("@interpolation_modes.cubic"), cv2.INTER_CUBIC),
+            (__("@interpolation_modes.lanczos4"), cv2.INTER_LANCZOS4)
         ]
         for name, value in options:
             self._interpolationMode.addItem(name, value)
@@ -97,25 +97,25 @@ class PerspectiveWindow(QtWidgets.QWidget):
         rotationLayout.addWidget(self._rotateCW)
 
         aspectRatios = [
-            (__("Custom"), None),
-            (__("Original"), image.width / image.height),
-            (__("Square (1:1)"), 1),
-            (__("4:3"), 4 / 3),
-            (__("16:9"), 16 / 9),
-            (__("16:10"), 16 / 10),
-            (__("21:9"), 21 / 9),
-            (__("2:1"), 2 / 1),
-            (__("3:2"), 3 / 2),
-            (__("A4 (210mm x 297mm)"), 210 / 297),
-            (__("Letter (8.5in x 11in)"), 8.5 / 11),
-            (__("Business Card (3.5in x 2in)"), 3.5 / 2),
-            (__("Credit Card (3.375in x 2.125in)"), 3.375 / 2.125),
-            (__("Legal (8.5in x 14in)"), 8.5 / 14),
-            (__("Tabloid (11in x 17in)"), 11 / 17),
-            (__("Ledger (17in x 11in)"), 17 / 11),
-            (__("Executive (7.25in x 10.5in)"), 7.25 / 10.5),
-            (__("Postcard (4in x 6in)"), 4 / 6),
-            (__("Double Postcard (5in x 4in)"), 5 / 4),
+            (__("@aspect_ratios.custom"), None),
+            (__("@aspect_ratios.original"), image.width / image.height),
+            (__("@aspect_ratios.square"), 1),
+            (__("@aspect_ratios.4_3"), 4 / 3),
+            (__("@aspect_ratios.16_9"), 16 / 9),
+            (__("@aspect_ratios.16_10"), 16 / 10),
+            (__("@aspect_ratios.21_9"), 21 / 9),
+            (__("@aspect_ratios.2_1"), 2 / 1),
+            (__("@aspect_ratios.3_2"), 3 / 2),
+            (__("@aspect_ratios.a4"), 210 / 297),
+            (__("@aspect_ratios.letter"), 8.5 / 11),
+            (__("@aspect_ratios.business_card"), 3.5 / 2),
+            (__("@aspect_ratios.credit_card"), 3.375 / 2.125),
+            (__("@aspect_ratios.legal"), 8.5 / 14),
+            (__("@aspect_ratios.tabloid"), 11 / 17),
+            (__("@aspect_ratios.ledger"), 17 / 11),
+            (__("@aspect_ratios.executive"), 7.25 / 10.5),
+            (__("@aspect_ratios.postcard"), 4 / 6),
+            (__("@aspect_ratios.double_postcard"), 5 / 4),
         ]
 
         self._aspectRatio = QtWidgets.QComboBox()
@@ -202,6 +202,9 @@ class PerspectiveWindow(QtWidgets.QWidget):
 
     def _recomputePoints(self) -> None:
         points = [(p.x(), p.y()) for p in self._editor.points()]
+        if len(points) < 4:
+            return
+
         if not self._isClockwise(points):
             points = list(reversed(points))
 

@@ -1,4 +1,5 @@
 from PySide6 import QtGui, QtCore, QtWidgets
+from .ProjectManager import ProjectManager
 from ..Workspace import BatchProgress
 from ..Application import Application
 from .InspectorPanel import InspectorPanel
@@ -8,8 +9,6 @@ from ..Models import Image
 from ..Perspective.PerspectiveWindow import PerspectiveWindow
 from ..Deblur.DeblurWindow import DeblurWindow
 from ..GroupFaces.GroupFacesWindow import GroupFacesWindow
-import glob
-import os
 from src.l10n import __
 
 
@@ -36,7 +35,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._progressBar.setValue(0)
         self._progressBar.setVisible(False)
         self._progressBar.setTextVisible(False)
-        # self._progressBar.setGeometry(30, 40, 200, 25)
         self.statusBar().addPermanentWidget(self._progressBar)
 
         mainWidget = QtWidgets.QWidget()
@@ -45,17 +43,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self._layout.setSpacing(0)
 
         self._addImagesAction = QtGui.QAction(
-            QtGui.QIcon("res/img/image_add.png"), __("Add Images"), self)
+            QtGui.QIcon("res/img/image_add.png"), __("Add Images..."), self)
         self._addImagesAction.setToolTip(__("Add images to current project"))
         self._addImagesAction.triggered.connect(self._onAddImagesPressed)
 
         self._addFolderAction = QtGui.QAction(
-            QtGui.QIcon("res/img/folder_add.png"), __("Add From Folder"), self)
+            QtGui.QIcon("res/img/folder_add.png"), __("Add From Folder..."), self)
         self._addFolderAction.setToolTip(__("Add images from folder to current project"))
         self._addFolderAction.triggered.connect(self._onAddFolderPressed)
 
         self._exportImageAction = QtGui.QAction(
-            QtGui.QIcon("res/img/image_save.png"), __("Export Image"), self)
+            QtGui.QIcon("res/img/image_save.png"), __("Export Image..."), self)
         self._exportImageAction.setEnabled(False)
         self._exportImageAction.triggered.connect(self._onExportImagePressed)
 
@@ -181,8 +179,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._workspace.projectChanged.connect(self._onProjectChanged)
         self._workspace.isDirtyChanged.connect(self._onIsDirtyChanged)
 
-        # for image_path in self._getTestImagePaths():
-        #     self._addImage(image_path)
+        self._projectManager = ProjectManager()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
 
@@ -209,23 +206,6 @@ class MainWindow(QtWidgets.QMainWindow):
         for a in self._sizePresetActions:
             a.setChecked(a == action)
 
-    def _getTestImagePaths(self):
-        max_image_count = 2000
-        image_paths = [
-            "test_images/icon.png",
-            "test_images/billboard.jpg",
-            "test_images/cookies-800x400.jpg",
-            "test_images/lena.png",
-            "test_images/lena_blur_3.png",
-            "test_images/lena_blur_10.png",
-            "test_images/endgame.jpg",
-        ]
-        image_paths += glob.glob("test_images/exif/**/*.jpg", recursive=True)
-        image_paths += glob.glob("test_images/exif/**/*.tiff", recursive=True)
-        image_paths += glob.glob("test_images/celebrities/**/*.jpg", recursive=True)
-
-        return image_paths[:max_image_count]
-
     @QtCore.Slot()
     def _onImageGridSelectionChanged(self) -> None:
         selected_images = self._imageGrid.selectedImages()
@@ -244,58 +224,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def _onAddImagesPressed(self) -> None:
-        file_paths, _filter = QtWidgets.QFileDialog.getOpenFileNames(
-            self, __("Select Images to the project"), "", __("Images") + " (*.jpg *.jpeg *.png *.tiff *.tif *.bmp)")
-
-        for file_path in file_paths:
-            self._addImage(file_path)
+        self._projectManager.addImages(self)
 
     @QtCore.Slot()
     def _onAddFolderPressed(self) -> None:
-        folder_path = QtWidgets.QFileDialog.getExistingDirectory(
-            self, __("Select a folder to add to the project"), "", QtWidgets.QFileDialog.ShowDirsOnly)
-
-        if folder_path:
-            extensions = ["png", "jpg", "jpeg", "tiff", "tif", "bmp"]
-            glob_base = folder_path + "/**/*."
-            file_paths = []
-            for ext in extensions:
-                file_paths += glob.glob(glob_base + ext, recursive=True)
-
-            # Show a dialog asking the user to confirm the files to add.
-            count = len(file_paths)
-            if count == 0:
-                QtWidgets.QMessageBox.warning(
-                    self, __("No images found"),
-                    __("No images found in the selected folder. Please select a folder with images."))
-                return
-            else:
-                result = QtWidgets.QMessageBox.question(
-                    self, __("Add images to the project"),
-                    __("Found {count} images in the selected folder. Do you want to add them to the project?", count=count),
-                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-
-                if result == QtWidgets.QMessageBox.No:
-                    return
-
-            for file_path in file_paths:
-                self._addImage(file_path)
+        self._projectManager.addFolder(self)
 
     @QtCore.Slot()
     def _onExportImagePressed(self) -> None:
         selected_images = self._imageGrid.selectedImages()
-        if len(selected_images) == 1:
-            file_path, _filter = QtWidgets.QFileDialog.getSaveFileName(
-                self, __("Export Image"), selected_images[0].full_path, __("Images") + " (*.jpg *.jpeg *.png)")
-            if file_path:
-                selected_images[0].save(file_path)
-        else:
-            folder_path = QtWidgets.QFileDialog.getExistingDirectory(
-                self, __("Select a folder to export images to"), "", QtWidgets.QFileDialog.ShowDirsOnly)
-
-            if folder_path:
-                for image in selected_images:
-                    image.save(os.path.join(folder_path, image.name))
+        self._projectManager.exportImages(self, selected_images)
 
     @QtCore.Slot()
     def _onCorrectPerspectivePressed(self) -> None:
@@ -331,16 +269,6 @@ class MainWindow(QtWidgets.QMainWindow):
         window = GroupFacesWindow()
         self._childWindows.append(window)
         window.showMaximized()
-
-    def _addImage(self, image_path: str) -> None:
-        image = None
-        try:
-            image = Image(image_path)
-        except Exception as e:
-            print(f"Failed to load image {image_path}: {e}")
-
-        if image:
-            self._workspace.addImage(image)
 
     @QtCore.Slot()
     def _onImageAdded(self, image: Image) -> None:
@@ -381,46 +309,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def _onOpenProjectPressed(self) -> None:
-        file_path, _filter = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Select a project file", "", "Phantom Project (*.phantom)")
-
-        if file_path:
-            self._workspace.openProject(file_path)
+        self._projectManager.openProject(self)
 
     @QtCore.Slot()
     def _onNewProjectPressed(self) -> None:
-        if self._workspace.isDirty():
-            result = QtWidgets.QMessageBox.question(
-                self, __("New project"), __("The current project has unsaved changes. Do you want to continue?"),
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
-
-            if result == QtWidgets.QMessageBox.No:
-                return
-
-        self._workspace.newProject()
+        self._projectManager.newProject(self)
 
     @QtCore.Slot()
     def _onSaveProjectPressed(self) -> None:
-        if self._workspace.project().is_empty:
-            return
-
-        if self._workspace.project().file_path:
-            self._workspace.saveProject()
-        else:
-            self._onSaveProjectAsPressed()
+        self._projectManager.saveProject(self)
 
     @QtCore.Slot()
     def _onSaveProjectAsPressed(self) -> None:
-        if self._workspace.project().is_empty:
-            return
-        current_path = self._workspace.project().file_path
-        file_dir = os.path.dirname(current_path) if current_path else ""
-
-        file_path, _filter = QtWidgets.QFileDialog.getSaveFileName(
-            self, __("Save project"), file_dir, __("Phantom Project") + " (*.phantom)")
-
-        if file_path:
-            self._workspace.saveProject(file_path)
+        self._projectManager.saveProjectAs(self)
 
     @QtCore.Slot(bool)
     def _onIsDirtyChanged(self, is_dirty: bool) -> None:

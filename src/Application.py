@@ -41,7 +41,7 @@ class Application(QtWidgets.QApplication):
         self._icon = QtGui.QIcon("res/img/icon_128.png")
         self.setWindowIcon(self._icon)
 
-        # self.setStyle(QtWidgets.QStyleFactory.create("Fusion"))
+        self.setStyle(QtWidgets.QStyleFactory.create("Fusion"))
 
         p = self.palette()
         p.setColor(QtGui.QPalette.Window, QtCore.Qt.white)

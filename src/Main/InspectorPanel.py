@@ -1,4 +1,4 @@
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtCore
 from ..Widgets.PixmapDisplay import PixmapDisplay
 from PIL import Image as PILImage
 from PIL.ExifTags import TAGS
@@ -20,18 +20,35 @@ class InspectorPanel(QtWidgets.QWidget):
         """
         super().__init__()
 
-        self._layout = QtWidgets.QVBoxLayout()
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(self._layout)
-        self.setContentsMargins(0, 0, 0, 0)
+        splitter = QtWidgets.QSplitter()
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.setOrientation(QtCore.Qt.Vertical)
 
         self._table = PropertiesTable()
-        self._layout.addWidget(self._table)
 
         self._pixmapDisplay = PixmapDisplay()
         self._pixmapDisplay.setMinimumHeight(200)
         self.setMinimumWidth(200)
-        self._layout.addWidget(self._pixmapDisplay)
+
+        previewFrame = QtWidgets.QFrame()
+        previewFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
+        previewFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        previewFrame.setContentsMargins(0, 0, 0, 0)
+        previewFrame.setStyleSheet("background-color: #e0e0e0;")
+        previewFrame.setLayout(QtWidgets.QVBoxLayout())
+        previewFrame.layout().setContentsMargins(0, 0, 0, 0)
+        previewFrame.layout().addWidget(self._pixmapDisplay)
+
+        splitter.addWidget(previewFrame)
+        splitter.addWidget(self._table)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(splitter)
+
+        self.setLayout(layout)
 
         self._selectedImages = []
 
@@ -84,6 +101,11 @@ class InspectorPanel(QtWidgets.QWidget):
             self._pixmapDisplay.setPixmap(None)
             label = __("Selected {count} images", count=selected_count)
             self._table.addHeader(label)
+            # print first 10 images
+            for i in range(min(10, selected_count)):
+                self._table.addInfo(self._selectedImages[i].basename)
+            if selected_count > 10:
+                self._table.addInfo(__("And {count} more...", count=selected_count - 10))
 
     def _getHashes(self, image: Image) -> dict[str, str]:
         """

@@ -34,13 +34,13 @@ class GridBase(QtWidgets.QListWidget):
             self.pixmap = pixmap
             self.text = text
 
-    smallPreset = SizePreset(__("Small"), QtCore.QSize(100, 100), QtCore.QSize(80, 80))
+    smallPreset = SizePreset(__("@grid_presets.small"), QtCore.QSize(100, 100), QtCore.QSize(80, 80))
 
-    mediumPreset = SizePreset(__("Medium"), QtCore.QSize(150, 150), QtCore.QSize(120, 120))
+    mediumPreset = SizePreset(__("@grid_presets.medium"), QtCore.QSize(150, 150), QtCore.QSize(120, 120))
 
-    bigPreset = SizePreset(__("Big"), QtCore.QSize(200, 200), QtCore.QSize(160, 160))
+    largePreset = SizePreset(__("@grid_presets.large"), QtCore.QSize(200, 200), QtCore.QSize(160, 160))
 
-    hugePreset = SizePreset(__("Huge"), QtCore.QSize(250, 250), QtCore.QSize(200, 200))
+    hugePreset = SizePreset(__("@grid_presets.huge"), QtCore.QSize(250, 250), QtCore.QSize(200, 200))
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """
@@ -155,7 +155,7 @@ class GridBase(QtWidgets.QListWidget):
         Returns:
             list[SizePreset]: The available size presets.
         """
-        return [GridBase.smallPreset, GridBase.mediumPreset, GridBase.bigPreset, GridBase.hugePreset]
+        return [GridBase.smallPreset, GridBase.mediumPreset, GridBase.largePreset, GridBase.hugePreset]
 
     def sizePreset(self) -> SizePreset:
         """

@@ -1,4 +1,5 @@
-from PySide6 import QtWidgets
+from typing import Any
+from PySide6 import QtWidgets, QtGui, QtCore
 from src.l10n import __
 
 
@@ -28,6 +29,40 @@ class _Header(QtWidgets.QWidget):
         self._layout.addWidget(self._line)
 
 
+class _ValueCell(QtWidgets.QTableWidgetItem):
+    """
+    A cell that shows a value.
+    """
+    def __init__(self, value: Any):
+        """
+        Initializes the ValueCell class.
+        """
+        self._originalValue = value
+        value = str(value) if value is not None else "—"  # em dash
+        super().__init__(value)
+        self.setToolTip(value)
+
+    def originalValue(self) -> str:
+        """
+        Gets the original value.
+        """
+        return self._originalValue
+
+
+class _KeyCell(QtWidgets.QTableWidgetItem):
+    """
+    A cell that shows a key.
+    """
+    pass
+
+
+class _InfoCell(QtWidgets.QTableWidgetItem):
+    """
+    A cell that shows an info text.
+    """
+    pass
+
+
 class PropertiesTable(QtWidgets.QTableWidget):
     """
     A widget that shows a table with "Property" and "Value" columns. It can display headers
@@ -48,10 +83,54 @@ class PropertiesTable(QtWidgets.QTableWidget):
         self.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
         self.verticalHeader().setDefaultSectionSize(20)
         self.verticalHeader().setVisible(False)
+        self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         self.setShowGrid(False)
         self.setContentsMargins(5, 5, 5, 5)
+
+        self._menu = QtWidgets.QMenu()
+        copyAction = self._menu.addAction(__("Copy"))
+        copyAction.triggered.connect(self.copy)
+
+    def contextMenuEvent(self, e: QtGui.QContextMenuEvent) -> None:
+        """
+        Handles the context menu event.
+
+        Args:
+            e (QContextMenuEvent): The event.
+        """
+        if len(self.selectedItems()) > 0:
+            self._menu.exec_(e.globalPos())
+
+    @QtCore.Slot()
+    def copy(self):
+        """
+        Copies the selected text to the clipboard.
+        """
+        selected = self.selectedItems()
+        if len(selected) == 0:
+            return
+        if len(selected) == 2:  # 2 because we have 2 columns
+            # if only one item is selected, just care about the value, not the key
+            text = selected[1].text()
+        else:
+            # if multiple items are selected, copy the key and value of each item
+            # in a tab-separated format. Example:
+            # Key1    Value1\n
+            # Key2    Value2\n
+            # ...
+            text = ""
+            for item in selected:
+                if item is None:
+                    continue
+                if isinstance(item, _KeyCell):
+                    text += item.text() + "\t"
+                elif isinstance(item, _ValueCell):
+                    text += item.text() + "\n"
+                elif isinstance(item, _InfoCell):
+                    text += item.text() + "\n"
+            text = text[:-1]  # remove the last newline
+        QtWidgets.QApplication.clipboard().setText(text)
 
     def addInfo(self, text: str):
         """
@@ -64,7 +143,7 @@ class PropertiesTable(QtWidgets.QTableWidget):
         row = self.rowCount()
         self.insertRow(row)
         self.setSpan(row, 0, 1, 2)
-        self.setItem(row, 0, QtWidgets.QTableWidgetItem(text))
+        self.setItem(row, 0, _InfoCell(text))
 
     def addRow(self, key: str, value: str):
         """
@@ -76,12 +155,8 @@ class PropertiesTable(QtWidgets.QTableWidget):
         """
         row = self.rowCount()
         self.insertRow(row)
-        value = str(value) if value is not None else "—"  # em dash
-        keyItem = QtWidgets.QTableWidgetItem(key)
-        valueItem = QtWidgets.QTableWidgetItem(value)
-        valueItem.setToolTip(value)
-        self.setItem(row, 0, keyItem)
-        self.setItem(row, 1, valueItem)
+        self.setItem(row, 0, _KeyCell(key))
+        self.setItem(row, 1, _ValueCell(value))
 
     def addHeader(self, text: str):
         """

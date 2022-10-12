@@ -184,10 +184,16 @@ class Workspace(QtCore.QObject):
         self._project.save(path)
         self.setDirty(False)
 
-    def addImage(self, image: Image):
+    def addImage(self, image_or_path: Image | str) -> Image:
         """
         Adds an image to the current project.
+
+        Args:
+            image_or_path (Image | str): The image to add or the path of the image to add.
         """
+        if isinstance(image_or_path, str):
+            image = Image(image_or_path)
+
         self._project.add_image(image)
 
         self.imageAdded.emit(image)
@@ -195,6 +201,7 @@ class Workspace(QtCore.QObject):
         self.setDirty(True)
 
         self._imageProcessorService.process(image, self._onImageSuccess, self._onImageError)
+        return image
 
     def removeImage(self, image: Image):
         """
