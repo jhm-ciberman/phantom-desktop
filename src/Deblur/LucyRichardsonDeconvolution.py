@@ -175,28 +175,13 @@ class PointSpreadFunction:
         return pfs / np.sum(pfs)
 
     @staticmethod
-    def box_blur(size: int) -> np.ndarray:
-        """
-        Creates a box blur point spread function.
-
-        Args:
-            size: int The size of the box blur
-
-        Returns:
-            The PSF
-        """
-        if size < 1:
-            raise ValueError('Size must be greater than 0')
-
-        return np.ones((size, size)) / (size * size)
-
-    @staticmethod
-    def disk_blur(size: int) -> np.ndarray:
+    def disk_blur(size: float, *, msaa: int = 4) -> np.ndarray:
         """
         Creates a disk blur point spread function.
 
         Args:
             size: int The size of the disk blur. This is the diameter of the disk.
+            msaa: int The scale to use for anti-aliasing (Multi-Sample Anti-Aliasing). Default to 4X.
 
         Returns:
             The PSF
@@ -204,12 +189,36 @@ class PointSpreadFunction:
         if size < 1:
             raise ValueError('Size must be greater than 0')
 
+        if msaa < 1:
+            raise ValueError('MSAA must be greater than 0')
+
+        size = int(size * msaa)
         psf = np.zeros((size, size))
         center = size // 2
         for i in range(size):
             for j in range(size):
                 if np.sqrt((i - center) ** 2 + (j - center) ** 2) <= center:
                     psf[i, j] = 1
+
+        if msaa > 1:
+            psf = cv2.resize(psf, (size // msaa, size // msaa), interpolation=cv2.INTER_AREA)
+        return psf / psf.sum()
+
+    @staticmethod
+    def box_blur(size: int) -> np.ndarray:
+        """
+        Creates a box blur point spread function.
+
+        Args:
+            size: int The size of the box blur.
+
+        Returns:
+            The PSF
+        """
+        if size < 1:
+            raise ValueError('Size must be greater than 0')
+
+        psf = np.ones((size, size))
         return psf / psf.sum()
 
     @staticmethod
@@ -348,7 +357,7 @@ class ProgressiveDeblurTask:
         self._num_iter = num_iter
 
         if cycles is None:
-            skip_sizes = 5  # skip the first 5 sizes because they are too small to be useful
+            skip_sizes = 6  # skip the first 6 sizes because they are too small to be useful
             cycles = int(np.log2(min(preview_size))) - skip_sizes
             cycles = max(1, cycles)
 

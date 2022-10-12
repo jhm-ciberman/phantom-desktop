@@ -47,7 +47,7 @@ class GaussianPsfConfig(_PsfConfig):
     def __init__(self, parent: QtWidgets.QWidget = None):
         super().__init__(parent)
         self._sigma = SliderWithSpinBox(QtCore.Qt.Horizontal)
-        self._sigma.setRange(0.5, 100)
+        self._sigma.setRange(0.5, 50)
         self._sigma.setSingleStep(0.1)
         self._sigma.setValue(3.0)
         self._sigma.setLabelText(__("Sigma"))
@@ -140,7 +140,7 @@ class BoxBlurPsfConfig(_PsfConfig):
 
     @QtCore.Slot()
     def _onConfigChanged(self) -> None:
-        self._psf = PointSpreadFunction.box_blur(self._size.value())
+        self._psf = PointSpreadFunction.box_blur(int(self._size.value()))
         self._onPsfChanged()
 
 
@@ -151,10 +151,11 @@ class DiskBlurPsfConfig(_PsfConfig):
     def __init__(self, parent: QtWidgets.QWidget = None):
         super().__init__(parent)
 
-        self._size = QtWidgets.QSpinBox()
-        self._size.setRange(1, 100)
-        self._size.setSingleStep(1)
-        self._size.setValue(10)
+        self._size = SliderWithSpinBox(QtCore.Qt.Horizontal)
+        self._size.setRange(0.5, 50)
+        self._size.setSingleStep(0.1)
+        self._size.setValue(3.0)
+        self._size.setLabelText(__("Radius"))
         self._size.valueChanged.connect(self._onConfigChanged)
 
         layout = QtWidgets.QFormLayout()
@@ -174,7 +175,7 @@ class DiskBlurPsfConfig(_PsfConfig):
 
 class CustomPsfConfig(_PsfConfig):
     """
-    Contains the options for a custom psf. This option contains a button to open a file dialog to select a custom 
+    Contains the options for a custom psf. This option contains a button to open a file dialog to select a custom
     image to be used as a psf. It also shows the file path (with elipsis)
     """
     def __init__(self, parent: QtWidgets.QWidget = None):
@@ -236,9 +237,6 @@ class CustomPsfConfig(_PsfConfig):
         self._onPsfChanged()
 
 
-
-
-
 class _PropertiesPanel(QtWidgets.QFrame):
     """
     A properties panel for the DeblurWindow that shows:
@@ -297,6 +295,9 @@ class _PropertiesPanel(QtWidgets.QFrame):
         self._progressBar.setFixedHeight(20)
         self._progressBar.setTextVisible(False)
 
+        self._progressiveCheckBox = QtWidgets.QCheckBox(__("Progressive preview"))
+        self._progressiveCheckBox.setChecked(True)
+
         self._psfImage = QtWidgets.QLabel()
         self._psfImage.setFixedSize(100, 100)
         self._psfImage.setScaledContents(False)
@@ -323,6 +324,7 @@ class _PropertiesPanel(QtWidgets.QFrame):
         layout.addWidget(QtWidgets.QLabel(__("Iterations:")))
         layout.addWidget(self._iterations)
         layout.addWidget(iterationsHelpLabel)
+        layout.addWidget(self._progressiveCheckBox)
         layout.addSpacing(10)
         layout.addWidget(self._progressBar)
         layout.addWidget(psfFrame)
@@ -361,6 +363,9 @@ class _PropertiesPanel(QtWidgets.QFrame):
 
     def iterations(self) -> int:
         return self._iterations.value()
+
+    def progressive(self) -> bool:
+        return self._progressiveCheckBox.isChecked()
 
     def setProgress(self, progress: int) -> None:
         self._progressBar.setValue(progress)
@@ -435,12 +440,14 @@ class DeblurWindow(QtWidgets.QWidget):
         rect = self._imagePreview.imageRect()
         dstW, dstH = rect.width(), rect.height()
         iterations = self._propertiesPanel.iterations()
+        cycles = None if self._propertiesPanel.progressive() else 1
         psf = self._propertiesPanel.psf()
 
         self._deblurTask = ProgressiveDeblurTask(
             rawImage,
             (dstW, dstH),
             psf,
+            cycles=cycles,
             num_iter=iterations,
             on_preview=self._onPreviewFromTask,
             on_progress=self._onProgressFromTask,
