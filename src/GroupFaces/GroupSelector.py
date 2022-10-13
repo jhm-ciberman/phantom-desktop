@@ -1,7 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 from ..Widgets.GridBase import GridBase
 from ..Models import Group
-from src.l10n import __
+from ..l10n import __
 
 
 class GroupSelector(QtWidgets.QDialog):

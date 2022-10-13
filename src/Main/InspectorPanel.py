@@ -1,12 +1,14 @@
-from PySide6 import QtWidgets, QtCore
-from ..Widgets.PixmapDisplay import PixmapDisplay
+import hashlib
+import os
+
 from PIL import Image as PILImage
 from PIL.ExifTags import TAGS
-from ..Widgets.PropertiesTable import PropertiesTable
+from PySide6 import QtCore, QtWidgets
+
+from ..l10n import __
 from ..Models import Image
-import hashlib
-from src.l10n import __
-import os
+from ..Widgets.PixmapDisplay import PixmapDisplay
+from ..Widgets.PropertiesTable import PropertiesTable
 
 
 class InspectorPanel(QtWidgets.QWidget):

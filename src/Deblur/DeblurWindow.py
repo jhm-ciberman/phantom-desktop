@@ -1,11 +1,13 @@
-from PySide6 import QtGui, QtCore, QtWidgets
 import cv2
-from .SliderWithSpinBox import SliderWithSpinBox
+import numpy as np
+from PySide6 import QtCore, QtGui, QtWidgets
+
+from ..l10n import __
 from ..Models import Image
 from ..Widgets.PixmapDisplay import PixmapDisplay
-import numpy as np
-from .LucyRichardsonDeconvolution import ProgressiveDeblurTask, PointSpreadFunction
-from src.l10n import __
+from .LucyRichardsonDeconvolution import (PointSpreadFunction,
+                                          ProgressiveDeblurTask)
+from .SliderWithSpinBox import SliderWithSpinBox
 
 
 class _PsfConfig(QtWidgets.QWidget):

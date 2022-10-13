@@ -1,9 +1,10 @@
 from math import log2
+from queue import Queue
+
 import cv2
 import numpy as np
-from queue import Queue
-from LucyRichardsonDeconvolution import PointSpreadFunction, ProgressiveDeblurTask
-
+from LucyRichardsonDeconvolution import (PointSpreadFunction,
+                                         ProgressiveDeblurTask)
 
 if __name__ == '__main__':
     # Config:

@@ -1,9 +1,11 @@
+import threading
 from dataclasses import dataclass
 from typing import Callable
+
 from PySide6 import QtCore
+
 from .ImageProcessorService import ImageProcessorService
-from .Models import Group, Image, Project
-import threading
+from .Models import Image, Project
 
 
 @dataclass(frozen=True, slots=True)

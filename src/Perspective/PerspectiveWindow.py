@@ -1,11 +1,12 @@
-from PySide6 import QtGui, QtCore, QtWidgets
-from ..Widgets.PixmapDisplay import PixmapDisplay
-from ..Models import Image
-from ..Widgets.PixmapPointsDisplay import PixmapPointsDisplay
-from .PerspectiveTransform import perspective_transform
 import cv2
 import numpy as np
-from src.l10n import __
+from PySide6 import QtCore, QtGui, QtWidgets
+
+from ..l10n import __
+from ..Models import Image
+from ..Widgets.PixmapDisplay import PixmapDisplay
+from ..Widgets.PixmapPointsDisplay import PixmapPointsDisplay
+from .PerspectiveTransform import perspective_transform
 
 
 class PerspectiveWindow(QtWidgets.QWidget):

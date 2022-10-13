@@ -1,6 +1,8 @@
-from PySide6 import QtGui, QtCore, QtWidgets
-from .Workspace import Workspace
 import sys
+
+from PySide6 import QtCore, QtGui, QtWidgets
+
+from .Workspace import Workspace
 
 
 class Application(QtWidgets.QApplication):
@@ -51,7 +53,8 @@ class Application(QtWidgets.QApplication):
             QStatusBar { background-color: #f0f0f0; }
         """)
 
-        from .ImageProcessorService import ImageProcessorService  # Avoid circular imports
+        from .ImageProcessorService import \
+            ImageProcessorService  # Avoid circular imports
         self._imageProcessorService = ImageProcessorService()
         self._projectManager = Workspace(self._imageProcessorService)
 

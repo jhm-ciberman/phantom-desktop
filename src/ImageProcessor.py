@@ -1,9 +1,10 @@
-from time import perf_counter_ns
-import numpy as np
-from .Models import Face
-from .Models import Rect
 from dataclasses import dataclass
+from time import perf_counter_ns
+
 import dlib
+import numpy as np
+
+from .Models import Face, Rect
 
 
 @dataclass(frozen=True, slots=True)

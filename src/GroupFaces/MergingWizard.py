@@ -2,7 +2,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from .ClusteringService import find_merge_oportunities, MergeOportunity
 from ..Widgets.PixmapDisplay import PixmapDisplay
 from ..Models import Group, Project
-from src.l10n import __
+from ..l10n import __
 
 
 class _IconButton(QtWidgets.QPushButton):

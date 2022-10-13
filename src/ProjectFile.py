@@ -1,10 +1,12 @@
 import base64
+import gzip
 import json
 from typing import Any, Callable
 from uuid import UUID
+
 import numpy as np
+
 from .Models import Face, Group, Image, Model, Project, Rect
-import gzip
 
 
 class ProjectBufferSection:

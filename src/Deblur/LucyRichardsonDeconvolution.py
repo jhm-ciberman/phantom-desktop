@@ -1,5 +1,6 @@
 import threading
 from typing import Callable, Tuple
+
 import cv2
 import numpy as np
 

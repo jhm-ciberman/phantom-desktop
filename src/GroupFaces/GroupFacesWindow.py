@@ -1,13 +1,14 @@
 from PySide6 import QtCore, QtWidgets
-from .ClusteringService import MergeOportunity
-from .MergingWizard import MergingWizard
+
 from ..Application import Application
+from ..l10n import __
+from ..Models import Face, Group, Image
+from .ClusteringService import MergeOportunity
 from .FacesGrid import FacesGrid
 from .GroupDetailsHeader import GroupDetailsHeaderWidget
 from .GroupSelector import GroupSelector
 from .GroupsGrid import GroupsGrid
-from ..Models import Group, Face, Image
-from src.l10n import __
+from .MergingWizard import MergingWizard
 
 
 class GroupFacesWindow(QtWidgets.QWidget):

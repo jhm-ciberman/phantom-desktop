@@ -1,13 +1,15 @@
-from typing import Callable
 import multiprocessing
-from uuid import UUID
+import queue
+import threading
 import uuid
+from dataclasses import dataclass
+from typing import Callable
+from uuid import UUID
+
+import dlib
+
 from .ImageProcessor import ImageProcessor, ImageProcessorResult
 from .Models import Image
-import threading
-import dlib
-from dataclasses import dataclass
-import queue
 
 
 @dataclass(frozen=True, slots=True)

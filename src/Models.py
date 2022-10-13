@@ -1,10 +1,11 @@
+import os
 from dataclasses import dataclass
 from typing import Any, Sequence
-import cv2
-import os
-from PySide6 import QtCore, QtGui
-import numpy as np
 from uuid import UUID, uuid4
+
+import cv2
+import numpy as np
+from PySide6 import QtCore, QtGui
 
 
 class Model:

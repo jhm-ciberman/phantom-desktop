@@ -1,8 +1,10 @@
-from typing import Callable
-from PySide6 import QtCore, QtWidgets, QtGui
-from .LoadingIcon import LoadingIcon
-from src.l10n import __
 import threading
+from typing import Callable
+
+from PySide6 import QtCore, QtGui, QtWidgets
+
+from ..l10n import __
+from .LoadingIcon import LoadingIcon
 
 
 class BussyModal(QtWidgets.QDialog):

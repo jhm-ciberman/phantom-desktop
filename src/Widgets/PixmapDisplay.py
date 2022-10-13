@@ -1,4 +1,4 @@
-from PySide6 import QtGui, QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 
 class PixmapDisplay(QtWidgets.QWidget):

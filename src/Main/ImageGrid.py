@@ -1,4 +1,5 @@
-from PySide6 import QtGui, QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
+
 from ..Application import Application
 from ..Models import Image
 from ..Widgets.GridBase import GridBase

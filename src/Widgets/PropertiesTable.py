@@ -1,6 +1,8 @@
 from typing import Any
-from PySide6 import QtWidgets, QtGui, QtCore
-from src.l10n import __
+
+from PySide6 import QtCore, QtGui, QtWidgets
+
+from ..l10n import __
 
 
 class _Header(QtWidgets.QWidget):

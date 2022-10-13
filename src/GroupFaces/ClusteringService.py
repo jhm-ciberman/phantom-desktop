@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+
 import numpy as np
 from sklearn.cluster import DBSCAN
+
 from ..Models import Face, Group
 
 cluster_eps = 0.425

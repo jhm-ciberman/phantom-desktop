@@ -1,7 +1,8 @@
 from PySide6 import QtCore, QtGui, QtWidgets
-from ..Widgets.GridBase import GridBase
+
+from ..l10n import __
 from ..Models import Group
-from src.l10n import __
+from ..Widgets.GridBase import GridBase
 
 
 class GroupsGrid(GridBase):

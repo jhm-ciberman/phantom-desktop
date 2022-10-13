@@ -1,15 +1,16 @@
-from PySide6 import QtGui, QtCore, QtWidgets
-from .ProjectManager import ProjectManager
-from ..Workspace import BatchProgress
+from PySide6 import QtCore, QtGui, QtWidgets
+
 from ..Application import Application
-from .InspectorPanel import InspectorPanel
-from ..Widgets.GridBase import GridBase
-from .ImageGrid import ImageGrid
-from ..Models import Image
-from ..Perspective.PerspectiveWindow import PerspectiveWindow
 from ..Deblur.DeblurWindow import DeblurWindow
 from ..GroupFaces.GroupFacesWindow import GroupFacesWindow
-from src.l10n import __
+from ..l10n import __
+from ..Models import Image
+from ..Perspective.PerspectiveWindow import PerspectiveWindow
+from ..Widgets.GridBase import GridBase
+from ..Workspace import BatchProgress
+from .ImageGrid import ImageGrid
+from .InspectorPanel import InspectorPanel
+from .ProjectManager import ProjectManager
 
 
 class MainWindow(QtWidgets.QMainWindow):

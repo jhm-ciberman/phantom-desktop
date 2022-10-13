@@ -1,9 +1,11 @@
-import os
-from PySide6 import QtWidgets
 import glob
-from ..Models import Image
-from src.l10n import __
+import os
+
+from PySide6 import QtWidgets
+
 from ..Application import Application
+from ..l10n import __
+from ..Models import Image
 from ..Widgets.BussyModal import BussyModal
 
 
