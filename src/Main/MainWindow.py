@@ -103,6 +103,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._toolbar = QtWidgets.QToolBar()
         self._toolbar.setMovable(False)
         self._toolbar.setFloatable(False)
+        self._toolbar.setContextMenuPolicy(QtCore.Qt.PreventContextMenu)  # Disable right click menu (wtf Qt?)
         self._toolbar.setIconSize(QtCore.QSize(48, 48))
         self._toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self._toolbar.addAction(self._openProjectAction)
