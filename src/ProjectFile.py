@@ -407,10 +407,11 @@ class ProjectFileWriter(ProjectFileBase):
 
         os.makedirs(dir_path, exist_ok=True)
 
-        # copy the files that are referenced by the project in two passes:
-        # First, images that are portable are copied with resolve_conflicts=False. They take precedence because they probably are already
-        # in the project folder. Then, images that are not portable are copied with resolve_conflicts=True. This will rename the files
-        # if they are already in the project folder.
+        # Copy the files that are referenced by the project in two passes:
+        # First, images that are portable are copied with resolve_conflicts=False.
+        # They take precedence because they probably are already in the project folder.
+        # Then, images that are not portable are copied with resolve_conflicts=True.
+        # This will rename the files if they are already in the project folder.
         total = len(self._project.images)
         portable_images: list[Image] = []
         nonportable_images: list[Image] = []
