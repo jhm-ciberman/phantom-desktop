@@ -165,28 +165,6 @@ class Workspace(QtCore.QObject):
         """
         self.setProject(Project())
 
-    def openProject(self, path: str):
-        """
-        Opens an existing project.
-
-        Args:
-            path (str): The path of the project to open.
-        """
-        self.setProject(Project(path))
-
-    def saveProject(self, path: str = None):
-        """
-        Saves the current project.
-
-        Args:
-            path (str): The path where to save the project. If None the project is saved to the
-                current path.
-        """
-        if not path.endswith(".phantom"):
-            path += ".phantom"
-        self._project.save(path)
-        self.setDirty(False)
-
     def addImage(self, imageOrPath: Image | str) -> Image:
         """
         Adds an image to the current project.
@@ -206,29 +184,47 @@ class Workspace(QtCore.QObject):
         self._imageProcessorService.process(image, self._onImageSuccess, self._onImageError)
         return image
 
-    def addImages(self, paths: list[str], onImageLoaded: Callable[[Image, int, int], None] = None):
+    def addImages(
+            self, paths: list[str], onProgress: Callable[[int, int, Image], None] = None,
+            onImageError: Callable[[Exception, Image], bool] = None):
         """
         Adds a list of images to the current project.
 
         Args:
             paths (list[str]): The paths of the images to add.
-            onImageLoaded (Callable[[Image, int, int], None]): A callback that is called when an image
-                is loaded. The callback receives the image, the index of the image in the list and the
-                total number of images.
+            onProgress (Callable[[int, int, Image], None]): A callback that is called when an image
+                is loaded (or failed to load). The callback receives the current index, the total
+                number of images and the image that was loaded.
+            onImageError (Callable[[Image, Exception], None]): A callback that is called when an
+                image fails to load. The callback receives the exception and the image that failed
+                to load. The callback should return True to skip the image and continue or False
+                to stop the loading process. This callback is called before the onProgress callback.
         """
-        onImageLoaded = onImageLoaded or (lambda image, index, total: None)
+        onProgress = onProgress or (lambda index, total, image: None)
+        onImageError = onImageError or (lambda image, exception: False)
         images = []
         count = len(paths)
         for index, path in enumerate(paths):
             image = Image(path)
+
+            try:
+                image.load()
+            except Exception as e:
+                if onImageError(image, e):
+                    continue
+                else:
+                    break
+
+            image.compute_hashes()
             self._project.add_image(image)
             images.append(image)
-            onImageLoaded(image, index, count)
+            onProgress(index, count, image)
             self._addImageToBatch(image)
             self._imageProcessorService.process(image, self._onImageSuccess, self._onImageError)
 
-        self.imagesAdded.emit(images)
-        self.setDirty(True)
+        if len(images) > 0:
+            self.imagesAdded.emit(images)
+            self.setDirty(True)
 
     def removeImage(self, image: Image):
         """

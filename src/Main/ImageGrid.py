@@ -39,7 +39,7 @@ class ImageGrid(GridBase):
             image (Image): The image to add.
         """
         pixmap = image.get_pixmap()
-        self.addItemCore(pixmap, image.basename)
+        self.addItemCore(pixmap, image.display_name)
         self._images.append(image)
 
     def removeImage(self, index: int) -> None:
@@ -94,7 +94,7 @@ class _TextOverDelegate(QtWidgets.QStyledItemDelegate):
         super().__init__(parent)
 
     def _getIcon(self, image: Image):
-        if not image.processed:
+        if not image._processed:
             return self._imageGrid._loadingIcon
         elif len(image.faces) > 0:
             return self._imageGrid._faceIcon

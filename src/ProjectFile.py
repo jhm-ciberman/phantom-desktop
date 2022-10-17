@@ -1,6 +1,9 @@
 import base64
+from functools import partial
 import gzip
 import json
+import os
+import shutil
 from typing import Any, Callable
 from uuid import UUID
 
@@ -178,6 +181,15 @@ class ProjectModelsSection:
         for obj, data in zip(self._data.values(), data):
             resolve_fn(obj, data)
 
+    def __iter__(self):
+        return iter(self._data.values())
+
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, key):
+        return self._data[key]
+
 
 class ProjectFileBase:
     """
@@ -206,25 +218,59 @@ class ProjectFileBase:
 
 class ProjectFileWriter(ProjectFileBase):
     """
-    A class that can write a Project to a file.
+    A class that can write a Project to a file. This writer generates non-portable
+    project files that can only be opened in the same computer. All the image
+    paths are unchanged.
+
+    Attributes:
+        minify (bool): Whether to minify the JSON output. Defaults to True.
+        gzip (bool): Whether to gzip the output. Defaults to True.
+        portable (bool): Whether to generate a portable project file. A portable
+            project file can be opened in any computer and all the image paths
+            are relative to the project file. The images are copied to a subfolder
+            named "{project_name}_images" inside the project file folder. Defaults
+            to None, which means that the writer will use the same value as the
+            project.is_portable property.
+        on_image_copied (Callable[[int, int, Image], None], optional): A callback that will be called
+            after an image is copied. The callback will receive the current image index, the total number
+            of images to copy and the image being copied. This callback is only called if portable is True.
+            Defaults to None.
     """
 
-    def __init__(self, minify: bool = True, gzip: bool = True) -> None:
+    _files_subfolder = "{project_name}_files"  # This name is inspired by the way that Google Chrome saves its HTML files.
+
+    def __init__(
+            self, project: Project, minify: bool = True, gzip: bool = True, portable: bool = None,
+            on_image_copied: Callable[[int, int, Image], None] = None) -> None:
         """
         Initializes the ProjectFileWriter class.
 
         Args:
+            project (Project): The project to write.
             minify (bool, optional): Whether to minify the JSON output. Defaults to True.
             gzip (bool, optional): Whether to gzip the output. Defaults to True.
+            portable (bool, optional): Whether to generate a portable project file. A portable
+                project file can be opened in any computer and all the image paths
+                are relative to the project file. The images are copied to a subfolder
+                named "{project_name}_images" inside the project file folder. Defaults
+                to None, which means that the writer will use the same value as the
+                project.is_portable property.
+            on_image_copied (Callable[[int, int, Image], None], optional): A callback that will be called
+                after an image is copied. The callback will receive the current image index, the total number
+                of images to copy and the image being copied. This callback is only called if portable is True.
+                Defaults to None.
         """
         super().__init__()
-        self._minify = minify
-        self._gzip = gzip
+        self._project = project
+        self.minify = minify
+        self.gzip = gzip
+        self.portable = portable if portable is not None else project.is_portable
+        self.on_image_copied = on_image_copied or (lambda index, total, image: None)
 
     def _visit_face(self, face: Face):
         self._faces.add(face)
 
-    def _visit_group(self, group: Face):
+    def _visit_group(self, group: Group):
         self._groups.add(group)
         for face in group.faces:
             self._visit_face(face)
@@ -263,28 +309,45 @@ class ProjectFileWriter(ProjectFileBase):
     def _encode_image(self, model: Image) -> dict:
         return {
             "id": str(model.id),
-            "src": model.full_path,
-            "original_src": model.original_full_path,
+            "src": self._resolve_src(model.path),
+            "original_src": model.original_path,
             "faces": [str(face.id) for face in model.faces],
             "processed": model.processed,
+            "hashes": model.hashes,  # dict[str, str] (e.g. {"md5": "1234", "sha1": "5678"})
         }
+
+    def _resolve_src(self, src: str) -> str:
+        # src could be absolute or relative. For absolute paths, the src looks like:
+        # "file:///C:/Users/username/Pictures/image.jpg"
+        # for relative paths, the src looks like:
+        # "file:./project_files/image.jpg"
+        if self.portable:
+            return "file:./" + os.path.relpath(src, self._project.dirname)
+        return "file:///" + os.path.abspath(src)
 
     def _encode_project(self, project: Project) -> dict:
         return {
-            "header": {
-                "version": self._current_version,
-                "client_name": self._client_name,
-                "client_version": self._client_version,
-            },
-            "images": self._images.to_json(self._encode_image),
-            "groups": self._groups.to_json(self._encode_group),
-            "faces": self._faces.to_json(self._encode_face),
-            "buffers": {
-                "encodings": self._encodings_buff.to_json(),
-            },
+            "version": self._current_version,
+            "client_name": self._client_name,
+            "client_version": self._client_version,
+            "files_dir": project.files_dir,
         }
 
-    def write(self, path: str, project: Project) -> None:
+    def _encode_buffers(self) -> dict:
+        return {
+            "encodings": self._encodings_buff.to_json(),
+        }
+
+    def _encode_file(self, project: Project) -> dict:
+        return {
+            "project": self._encode_project(project),
+            "images": self._images.to_json(self._encode_image),
+            "faces": self._faces.to_json(self._encode_face),
+            "groups": self._groups.to_json(self._encode_group),
+            "buffers": self._encode_buffers(),
+        }
+
+    def write(self, path: str) -> None:
         """
         Saves the project to the specified path.
 
@@ -292,18 +355,117 @@ class ProjectFileWriter(ProjectFileBase):
             path (str): The path to the project.
             project (Project): The project to save.
         """
-        self._visit_project(project)
-        data = self._encode_project(project)
-        indent = 4 if not self._minify else None
+        self._project.path = path
 
-        project.file_path = path
+        if self.portable:
+            self._copy_portable_files(path)
 
-        if self._gzip:
+        self._visit_project(self._project)
+        data = self._encode_file(self._project)
+        indent = 4 if not self.minify else None
+
+        if self.gzip:
             with gzip.open(path, "wt") as f:
                 json.dump(data, f, indent=indent)
         else:
             with open(path, "w") as f:
                 json.dump(data, f, indent=indent)
+
+    def _file_is_aleady_in_folder(self, file_path: str, folder_path: str) -> bool:
+        """
+        Returns True if the file is contained in the folder.
+        For example, if the file is "C:/Users/username/Pictures/image.jpg"
+        and the folder is "C:/Users/username", this method will return True.
+        If the file is "C:/Users/username/Pictures/image.jpg"
+        and the folder is "F:/backup", this method will return False.
+
+        Args:
+            file_path (str): The file path.
+            folder_path (str): The folder path.
+
+        Returns:
+            bool: True if the file is contained in the folder.
+        """
+        file_path = os.path.normpath(os.path.abspath(file_path))
+        folder_path = os.path.normpath(os.path.abspath(folder_path))
+        return file_path.startswith(folder_path)
+
+    def _copy_portable_files(self, path: str) -> None:
+        """
+        Copies the images to a subfolder named "{project_name}_images" inside the project file folder.
+
+        Args:
+            path (str): The path to the project file.
+        """
+        project_name = self._project.name
+        self._project.files_dir = self._files_subfolder.format(project_name=project_name)
+        dir_path = os.path.join(os.path.dirname(path), self._project.files_dir)
+
+        os.makedirs(dir_path, exist_ok=True)
+
+        # copy the files that are referenced by the project in two passes:
+        # First, images that are portable are copied with resolve_conflicts=False. They take precedence because they probably are already
+        # in the project folder. Then, images that are not portable are copied with resolve_conflicts=True. This will rename the files
+        # if they are already in the project folder.
+        total = len(self._project.images)
+        portable_images: list[Image] = []
+        nonportable_images: list[Image] = []
+        for image in self._project.images:
+            if self._file_is_aleady_in_folder(image.path, dir_path):
+                portable_images.append(image)
+            else:
+                nonportable_images.append(image)
+
+        for index, image in enumerate(portable_images):
+            self._copy_image(image, dir_path, resolve_conflicts=False)
+            self.on_image_copied(index, total, image)
+
+        start_index = len(portable_images)
+        for index, image in enumerate(nonportable_images):
+            self._copy_image(image, dir_path, resolve_conflicts=True)
+            self.on_image_copied(index + start_index, total, image)
+
+    def _copy_image(self, image: Image, dir_path: str, resolve_conflicts: bool) -> None:
+        """
+        Copies the specified image to the specified directory. The image will be renamed if a file with the same name
+        already exists in the directory.
+
+        Args:
+            image (Image): The image to copy.
+            dir_path (str): The directory to copy the image to.
+            resolve_conflicts (bool): If True, the image will be renamed if a file
+                with the same name already exists in the directory.
+        """
+        src_path = image.path
+        dest_path = os.path.join(dir_path, os.path.basename(image.path))
+
+        if resolve_conflicts:
+            dest_path = self._resolve_conflicts(dest_path)
+
+        if src_path != dest_path:
+            shutil.copy2(src_path, dest_path)
+            image.path = dest_path
+
+    def _resolve_conflicts(self, file_path: str) -> str:
+        """
+        Returns the absolute path of the specified file name resolving name conflicts if necessary.
+        If the file already exists, a number will be appended to the file name to make it unique.
+        E.g.: "image.jpg" -> "image_1.jpg", "image_2.jpg", etc.
+
+        Args:
+            file_path (str): The file path.
+
+        Returns:
+            str: The absolute path of the file.
+        """
+        file_name = os.path.basename(file_path)
+        dir = os.path.dirname(file_path)
+        file_name_no_ext, ext = os.path.splitext(file_name)
+        i = 1
+        while os.path.exists(os.path.join(dir, file_name)):
+            file_name = f"{file_name_no_ext}_{i}{ext}"
+            i += 1
+        return os.path.join(dir, file_name)
 
 
 class UnsuportedFileVersionException(Exception):
@@ -330,28 +492,66 @@ class ProjectFileReader(ProjectFileBase):
     A class that can read a Project from a file.
     """
 
-    def __init__(self) -> None:
+    def __init__(
+            self, on_progress: Callable[[int, int, Image], None] = None,
+            on_image_error: Callable[[Exception, Image], bool] = None) -> None:
         """
         Initializes the ProjectFileReader class.
+
+        Args:
+            on_progress (Callable[[int, int, Image], None], optional): A callback that
+                is called when an image is loaded (or failed to load). The callback
+                image index, the total number of images, and the image that was loaded.
+            on_image_error (Callable[[Exception, Image], None], optional): A callback
+                that is called when an image fails to load. The callback receives the
+                exception and the image that failed to load. The callback can return
+                True to ignore the error and continue loading the project, or False
+                to stop loading the project. The on_image_error callback is called
+                before the on_progress callback.
         """
         super().__init__()
+        self._on_progress = on_progress or (lambda i, t, img: None)
+        self._on_image_error = on_image_error or (lambda e, img: None)
 
-    def _decode_face(self, data: dict) -> Face:
+    def _decode_face(self, project: Project, data: dict) -> Face:
         face = Face(data["id"])
         face.aabb = Rect.from_tuple(data["aabb"])
         face.confidence = data.get("confidence")
         return face
 
-    def _decode_group(self, data: dict) -> Group:
+    def _decode_group(self, project: Project, data: dict) -> Group:
         group = Group(data["id"])
         group.name = data.get("name", "")
         return group
 
-    def _decode_image(self, data: dict) -> Image:
-        image = Image(data["src"], data["id"])
-        image.original_full_path = data.get("original_src", image.full_path)
+    def _decode_image(self, project: Project, data: dict) -> Image:
+        path = self._resolve_src(data["src"], project.dirname)
+        image = Image(path, data["id"])  # Don't load the image yet
+        image.original_path = data.get("original_src", image.path)
         image.processed = data.get("processed", False)
+        image.hashes = data.get("hashes", {})
         return image
+
+    def _resolve_src(self, src: str, base_relative_dir: str) -> str:
+        # src could be absolute or relative. For absolute paths, the src looks like:
+        # "file:///C:/Users/username/Pictures/image.jpg"
+        # for relative paths, the src looks like:
+        # "file:./project_files/image.jpg"
+        if src.startswith("file:///"):
+            return src[8:]
+        elif src.startswith("file:"):
+            return os.path.join(base_relative_dir, src[5:])
+        else:
+            return src  # This is not in the spec, but support it anyway
+
+    def _decode_project(self, data: dict, path: str) -> Project:
+        files_dir = data.get("files_dir", None)
+        if files_dir:
+            files_dir = os.path.join(os.path.dirname(path), files_dir)
+        project = Project()
+        project.files_dir = files_dir
+        project.path = path
+        return project
 
     def _resolve_face(self, face: Face, data: dict):
         face.encoding = self._encodings_buff.load(data["encoding"])
@@ -363,7 +563,7 @@ class ProjectFileReader(ProjectFileBase):
             group.add_face(face)
         group.centroid = self._encodings_buff.load(data.get("centroid"))
         for other_group in data.get("dont_merge_with", []):
-            group.dont_merge_with.append(self._groups.get(other_group))
+            group.dont_merge_with.add(self._groups.get(other_group))
 
     def _resolve_image(self, image: Image, data: dict):
         for face in [self._faces.get(id) for id in data.get("faces", [])]:
@@ -379,9 +579,10 @@ class ProjectFileReader(ProjectFileBase):
         Returns:
             dict[str, Any]: The migrated json.
         """
-        version = json["header"]["version"]
+        version = json["project"]["version"]
         if version == 1:
             return json
+        # In the future, add more elif statements here to migrate from version 2 to 3, from 3 to 4, etc.
         raise UnsuportedFileVersionException(version, self._current_version, "File version is not supported.")
 
     def _is_gzip(self, file) -> bool:
@@ -408,45 +609,58 @@ class ProjectFileReader(ProjectFileBase):
             return self._load_json(file)
         raise Exception("File is not a valid project file.")
 
-    def read(self, path: str, project: Project = None) -> Project:
+    def read(self, path: str) -> Project:
         """
         Loads a project from the specified path.
 
         Args:
             path (str): The path to the project.
-            project (Project, optional): The project to load the data into.
-                If None, a new project will be created. Defaults to None.
 
         Returns:
-            Project: The project.
+            Project: The loaded project.
         """
         with open(path, "rb") as file:
             data = self._load(file)
 
         data = self._migrate(data)
 
-        version = data["header"]["version"]
-        if version != self._current_version:
-            raise UnsuportedFileVersionException(version, self._current_version, "File version is not supported.")
+        self._assert_version_supported(data["project"]["version"])
 
-        # First, load the buffers:
+        # First, Decode the basic project data
+        project = self._decode_project(data["project"], path)
+
+        # Load the buffers:
         buffers = data["buffers"]
         self._encodings_buff.from_json(buffers["encodings"])
 
         # Then, load the models without relations:
-        self._images.from_json(data["images"], self._decode_image)
-        self._faces.from_json(data["faces"], self._decode_face)
-        self._groups.from_json(data["groups"], self._decode_group)
+        self._images.from_json(data["images"], partial(self._decode_image, project))
+        self._faces.from_json(data["faces"], partial(self._decode_face, project))
+        self._groups.from_json(data["groups"], partial(self._decode_group, project))
 
         # Now that all models are loaded, resolve the relations:
         self._images.resolve_relations(data["images"], self._resolve_image)
         self._faces.resolve_relations(data["faces"], self._resolve_face)
         self._groups.resolve_relations(data["groups"], self._resolve_group)
 
-        project = project or Project()
-        project.file_path = path
-        for image in self._images.models:
+        # Now, load the images into memory and return the project:
+        for i, image in enumerate(self._images):
+            self._load_image(image, project, i)
             project.add_image(image)
+
         for group in self._groups.models:
             project.add_group(group)
+
         return project
+
+    def _assert_version_supported(self, version: int):
+        if version != self._current_version:
+            raise UnsuportedFileVersionException(version, self._current_version, "File version is not supported.")
+
+    def _load_image(self, image: Image, project: Project, index: int):
+        try:
+            image.load(project.files_dir)
+        except Exception as e:
+            if not self._on_image_error(e, image):
+                raise e
+        self._on_progress(index, len(self._images), image)

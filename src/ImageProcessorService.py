@@ -147,7 +147,7 @@ class ImageProcessorService:
                 image.clear_faces()
                 for face in event.result.faces:
                     image.add_face(face)
-                image.processed = True
+                image._processed = True
                 request.success(image)
             elif isinstance(event, _WorkerFailureEvent):
                 request.failure(request.image, event.error)
@@ -230,7 +230,7 @@ class ImageProcessorService:
             success: The callback to invoke when the image is processed successfully.
             failure: The callback to invoke when the image processing fails.
         """
-        if image.processed:
+        if image._processed:
             # Image is already processed.
             success(image)
             return

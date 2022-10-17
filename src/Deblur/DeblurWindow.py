@@ -406,7 +406,7 @@ class DeblurWindow(QtWidgets.QWidget):
 
         self._deblurTask: ProgressiveDeblurTask = None
 
-        self.setWindowTitle(str(image.basename) + " - Phantom")
+        self.setWindowTitle(str(image.display_name) + " - Phantom")
         self.setMinimumSize(800, 600)
 
         layout = QtWidgets.QHBoxLayout()

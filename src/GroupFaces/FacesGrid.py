@@ -74,7 +74,7 @@ class FacesGrid(GridBase):
 
         for face in self._faces:
             pixmap = face.image.get_pixmap()
-            imageBasename = face.image.basename
+            imageBasename = face.image.display_name
             self.addItemCore(pixmap, imageBasename)
 
     def refresh(self) -> None:

@@ -1,12 +1,12 @@
-import hashlib
 import os
 
 from PIL import Image as PILImage
 from PIL.ExifTags import TAGS
 from PySide6 import QtCore, QtWidgets
 
+from ..Application import Application
 from ..l10n import __
-from ..Models import Image
+from ..Models import Image, Project
 from ..Widgets.PixmapDisplay import PixmapDisplay
 from ..Widgets.PropertiesTable import PropertiesTable
 
@@ -107,6 +107,7 @@ class InspectorPanel(QtWidgets.QWidget):
         selected_count = len(self._selectedImages)
         if selected_count == 0:
             self._pixmapDisplay.setPixmap(None)
+            self._printProjectInfo()
         elif selected_count == 1:
             image = self._selectedImages[0]
             self._inspectImage(image)
@@ -116,33 +117,31 @@ class InspectorPanel(QtWidgets.QWidget):
             self._table.addHeader(label)
             # print first 10 images
             for i in range(min(10, selected_count)):
-                self._table.addInfo(self._selectedImages[i].basename)
+                self._table.addInfo(self._selectedImages[i].display_name)
             if selected_count > 10:
                 self._table.addInfo(__("And {count} more...", count=selected_count - 10))
 
-    def _getHashes(self, image: Image) -> dict[str, str]:
-        """
-        Gets the hashes of the image.
-        """
-        bytes = image.read_file_bytes()
-
-        hashes = {}
-        hashes["md5"] = hashlib.md5(bytes).hexdigest()
-        hashes["sha1"] = hashlib.sha1(bytes).hexdigest()
-        hashes["sha256"] = hashlib.sha256(bytes).hexdigest()
-        hashes["sha512"] = hashlib.sha512(bytes).hexdigest()
-
-        return hashes
-
-    def _inspectImage(self, image: Image):
+    def _inspectImage(self, image: Image):  # noqa: C901
         self._pixmapDisplay.setPixmap(image.get_pixmap())
 
-        pilImage = PILImage.open(image.full_path)
-        fileSize = os.path.getsize(image.full_path)
+        pilImage = PILImage.open(image.path)
+        self._printBasicInformation(image, pilImage)
+        self._printHashes(image)
+        self._printExif(pilImage)
+        self._printFaceDetection(image)
 
+    def _printBasicInformation(self, image: Image, pilImage: PILImage):
         self._table.addHeader(__("Basic Information"))
-        self._table.addRow(__("Filename"), image.basename)
-        self._table.addRow(__("Folder"), image.folder_path)
+        fileSize = os.path.getsize(image.path)
+        path = image.path
+        original_path = image.original_path
+
+        self._table.addRow(__("Filename"), os.path.basename(path))
+        self._table.addRow(__("Folder"), os.path.dirname(path))
+        if path != original_path:
+            self._table.addRow(__("Original Filename"), os.path.basename(original_path))
+            self._table.addRow(__("Original Folder"), os.path.dirname(original_path))
+
         self._table.addRow(__("Image Width"), pilImage.width)
         self._table.addRow(__("Image Height"), pilImage.height)
         self._table.addRow(__("File Size"), self._humanizeBytes(fileSize))
@@ -153,11 +152,16 @@ class InspectorPanel(QtWidgets.QWidget):
         if frames > 1:
             self._table.addRow(__("Number of Frames"), frames)
 
+    def _printHashes(self, image: Image):
         self._table.addHeader(__("Hashes"))
-        hashes = self._getHashes(image)
-        for hash_type, hash in hashes.items():
-            self._table.addRow(hash_type.upper(), hash)
+        hashes = image.hashes
+        if len(hashes) == 0:
+            self._table.addInfo(__("No hashes available"))
+        else:
+            for hash_type, hash in hashes.items():
+                self._table.addRow(hash_type.upper(), hash)
 
+    def _printExif(self, pilImage: PILImage):
         self._table.addHeader(__("EXIF Data"))
         exif = self._getExif(pilImage)
         if (len(exif) == 0):
@@ -166,9 +170,10 @@ class InspectorPanel(QtWidgets.QWidget):
             for key, value in exif.items():
                 self._table.addRow(key, value)
 
+    def _printFaceDetection(self, image: Image):
         self._table.addHeader(__("Face detection"))
         count = len(image.faces)
-        if not image.processed:
+        if not image._processed:
             self._table.addInfo(__("Waiting for processing..."))
         elif (count == 0):
             self._table.addInfo(__("No faces detected."))
@@ -179,3 +184,18 @@ class InspectorPanel(QtWidgets.QWidget):
             self._table.addInfo(__("{count} faces detected.", count=count))
             for i, face in enumerate(image.faces):
                 self._table.addRow(__("Face {index} Confidence", index=i + 1), face.confidence)
+
+    def _printProjectInfo(self):
+        project: Project = Application.workspace().project()
+
+        self._table.addHeader(__("Project Information"))
+        self._table.addRow(__("Project Name"), project.name)
+        self._table.addRow(__("Project Path"), project.path)
+        self._table.addRow(__("Number of Images"), len(project.images))
+
+        if project.is_portable:
+            self._table.addRow(__("Portable Project"), __("Yes"))
+            self._table.addInfo(__("Portable projects can be moved to another location or copied to another computer."))
+        else:
+            self._table.addRow(__("Portable Project"), __("No"))
+            self._table.addInfo(__("Non-portable projects can only be opened on the computer they were created on."))

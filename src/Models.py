@@ -1,3 +1,4 @@
+import hashlib
 import os
 from dataclasses import dataclass
 from typing import Any, Sequence
@@ -12,6 +13,9 @@ class Model:
     """
     An abstract model entity that has a unique ID.
     """
+
+    id: UUID
+    """The unique id of the entity."""
 
     def __init__(self, id: UUID = None) -> None:
         """
@@ -63,14 +67,23 @@ class Rect:
 
 class Face(Model):
     """
-    Represents a face in an image. This class is pickleable.
-
-    Attributes:
-        aabb (Rect): The axis-aligned bounding box of the face.
-        encoding (np.array): The encoding of the face (128 numbers).
-        image (Image): The image the face belongs to (None if the face is not part of an image).
-        confidence (float): The confidence score of the face.
+    Represents a face in an image.
     """
+
+    aabb: Rect = None
+    """The axis-aligned bounding box of the face."""
+
+    encoding: np.ndarray = None
+    """The encoding of the face (128 numbers)."""
+
+    image: 'Image' = None
+    """The image the face belongs to (None if the face is not part of an image)."""
+
+    confidence: float = 0.0
+    """The confidence score of the face."""
+
+    group: 'Group' = None
+    """The group the face belongs to (None if the face is not part of a group)."""
 
     def __init__(self, id: UUID = None) -> None:
         """
@@ -155,19 +168,19 @@ class Face(Model):
 class Group(Model):
     """
     Represents a group of faces.
-
-    Attributes:
-        centroid (numpy.ndarray): The centroid of the group.
-        faces (list[Face]): The faces in the group.
-        name (str): The name of the group.
-        main_face (Face): The face that is the most representative of the group.
-          By default, the face with the highest confidence score is returned.
-        main_face_override (Face): Overrides the main_face property.
-        dont_merge_with (set[Group]): A set of groups that should not be merged with this group.
-          This is used by the face merger wizard to avoid asking the user twice if they want to merge
-          two groups.
-
     """
+
+    centroid: np.ndarray = None
+    """The centroid of the group."""
+
+    name: str = None
+    """The name of the group."""
+
+    main_face_override: Face = None
+    """Overrides the main_face property."""
+
+    dont_merge_with: set['Group'] = None
+    """A set of groups that should not be merged with this group."""
 
     def __init__(self, id: UUID = None) -> None:
         """
@@ -283,43 +296,57 @@ class Image(Model):
     holds metadata about the image, and provides methods for accessing the raw color
     bytes of the image. The raw color bytes are stored in RGBA format, with each
     channel being a uint8 array.
-
-    Attributes:
-        raw_image (cv2.Mat): The raw image data in RGBA format.
-        faces (list[Face]): The faces in the image.
-        faces_time (int): The time it took to process the faces in nanoseconds.
-        processed (bool): Whether or not the image has been processed by the face detector.
-        original_full_path (str): The original full path of the image.
     """
 
-    def __init__(self, path: str, id: UUID = None, load: bool = True) -> None:
+    path: str = None
+    """The absolute path to the image. This is where the image file is actually stored."""
+
+    original_path: str = None
+    """
+    The original absolute path to the image source. It is used as information for the user to know the original
+    source of the image.
+    """
+
+    hashes: dict[str, str] = {}
+    """
+    A dictionary of hashes for the image. The keys are the hash algorithm names, and the values are the
+    hashes themselves. Call the Image.compute_hashes() method to compute the hashes.
+    """
+
+    def __init__(self, path: str, id: UUID = None) -> None:
         """
-        Initializes the Image class.
+        Initializes the Image class. The image is NOT loaded into memory until you call
+        the load() method.
 
         Args:
+            path (str): The absolute path to the image source. This is where the image file is actually stored..
             id (UUID): The ID of the image. If None, a new ID will be generated. Defaults to None.
-            path (str): The path to the image source (can be relative or absolute).
-            load (bool): Whether or not to load the image into memory. Defaults to True.
         """
         super().__init__(id)
-        self._full_path = os.path.abspath(path)
+        self.path = os.path.abspath(path)
         self._is_loaded = False
         self._raw_image = None
         self._faces: "list[Face]" = []
-        self.processed = False
-        self.original_full_path = self._full_path
+        self._processed: bool = False
+        self.original_path = path
 
-        if load:
-            self.load()
-
-    def load(self) -> None:
+    def load(self, directory: str = None) -> None:
         """
         Loads the image into memory.
+
+        Args:
+            directory (str): The directory to load the image from. If None, the image will be loaded
+                from the path specified in the constructor. Defaults to None.
+
+        Raises:
+            FileNotFoundError: If the image could not be found.
         """
         if not self._is_loaded:
-            raw_image = cv2.imread(self._full_path, cv2.IMREAD_UNCHANGED)
+            if directory is not None:  # If a directory is specified, use it to load the image
+                self.path = os.path.join(directory, self.path)
+            raw_image = cv2.imread(self.path, cv2.IMREAD_UNCHANGED)
             if raw_image is None:
-                raise Exception(f"Failed to load image: {self._full_path}")
+                raise FileNotFoundError(f"Could not load image at path {self.path}")
             self._raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
             self._is_loaded = True
 
@@ -331,25 +358,32 @@ class Image(Model):
         self._is_loaded = False
 
     @property
-    def full_path(self) -> str:
+    def processed(self) -> bool:
         """
-        Gets the full path of the image source.
+        Gets whether or not the image has been processed by the face detector.
         """
-        return self._full_path
+        return self._processed
+
+    @processed.setter
+    def processed(self, value: bool) -> None:
+        """
+        Sets whether or not the image has been processed by the face detector.
+        """
+        self._processed = value
 
     @property
-    def basename(self) -> str:
+    def display_name(self) -> str:
         """
-        Gets the basename of the image source.
+        Gets the name of the image to be displayed in the UI.
         """
-        return os.path.basename(self._full_path)
+        return os.path.basename(self.original_path)
 
     @property
-    def folder_path(self) -> str:
+    def path_dirname(self) -> str:
         """
         Gets the folder path of the image source. The path always ends with a trailing slash.
         """
-        return os.path.dirname(self._full_path) + os.path.sep
+        return os.path.dirname(self.path) + os.path.sep
 
     @property
     def channels(self):
@@ -371,20 +405,6 @@ class Image(Model):
         Gets the height of the image source.
         """
         return self._raw_image.shape[0]
-
-    @property
-    def original_basename(self) -> str:
-        """
-        Gets the basename of the original image source.
-        """
-        return os.path.basename(self.original_full_path)
-
-    @property
-    def original_folder_path(self) -> str:
-        """
-        Gets the folder path of the original image source. The path always ends with a trailing slash.
-        """
-        return os.path.dirname(self.original_full_path) + os.path.sep
 
     @property
     def is_loaded(self) -> bool:
@@ -465,8 +485,20 @@ class Image(Model):
         Returns the raw bytes of the image file as read from disk. (Including metadata)
         This is different from get_pixels_rgba() which returns the raw image data in RGBA format.
         """
-        with open(self.full_path, "rb") as file:
+        with open(self.path, "rb") as file:
             return file.read()
+
+    def compute_hashes(self) -> None:
+        """
+        Recomputes the hashes of the image file.
+        """
+        bytes = self.read_file_bytes()
+
+        self.hashes = {}
+        self.hashes["md5"] = hashlib.md5(bytes).hexdigest()
+        self.hashes["sha1"] = hashlib.sha1(bytes).hexdigest()
+        self.hashes["sha256"] = hashlib.sha256(bytes).hexdigest()
+        self.hashes["sha512"] = hashlib.sha512(bytes).hexdigest()
 
 
 class Project:
@@ -474,22 +506,56 @@ class Project:
     Represents a project file.
     """
 
-    def __init__(self, file_path: str = None):
+    path: str = None
+    """The path to the project file."""
+
+    files_dir: str = None
+    """
+    The path to the directory where the images are stored.
+    If None, this means the project file is not saved yet or it is not portable.
+    A portable project file is one that can be moved to another location and
+    still work. This is achieved by storing the images in a subdirectory of
+    the project file. A non-portable project file is one that stores the images
+    in a different location in the same computer. This means that if the project
+    file is copied to a different computer, the images will not be found.
+    """
+
+    def __init__(self):
         """
         Initializes the Project class.
-
-        Args:
-            file_path (str): The path to the project file.
         """
         super().__init__()
-        self.file_path = file_path
+        self.path = None
         self._images: "list[Image]" = []
         self._images_ids: "dict[UUID, Image]" = {}  # Enables O(1) lookup by ID
         self._groups: "list[Group]" = []
         self._groups_ids: "dict[UUID, Group]" = {}  # Enables O(1) lookup by ID
+        self.files_dir = None
 
-        if file_path is not None:
-            self.load(file_path)
+    @property
+    def dirname(self) -> str:
+        """
+        Gets the directory of the project file.
+        """
+        return os.path.dirname(self.path) + os.path.sep
+
+    @property
+    def is_portable(self) -> bool:
+        """
+        Gets whether or not the project is portable. This means that
+        the project file can be moved around and the images will still be found.
+        In portable mode, the images are stored in a subfolder relative to the project file.
+        """
+        return self.files_dir is not None
+
+    @property
+    def name(self) -> str:
+        """
+        Gets the name of the project. This is the name of the project file without the extension.
+        """
+        if self.path is None:
+            return "Untitled"
+        return os.path.splitext(os.path.basename(self.path))[0]
 
     @property
     def images(self) -> Sequence[Image]:
@@ -503,6 +569,8 @@ class Project:
 
     def remove_image(self, image: Image):
         """Removes an image from the project."""
+        if image not in self._images:
+            return
         self._images.remove(image)
         del self._images_ids[image.id]
         if image.faces:
@@ -571,26 +639,3 @@ class Project:
         self._groups_ids = {}
         for group in cluster(self.get_faces()):
             self.add_group(group)
-
-    def save(self, file_path: str = None):
-        """Saves the project to a file."""
-        if file_path is not None:
-            self.file_path = file_path
-        if self.file_path is None:
-            raise Exception("The project file path is not set.")
-        from .ProjectFile import ProjectFileWriter  # Avoid circular import
-        ProjectFileWriter().write(self.file_path, self)
-
-    def load(self, file_path: str = None):
-        """Loads the project from a file."""
-        if file_path is not None:
-            self.file_path = file_path
-        if self.file_path is None:
-            raise Exception("The project file path is not set.")
-        from .ProjectFile import ProjectFileReader  # Avoid circular import
-        ProjectFileReader().read(self.file_path, self)
-
-    @property
-    def is_empty(self) -> bool:
-        """Returns True if the project is empty."""
-        return len(self._images) == 0

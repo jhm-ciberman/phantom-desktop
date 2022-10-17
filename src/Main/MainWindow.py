@@ -91,7 +91,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._saveProjectAsAction = QtGui.QAction(
             QtGui.QIcon("res/img/save_as.png"), __("Save Project As..."), self)
-        self._saveProjectAsAction.setEnabled(False)
         self._saveProjectAsAction.setShortcut("Ctrl+Shift+S")
         self._saveProjectAsAction.triggered.connect(self._onSaveProjectAsPressed)
 
@@ -207,7 +206,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if (count == 0):
             self.statusBar().showMessage(__("{count} images in the collection", count=len(self._imageGrid.images())))
         elif (count == 1):
-            self.statusBar().showMessage(selected_images[0].full_path)
+            self.statusBar().showMessage(selected_images[0].path)
         else:
             self.statusBar().showMessage(__("{count} images selected", count=count))
 
@@ -321,4 +320,3 @@ class MainWindow(QtWidgets.QMainWindow):
     @QtCore.Slot(bool)
     def _onIsDirtyChanged(self, is_dirty: bool) -> None:
         self._saveProjectAction.setEnabled(is_dirty)
-        self._saveProjectAsAction.setEnabled(is_dirty)

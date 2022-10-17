@@ -6,6 +6,7 @@ from PySide6 import QtWidgets
 from ..Application import Application
 from ..l10n import __
 from ..Models import Image
+from ..ProjectFile import ProjectFileReader, ProjectFileWriter
 from ..Widgets.BussyModal import BussyModal
 
 
@@ -97,13 +98,26 @@ class ProjectManager:
         """
         bussyModal = BussyModal(parent, title=__("@project_manager.adding_images.title"))
 
-        def onImageLoadedCallback(image: Image, index: int, count: int):
+        skippedImages = []
+
+        def onProgress(index: int, count: int, image: Image):
             bussyModal.setSubtitle(__("@project_manager.adding_images.subtitle", current=str(index + 1), total=str(count)))
 
+        def onImageError(e: Exception, image: Image):
+            nonlocal skippedImages
+            print(f"Error adding image: {image.path}. Error: {e}")
+            skippedImages.append(image)
+
         def addFilesWorker():
-            self._workspace.addImages(file_paths, onImageLoadedCallback)
+            self._workspace.addImages(file_paths, onProgress=onProgress, onImageError=onImageError)
 
         bussyModal.exec(addFilesWorker)
+
+        if len(skippedImages) > 0:
+            listStr = self._getImagesList(skippedImages)
+            QtWidgets.QMessageBox.warning(
+                parent, __("@project_manager.add_images_error.title"),
+                __("@project_manager.add_images_error.message", list=listStr))
 
     def addImages(self, parent: QtWidgets.QWidget) -> None:
         """
@@ -157,7 +171,7 @@ class ProjectManager:
             folder_path = QtWidgets.QFileDialog.getExistingDirectory(
                 parent, __("@project_manager.select_export_folder_caption"), "")
 
-            paths = [folder_path + "/" + image.basename for image in images]
+            paths = [folder_path + "/" + image.display_name for image in images]
             self._exportImagesCore(parent, images, paths)
 
     def _exportImagesCore(self, parent: QtWidgets.QWidget, images: list[Image], paths: list[str]) -> None:
@@ -195,12 +209,70 @@ class ProjectManager:
 
         # Load the project with a bussy modal.
         bussyModal = BussyModal(
-            parent, title=__("@project_manager.loading_project.title"), subtitle=__("@project_manager.loading_project.subtitle"))
+            parent,
+            title=__("@project_manager.loading_project.title"),
+            subtitle=__("@project_manager.loading_project.subtitle"))
+
+        # Skipped images are images that could not be loaded
+        imagesSkipped: list[Image] = []
 
         def openProjectWorker():
-            self._workspace.openProject(file_path)
+            reader = ProjectFileReader(on_progress=onProgress, on_image_error=onImageError)
+            project = reader.read(file_path)
+            self._workspace.setProject(project)
+
+        def onProgress(index: int, count: int, image: Image):
+            bussyModal.setSubtitle(__("@project_manager.loading_project.subtitle", current=index + 1, total=count))
+
+        def onImageError(error: Exception, image: Image) -> bool:
+            nonlocal imagesSkipped
+            print(f"Error loading image {image.display_name}: {error}")
+            imagesSkipped.append(image)
+            return True
 
         bussyModal.exec(openProjectWorker)
+
+        if len(imagesSkipped) > 0:
+            if self._askToRemoveSkippedImages(parent, imagesSkipped):
+                for image in imagesSkipped:
+                    self._workspace.project().remove_image(image)
+
+    def _askToRemoveSkippedImages(self, parent: QtWidgets.QWidget, imagesSkipped: list[Image]) -> bool:
+        """
+        Asks the user if the skipped images should be removed from the project.
+
+        Args:
+            parent (QWidget): The parent widget.
+            imagesSkipped (list[Image]): The list of images that were skipped from loading.
+
+        Returns:
+            bool: True if the images should be removed, False otherwise.
+        """
+        listStr = self._getImagesList(imagesSkipped)
+        message = __("@project_manager.skipped_images.message", list=listStr)
+        return QtWidgets.QMessageBox.question(
+            parent, __("@project_manager.skipped_images.title"), message) == QtWidgets.QMessageBox.Yes
+
+    def _getImagesList(self, images: list[Image], topCount=5) -> str:
+        """
+        Gets a string representation of the list of images. For example:
+        - Image1.png
+        - Image2.png
+        - Image3.png
+        - And 32 more...
+
+        Args:
+            images (list[Image]): The list of images.
+            topCount (int, optional): The number of images to show at the top. Defaults to 5.
+
+        Returns:
+            str: The string representation.
+        """
+        topList = [image.display_name for image in images[:topCount]]
+        if len(images) > topCount:
+            topList.append(__("@project_manager.and_more", count=len(images) - topCount))
+        listFormat = "🡲 {item}"  # Unicode right arrow. I think Win8 doesn't support this in it's default font.
+        return "\n".join([listFormat.format(item=item) for item in topList])
 
     def _checkUnsavedChanges(self, parent: QtWidgets.QWidget) -> bool:
         """
@@ -241,19 +313,27 @@ class ProjectManager:
             return
         self._workspace.newProject()
 
-    def _saveProjectCore(self, parent: QtWidgets.QWidget, file_path: str) -> None:
+    def _saveProjectCore(self, parent: QtWidgets.QWidget, file_path: str, portable: bool = None) -> None:
         """
         Saves the project to the specified file path and shows a bussy modal.
 
         Args:
             parent (QWidget): The parent widget.
             file_path (str): The file path.
+            portable (bool): Whether to save the project in portable mode. By default, the current mode is used.
         """
         bussyModal = BussyModal(
             parent, title=__("@project_manager.saving_project.title"), subtitle=__("@project_manager.saving_project.subtitle"))
 
+        def onImageCopied(current: int, total: int, image: Image):
+            bussyModal.setSubtitle(__("@project_manager.saving_project.copying", current=current + 1, total=total))
+
         def saveProjectWorker():
-            self._workspace.saveProject(file_path)
+            nonlocal portable
+            project = self._workspace.project()
+            writer = ProjectFileWriter(project, portable=portable, on_image_copied=onImageCopied)
+            writer.write(file_path)
+            self._workspace.setDirty(False)
 
         bussyModal.exec(saveProjectWorker)
 
@@ -264,7 +344,7 @@ class ProjectManager:
         Args:
             parent (QWidget): The parent widget.
         """
-        current_path = self._workspace.project().file_path
+        current_path = self._workspace.project().path
         file_dir = os.path.dirname(current_path) if current_path else ""
 
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -272,7 +352,28 @@ class ProjectManager:
             self._projectFilter)
 
         if file_path:
-            self._saveProjectCore(parent, file_path)
+            portable = self._askForPortableMode(parent)
+            self._saveProjectCore(parent, file_path, portable=portable)
+
+    def _askForPortableMode(self, parent: QtWidgets.QWidget) -> bool:
+        """
+        Asks the user if they want to save the project in portable mode.
+
+        Args:
+            parent (QWidget): The parent widget.
+
+        Returns:
+            bool: True if the user wants to save in portable mode, False otherwise.
+        """
+        yesNoFlags = QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No
+
+        result = QtWidgets.QMessageBox.question(
+            parent, __("@project_manager.portable_mode.title"),
+            __("@project_manager.portable_mode.message"),
+            yesNoFlags,
+            QtWidgets.QMessageBox.StandardButton.No)
+
+        return result == QtWidgets.QMessageBox.StandardButton.Yes
 
     def saveProject(self, parent: QtWidgets.QWidget) -> None:
         """
@@ -281,7 +382,7 @@ class ProjectManager:
         Args:
             parent (QWidget): The parent widget.
         """
-        path = self._workspace.project().file_path
+        path = self._workspace.project().path
         if path:
             self._saveProjectCore(parent, path)
         else:

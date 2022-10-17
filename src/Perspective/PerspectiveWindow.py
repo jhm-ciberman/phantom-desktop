@@ -20,7 +20,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         self._rotationIndex = 0
         self._points = []  # type: list[(int, int)]
 
-        self.setWindowTitle(str(image.basename) + " - Phantom")
+        self.setWindowTitle(str(image.display_name) + " - Phantom")
         self.setMinimumSize(800, 600)
 
         layout = QtWidgets.QVBoxLayout()

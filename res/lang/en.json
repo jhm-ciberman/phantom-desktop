@@ -42,10 +42,15 @@
             "message": "The selected folder contains {count} images. Do you want to add all of them to the project?",
             "title": "Add images"
         },
+        "add_images_error": {
+            "message": "The following images could not be added to the project: \n{list}\n\nPlease make sure that the files are readable and not corrupted.",
+            "title": "Some images could not be added"
+        },
         "adding_images": {
             "subtitle": "Loaded {current} of {total} images",
             "title": "Adding images to the project"
         },
+        "and_more": "And {count} more...",
         "exporting_images": {
             "subtitle": "Exported {current} of {total} images",
             "title": "Exporting images"
@@ -66,7 +71,12 @@
             "message": "The project does not contain any images. Please add some images to the project before exporting.",
             "title": "No images to export"
         },
+        "portable_mode": {
+            "message": "Portable mode will save all the referenced images in a subfolder in the same location where the project file is saved. This is useful if you want to move the project to another computer or share it with someone else but could take a few minutes if you have thousands of images and take extra storage space. Do you want to save the project in portable mode?",
+            "title": "Save project in portable mode?"
+        },
         "saving_project": {
+            "copying": "Copying image {current} of {total}...",
             "subtitle": "Please wait...",
             "title": "Saving project"
         },
@@ -76,6 +86,10 @@
         "select_images_caption": "Select images to add to the project",
         "select_project_open_caption": "Select a project to open",
         "select_project_save_caption": "Select where to save the project",
+        "skipped_images": {
+            "message": "The following images could not be loaded: \n{list}\n\nPlease make sure that the files exist and are readable. Do you want to remove them from the project?",
+            "title": "Some images could not be loaded"
+        },
         "unsaved_changes": {
             "message": "The project has unsaved changes. Do you want to save the project before continuing?",
             "title": "Unsaved changes"
@@ -149,13 +163,23 @@
     "No EXIF data available.": "No EXIF data available.",
     "No faces detected.": "No faces detected.",
     "No file selected": "No file selected",
+    "No hashes available": "No hashes available",
+    "Non-portable projects can only be opened on the computer they were created on.": "Non-portable projects can only be opened on the computer they were created on.",
+    "Number of Images": "Number of Images",
     "Open Project...": "Open Project...",
+    "Original Filename": "Original Filename",
+    "Original Folder": "Original Folder",
     "Output height": "Output height",
     "Output width": "Output width",
     "Phantom Project": "Phantom Project",
     "Please wait...": "Please wait...",
+    "Portable Project": "Portable Project",
+    "Portable projects can be moved to another location or copied to another computer.": "Portable projects can be moved to another location or copied to another computer.",
     "Processing finished": "Processing finished",
     "Processing images {current}/{total}": "Processing images {current}/{total}",
+    "Project Information": "Project Information",
+    "Project Name": "Project Name",
+    "Project Path": "Project Path",
     "Property": "Property",
     "Question {current} of {total}": "Question {current} of {total}",
     "Remove from group": "Remove from group",
@@ -187,6 +211,7 @@
     "Value": "Value",
     "Width:": "Width:",
     "Working": "Working",
+    "Yes": "Yes",
     "You cannot move the last face in a group.": "You cannot move the last face in a group.",
     "{count} faces detected.": "{count} faces detected.",
     "{count} image": "{count} image",
