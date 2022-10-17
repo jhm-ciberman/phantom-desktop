@@ -1,9 +1,9 @@
 import base64
-from functools import partial
 import gzip
 import json
 import os
 import shutil
+from functools import partial
 from typing import Any, Callable
 from uuid import UUID
 
@@ -76,6 +76,7 @@ class ProjectBufferSection:
         return {
             "dtype": self._dtype,
             "stride": self._stride,
+            "count": len(self._data),
             "data": base64.b64encode(
                 np.concatenate(self._data).astype(self._dtype).tobytes()
             ).decode("utf-8"),
@@ -195,12 +196,13 @@ class ProjectFileBase:
     """
     An abstract base class for ProjectFileWriter and ProjectFileReader.
     """
+    from .Application import Application
 
     _current_version = 1
 
     _client_name = "Phantom Desktop"
 
-    _client_version = "0.0.0"
+    _client_version = Application.applicationVersion()
 
     def __init__(self) -> None:
         """
@@ -309,25 +311,26 @@ class ProjectFileWriter(ProjectFileBase):
     def _encode_image(self, model: Image) -> dict:
         return {
             "id": str(model.id),
-            "src": self._resolve_src(model.path),
-            "original_src": model.original_path,
+            "src": self._resolve_src(model.path, portable=self.portable),
+            "original_src": self._resolve_src(model.original_path, portable=False),
             "faces": [str(face.id) for face in model.faces],
             "processed": model.processed,
             "hashes": model.hashes,  # dict[str, str] (e.g. {"md5": "1234", "sha1": "5678"})
         }
 
-    def _resolve_src(self, src: str) -> str:
+    def _resolve_src(self, src: str, portable: bool = False) -> str:
         # src could be absolute or relative. For absolute paths, the src looks like:
         # "file:///C:/Users/username/Pictures/image.jpg"
         # for relative paths, the src looks like:
         # "file:./project_files/image.jpg"
-        if self.portable:
+        if src is None:
+            return None
+        if portable:
             return "file:./" + os.path.relpath(src, self._project.dirname)
         return "file:///" + os.path.abspath(src)
 
     def _encode_project(self, project: Project) -> dict:
         return {
-            "version": self._current_version,
             "client_name": self._client_name,
             "client_version": self._client_version,
             "files_dir": project.files_dir,
@@ -340,6 +343,7 @@ class ProjectFileWriter(ProjectFileBase):
 
     def _encode_file(self, project: Project) -> dict:
         return {
+            "version": self._current_version,
             "project": self._encode_project(project),
             "images": self._images.to_json(self._encode_image),
             "faces": self._faces.to_json(self._encode_face),
@@ -579,7 +583,7 @@ class ProjectFileReader(ProjectFileBase):
         Returns:
             dict[str, Any]: The migrated json.
         """
-        version = json["project"]["version"]
+        version = json["version"]
         if version == 1:
             return json
         # In the future, add more elif statements here to migrate from version 2 to 3, from 3 to 4, etc.
@@ -624,19 +628,19 @@ class ProjectFileReader(ProjectFileBase):
 
         data = self._migrate(data)
 
-        self._assert_version_supported(data["project"]["version"])
+        self._assert_version_supported(data["version"])
 
         # First, Decode the basic project data
         project = self._decode_project(data["project"], path)
 
         # Load the buffers:
-        buffers = data["buffers"]
+        buffers = data.get(["buffers"], {})
         self._encodings_buff.from_json(buffers["encodings"])
 
         # Then, load the models without relations:
-        self._images.from_json(data["images"], partial(self._decode_image, project))
-        self._faces.from_json(data["faces"], partial(self._decode_face, project))
-        self._groups.from_json(data["groups"], partial(self._decode_group, project))
+        self._images.from_json(data.get("images", []), partial(self._decode_image, project))
+        self._faces.from_json(data.get("faces", []), partial(self._decode_face, project))
+        self._groups.from_json(data.get("groups", []), partial(self._decode_group, project))
 
         # Now that all models are loaded, resolve the relations:
         self._images.resolve_relations(data["images"], self._resolve_image)

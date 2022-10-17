@@ -1,6 +1,7 @@
-from src.Application import Application
-from multiprocessing import freeze_support
 import sys
+from multiprocessing import freeze_support
+
+from src.Application import Application
 
 if __name__ == "__main__":
     # This line is to add multiprocessing support.
