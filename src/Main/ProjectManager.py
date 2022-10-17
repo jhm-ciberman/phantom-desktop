@@ -6,7 +6,8 @@ from PySide6 import QtWidgets
 from ..Application import Application
 from ..l10n import __
 from ..Models import Image
-from ..ProjectFile import ProjectFileReader, ProjectFileWriter
+from ..ProjectFile.ProjectFileReader import ProjectFileReader
+from ..ProjectFile.ProjectFileWriter import ProjectFileWriter
 from ..Widgets.BussyModal import BussyModal
 
 
