@@ -171,7 +171,7 @@ class BussyModal(QtWidgets.QDialog):
 
     def show(self, task: Callable[[], None] = None) -> None:
         """
-        Shows the modal and performs the specified task in the background. 
+        Shows the modal and performs the specified task in the background.
 
         Args:
             task (Callable[[], None]): The task to perform in the background.

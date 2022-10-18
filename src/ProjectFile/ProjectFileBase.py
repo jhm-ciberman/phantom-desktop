@@ -197,7 +197,7 @@ class ProjectFileBase:
 
     _client_name = "Phantom Desktop"
 
-    _client_version = Application.applicationVersion()
+    _client_version = "1.0.0"
 
     def __init__(self) -> None:
         """
