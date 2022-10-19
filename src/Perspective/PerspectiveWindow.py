@@ -1,7 +1,10 @@
+from typing import Tuple
+
 import cv2
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from ..Application import Application
 from ..l10n import __
 from ..Models import Image
 from ..Widgets.PixmapDisplay import PixmapDisplay
@@ -42,29 +45,35 @@ class PerspectiveWindow(QtWidgets.QWidget):
         self._editor.finished.connect(self._onPointsFinished)
 
         # right side: image result preview
+        rightColumn = QtWidgets.QSplitter()
+        rightColumn.setOrientation(QtCore.Qt.Vertical)
+        rightColumn.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+
         self._imagePreview = PixmapDisplay()
         self._imagePreview.setStyleSheet("background-color: #f0f0f0;")
         self._imagePreview.setAutoFillBackground(True)
         self._imagePreview.setMinimumHeight(200)
         self._imagePreview.setMinimumWidth(200)
+        self._imagePreview.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self._imagePreview.setPixmap(self._image.get_pixmap())
         self._imagePreview.imageRectChanged.connect(self._onPreviewRectChanged)
 
-        splitter.addWidget(self._editor)
-        splitter.addWidget(self._imagePreview)
+        imagePreviewFrame = QtWidgets.QFrame()
+        imagePreviewFrame.setFrameStyle(QtWidgets.QFrame.StyledPanel)
+        imagePreviewFrame.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        imagePreviewFrame.setStyleSheet("background-color: #e0e0e0;")
+        imagePreviewFrameLayout = QtWidgets.QVBoxLayout()
+        imagePreviewFrameLayout.setContentsMargins(0, 0, 0, 0)
+        imagePreviewFrame.setLayout(imagePreviewFrameLayout)
+        imagePreviewFrameLayout.addWidget(self._imagePreview)
 
         optionsFrame = QtWidgets.QFrame()
         optionsFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
-        optionsFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         optionsFrame.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
         optionsFrame.setMinimumWidth(200)
-        optionsFrame.setMaximumWidth(400)
-
-        formLayout = QtWidgets.QFormLayout()
-        formLayout.setContentsMargins(10, 10, 10, 10)
-        optionsFrame.setLayout(formLayout)
-
-        layout.addWidget(optionsFrame)
+        optionsFrameLayout = QtWidgets.QFormLayout()
+        optionsFrameLayout.setContentsMargins(10, 10, 10, 10)
+        optionsFrame.setLayout(optionsFrameLayout)
 
         self._outputWidth = self._createSpinBox(min=1, max=10000, value=image.width, step=1, suffix="px")
         self._outputHeight = self._createSpinBox(min=1, max=10000, value=image.height, step=1, suffix="px")
@@ -82,14 +91,29 @@ class PerspectiveWindow(QtWidgets.QWidget):
         self._interpolationMode.setCurrentIndex(1)
 
         self._rotationModeSmart = QtWidgets.QToolButton()
-        self._rotationModeSmart.setText(__("Smart"))
+        self._rotationModeSmart.setText(__("Smart rotation"))
+        self._rotationModeSmart.setIcon(QtGui.QIcon("res/img/idea.png"))
+        self._rotationModeSmart.setIconSize(QtCore.QSize(32, 32))
+        self._rotationModeSmart.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+        self._rotationModeSmart.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
         self._rotationModeSmart.setCheckable(True)
         self._rotationModeSmart.setChecked(True)
         self._rotationModeSmart.clicked.connect(self._onRotationModeChanged)
 
-        self._rotateCCW = QtWidgets.QPushButton(__("Rotate CCW"))
-        self._rotateCW = QtWidgets.QPushButton(__("Rotate CW"))
+        self._rotateCCW = QtWidgets.QToolButton()
+        self._rotateCCW.setIcon(QtGui.QIcon("res/img/rotate_left.png"))
+        self._rotateCCW.setIconSize(QtCore.QSize(32, 32))
+        self._rotateCCW.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+        self._rotateCCW.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
+        self._rotateCCW.setText(__("Rotate CCW"))
         self._rotateCCW.clicked.connect(self._onRotateCCW)
+
+        self._rotateCW = QtWidgets.QToolButton()
+        self._rotateCW.setIcon(QtGui.QIcon("res/img/rotate_right.png"))
+        self._rotateCW.setIconSize(QtCore.QSize(32, 32))
+        self._rotateCW.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
+        self._rotateCW.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Fixed)
+        self._rotateCW.setText(__("Rotate CW"))
         self._rotateCW.clicked.connect(self._onRotateCW)
 
         rotationLayout = QtWidgets.QHBoxLayout()
@@ -123,16 +147,43 @@ class PerspectiveWindow(QtWidgets.QWidget):
         for name, ratio in aspectRatios:
             self._aspectRatio.addItem(name, ratio)
 
-        formLayout.addRow(__("Aspect ratio"), self._aspectRatio)
-        formLayout.addRow(__("Output width"), self._outputWidth)
-        formLayout.addRow(__("Output height"), self._outputHeight)
-        formLayout.addRow(__("Interpolation Mode"), self._interpolationMode)
-        formLayout.addRow(__("Rotation"), rotationLayout)
+        exportSaveLayout = QtWidgets.QHBoxLayout()
+        exportSaveLayout.setContentsMargins(0, 20, 0, 0)
+        exportSaveLayout.setSpacing(10)
+
+        self._saveButton = QtWidgets.QPushButton(
+                QtGui.QIcon("res/img/image_save.png"), __("Export Image"))
+        self._saveButton.clicked.connect(self._onSavePressed)
+        self._saveButton.setIconSize(QtCore.QSize(32, 32))
+        exportSaveLayout.addWidget(self._saveButton)
+
+        self._saveAndAddToProjectButton = QtWidgets.QPushButton(
+                QtGui.QIcon("res/img/collection.png"), __("Export and add to project"))
+        self._saveAndAddToProjectButton.clicked.connect(self._onSaveAndAddToProjectPressed)
+        self._saveAndAddToProjectButton.setIconSize(QtCore.QSize(32, 32))
+        exportSaveLayout.addWidget(self._saveAndAddToProjectButton)
+
+        optionsFrameLayout.addRow(__("Aspect ratio"), self._aspectRatio)
+        optionsFrameLayout.addRow(__("Output width"), self._outputWidth)
+        optionsFrameLayout.addRow(__("Output height"), self._outputHeight)
+        optionsFrameLayout.addRow(__("Rotation"), rotationLayout)
+        optionsFrameLayout.addRow(__("Interpolation Mode"), self._interpolationMode)
+        optionsFrameLayout.addRow(exportSaveLayout)
 
         self._aspectRatio.currentIndexChanged.connect(self._onPreviewConfigChanged)
         self._interpolationMode.currentIndexChanged.connect(self._onPreviewConfigChanged)
         self._outputWidth.valueChanged.connect(self._onPreviewConfigChanged)
         self._outputHeight.valueChanged.connect(self._onPreviewConfigChanged)
+
+        splitter.addWidget(self._editor)
+        splitter.addWidget(rightColumn)
+        splitter.setCollapsible(0, False)
+        splitter.setCollapsible(1, False)
+
+        rightColumn.addWidget(imagePreviewFrame)
+        rightColumn.addWidget(optionsFrame)
+        rightColumn.setCollapsible(0, False)
+        rightColumn.setCollapsible(1, False)
 
         self._onPreviewConfigChanged()
 
@@ -157,22 +208,27 @@ class PerspectiveWindow(QtWidgets.QWidget):
     def _onPreviewRectChanged(self, rect: QtCore.QRect) -> None:
         self._updatePreview()
 
-    def _updatePreview(self) -> None:
-        if self._points is None or len(self._points) < 4:
-            return
-
+    def _computeOutputShape(self) -> Tuple[int, int, int]:
         aspectRatio = self._aspectRatio.currentData()
         if aspectRatio is None:
             aspectRatio = self._outputWidth.value() / self._outputHeight.value()
         w = min(self._outputWidth.value(), self._imagePreview.width())
         h = int(w / aspectRatio)
         previewShape = (h, w, 4)
+        return previewShape
+
+    def _updatePreview(self) -> None:
+        if self._points is None or len(self._points) < 4:
+            return
+
+        previewShape = self._computeOutputShape()
         if self._previewBuffer.shape != previewShape:
             self._previewBuffer = np.zeros(previewShape, dtype=np.uint8)
 
         interpolation = self._interpolationMode.currentData()
         perspective_transform(self._image.get_pixels_rgba(), self._previewBuffer, self._points, interpolation)
 
+        w, h = previewShape[1], previewShape[0]
         image = QtGui.QImage(self._previewBuffer.data, w, h, QtGui.QImage.Format.Format_RGBA8888)
         pixmap = QtGui.QPixmap.fromImage(image)
         self._imagePreview.setPixmap(pixmap)
@@ -233,3 +289,31 @@ class PerspectiveWindow(QtWidgets.QWidget):
         if self._rotationModeSmart.isChecked():
             self._recomputePoints()
         self._updatePreview()
+
+    def _saveImageTo(self, path):
+        if self._points is None or len(self._points) < 4:
+            return
+
+        interpolation = self._interpolationMode.currentData()
+        outputShape = self._computeOutputShape()
+        outputBuffer = np.zeros(outputShape, dtype=np.uint8)
+        perspective_transform(self._image.get_pixels_bgra(), outputBuffer, self._points, interpolation)
+
+        cv2.imwrite(path, outputBuffer)
+
+    def _showSaveDialog(self) -> str:
+        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, __("Save Image"), "", "PNG (*.png);;JPEG (*.jpg)")
+        if path:
+            self._saveImageTo(path)
+            return path
+        return None
+
+    @QtCore.Slot()
+    def _onSavePressed(self) -> None:
+        self._showSaveDialog()
+
+    @QtCore.Slot()
+    def _onSaveAndAddToProjectPressed(self) -> None:
+        path = self._showSaveDialog()
+        if path:
+            Application.workspace().addImage(path)

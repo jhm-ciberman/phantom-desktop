@@ -238,14 +238,13 @@ class ImageProcessorService:
         if image in self._image_to_id:
             raise ValueError("Image is already being processed.")
 
-        self._addWorkerIfNeeded()
-
         # generate new a random uuid for this request.
         # This id is used to comunicate with the worker process.
         id = uuid.uuid4()
         self._image_to_id[image] = id
         self._requests[id] = _ImageProcessingRequest(id, image, success, failure)
         self._input_queue.put(_WorkerTask(id, image.get_pixels_rgb()))
+        self._addWorkerIfNeeded()
 
     def __del__(self):
         self.stop()

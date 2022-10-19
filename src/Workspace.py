@@ -174,6 +174,7 @@ class Workspace(QtCore.QObject):
         """
         if isinstance(imageOrPath, str):
             image = Image(imageOrPath)
+            image.load()
 
         self._project.add_image(image)
 

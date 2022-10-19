@@ -455,6 +455,13 @@ class Image(Model):
         self._assert_loaded()
         return self._raw_image
 
+    def get_pixels_bgra(self) -> np.ndarray:
+        """
+        Returns the raw image data in BGRA format.
+        """
+        self._assert_loaded()
+        return cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2BGRA)
+
     @property
     def faces(self) -> list[Face]:
         """

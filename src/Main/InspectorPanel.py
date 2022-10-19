@@ -34,13 +34,12 @@ class InspectorPanel(QtWidgets.QWidget):
         self.setMinimumWidth(200)
 
         previewFrame = QtWidgets.QFrame()
-        previewFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
-        previewFrame.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        previewFrame.setContentsMargins(0, 0, 0, 0)
+        previewFrame.setFrameStyle(QtWidgets.QFrame.StyledPanel)
         previewFrame.setStyleSheet("background-color: #e0e0e0;")
-        previewFrame.setLayout(QtWidgets.QVBoxLayout())
-        previewFrame.layout().setContentsMargins(0, 0, 0, 0)
-        previewFrame.layout().addWidget(self._pixmapDisplay)
+        previewFrameLayout = QtWidgets.QVBoxLayout()
+        previewFrameLayout.setContentsMargins(0, 0, 0, 0)
+        previewFrameLayout.addWidget(self._pixmapDisplay)
+        previewFrame.setLayout(previewFrameLayout)
 
         splitter.addWidget(previewFrame)
         splitter.addWidget(self._table)
