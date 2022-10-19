@@ -1,7 +1,4 @@
 {
-    "&Edit": "&Edit",
-    "&File": "&File",
-    "&View": "&View",
     "1 face detected.": "1 face detected.",
     "@aspect_ratios": {
         "16_10": "16:10",
@@ -36,6 +33,24 @@
         "lanczos4": "Lanczos4",
         "linear": "Linear (Default)",
         "nearest": "Nearest (Pixelated)"
+    },
+    "@menubar": {
+        "edit": {
+            "header": "Edit"
+        },
+        "file": {
+            "header": "File"
+        },
+        "help": {
+            "about": "About",
+            "documentation": "Documentation",
+            "github": "GitHub",
+            "header": "Help",
+            "report_issue": "Report an issue"
+        },
+        "view": {
+            "header": "View"
+        }
     },
     "@project_manager": {
         "add_images": {
@@ -95,6 +110,7 @@
             "title": "Unsaved changes"
         }
     },
+    "About Phantom Desktop": "About Phantom Desktop",
     "Add From Folder...": "Add From Folder...",
     "Add Images...": "Add Images...",
     "Add a name to this person": "Add a name to this person",
@@ -172,7 +188,11 @@
     "Original Folder": "Original Folder",
     "Output height": "Output height",
     "Output width": "Output width",
+    "Phantom Desktop": "Phantom Desktop",
+    "Phantom Desktop developed by:": "Phantom Desktop developed by:",
+    "Phantom Desktop is a free and open source desktop application for forensic image processing.": "Phantom Desktop is a free and open source desktop application for forensic image processing.",
     "Phantom Project": "Phantom Project",
+    "Phantom Core developed by:": "Phantom core developed by:",
     "Please wait...": "Please wait...",
     "Portable Project": "Portable Project",
     "Portable projects can be moved to another location or copied to another computer.": "Portable projects can be moved to another location or copied to another computer.",
@@ -209,9 +229,12 @@
     "Sigma": "Sigma",
     "Size:": "Size:",
     "Smart": "Smart",
+    "Special thanks to:": "Special thanks to:",
     "Thank you. All done for now.": "Thank you. All done for now.",
+    "Untitled": "Untitled",
     "Use as main face": "Use as main face",
     "Value": "Value",
+    "Version {version}": "Version {version}",
     "Width:": "Width:",
     "Working": "Working",
     "Yes": "Yes",

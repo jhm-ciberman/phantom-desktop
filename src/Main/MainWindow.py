@@ -8,6 +8,7 @@ from ..Models import Image
 from ..Perspective.PerspectiveWindow import PerspectiveWindow
 from ..Widgets.GridBase import GridBase
 from ..Workspace import BatchProgress
+from .AboutWindow import AboutWindow
 from .ImageGrid import ImageGrid
 from .InspectorPanel import InspectorPanel
 from .ProjectManager import ProjectManager
@@ -138,7 +139,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(mainWidget)
 
         self._menuBar = self.menuBar()
-        self._fileMenu = self._menuBar.addMenu(__("&File"))
+        self._fileMenu = self._menuBar.addMenu(__("@menubar.file.header"))
         self._fileMenu.addAction(self._newProjectAction)
         self._fileMenu.addAction(self._openProjectAction)
         self._fileMenu.addAction(self._saveProjectAction)
@@ -150,12 +151,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._fileMenu.addSeparator()
         self._fileMenu.addAction(self._exitAction)
 
-        self._editMenu = self._menuBar.addMenu(__("&Edit"))
+        self._editMenu = self._menuBar.addMenu(__("@menubar.edit.header"))
         self._editMenu.addAction(self._correctPerspectiveAction)
         self._editMenu.addAction(self._deblurAction)
         self._editMenu.addAction(self._groupFacesAction)
 
-        self._viewMenu = self._menuBar.addMenu(__("&View"))
+        self._viewMenu = self._menuBar.addMenu(__("@menubar.view.header"))
         self._sizePresetActions = []
 
         for preset in GridBase.sizePresets():
@@ -167,6 +168,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self._sizePresetActions.append(action)
 
         self._sizePresetActions[1].setChecked(True)
+
+        self._helpMenu = self._menuBar.addMenu(__("@menubar.help.header"))
+        self._helpMenu.addAction(__("@menubar.help.report_issue"), self._onReportIssuePressed)
+        self._helpMenu.addAction(__("@menubar.help.documentation"), self._onDocumentationPressed)
+        self._helpMenu.addAction(QtGui.QIcon("res/img/github.png"), __("@menubar.help.github"), self._onGithubPressed)
+        self._helpMenu.addSeparator()
+        self._helpMenu.addAction(__("@menubar.help.about"), self._onAboutPressed)
 
         # Only because GC closes the window when the reference is lost.
         self._childWindows = []  # type: list[QtWidgets.QWidget]
@@ -181,6 +189,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._workspace.isDirtyChanged.connect(self._onIsDirtyChanged)
 
         self._projectManager = ProjectManager()
+        self._updateWindowTitle()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
 
@@ -281,6 +290,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for image in images:
             self._imageGrid.addImage(image)
         self._onNumberOfImagesChanged()
+        self._updateWindowTitle()
 
     def _onNumberOfImagesChanged(self) -> None:
         imagesCount = len(self._workspace.project().images)
@@ -320,3 +330,26 @@ class MainWindow(QtWidgets.QMainWindow):
     @QtCore.Slot(bool)
     def _onIsDirtyChanged(self, is_dirty: bool) -> None:
         self._saveProjectAction.setEnabled(is_dirty)
+        self._updateWindowTitle()
+
+    @QtCore.Slot()
+    def _onAboutPressed(self) -> None:
+        AboutWindow().exec()
+
+    @QtCore.Slot()
+    def _onDocumentationPressed(self) -> None:
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(Application.instance().docsUrl()))
+
+    @QtCore.Slot()
+    def _onReportIssuePressed(self) -> None:
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(Application.instance().bugReportUrl()))
+
+    @QtCore.Slot()
+    def _onGithubPressed(self) -> None:
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(Application.instance().repoUrl()))
+
+    def _updateWindowTitle(self) -> None:
+        project = self._workspace.project()
+        dirtyDot = "*" if self._workspace.isDirty() else ""
+        appName = Application.applicationName()
+        self.setWindowTitle(f"{project.name}{dirtyDot} - {appName}")

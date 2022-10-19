@@ -8,6 +8,8 @@ import cv2
 import numpy as np
 from PySide6 import QtCore, QtGui
 
+from .l10n import __
+
 
 class Model:
     """
@@ -554,7 +556,7 @@ class Project:
         Gets the name of the project. This is the name of the project file without the extension.
         """
         if self.path is None:
-            return "Untitled"
+            return __("Untitled")
         return os.path.splitext(os.path.basename(self.path))[0]
 
     @property

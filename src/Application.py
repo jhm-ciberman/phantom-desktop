@@ -4,6 +4,12 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from .Workspace import Workspace
 
+app_version = "1.0.0"
+app_name = "Phantom Desktop"
+repo_url = "https://github.com/jhm-ciberman/phantom-desktop"
+docs_url = "https://github.com/jhm-ciberman/phantom-desktop/wiki"
+bug_report_url = "https://github.com/jhm-ciberman/phantom-desktop/issues/new"
+
 
 class Application(QtWidgets.QApplication):
     """
@@ -40,7 +46,10 @@ class Application(QtWidgets.QApplication):
 
         Application._instance = self
 
-        self._icon = QtGui.QIcon("res/img/icon_128.png")
+        self.setApplicationVersion(app_version)
+        self.setApplicationName(app_name)
+
+        self._icon = QtGui.QIcon("res/img/icon.png")
         self.setWindowIcon(self._icon)
 
         self.setStyle(QtWidgets.QStyleFactory.create("Fusion"))
@@ -79,3 +88,21 @@ class Application(QtWidgets.QApplication):
         Returns the application icon.
         """
         return self._icon
+
+    def docsUrl(self) -> str:
+        """
+        Returns the help URL.
+        """
+        return docs_url
+
+    def repoUrl(self) -> str:
+        """
+        Returns the repository URL.
+        """
+        return repo_url
+
+    def bugReportUrl(self) -> str:
+        """
+        Returns the bug report URL.
+        """
+        return bug_report_url
