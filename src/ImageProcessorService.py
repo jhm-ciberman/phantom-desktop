@@ -103,7 +103,7 @@ class _ImageProcessingRequest:
     """The image to process."""
     success: Callable[[Image], None]
     """The callback to invoke when the image is processed successfully."""
-    failure: Callable[[Image, Exception], None]
+    failure: Callable[[Exception, Image], None]
     """The callback to invoke when the image processing fails."""
 
 
@@ -150,7 +150,7 @@ class ImageProcessorService:
                 image._processed = True
                 request.success(image)
             elif isinstance(event, _WorkerFailureEvent):
-                request.failure(request.image, event.error)
+                request.failure(event.error, request.image)
 
     def _addWorker(self) -> None:
         i = len(self._workers)
@@ -221,7 +221,7 @@ class ImageProcessorService:
 
     def process(self, image: Image,
                 success: Callable[[Image], None] = None,
-                failure: Callable[[Image, Exception], None] = None) -> None:
+                failure: Callable[[Exception, Image], None] = None) -> None:
         """
         Processes an image. This method is non-blocking and not thread safe.
 

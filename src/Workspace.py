@@ -195,13 +195,13 @@ class Workspace(QtCore.QObject):
             onProgress (Callable[[int, int, Image], None]): A callback that is called when an image
                 is loaded (or failed to load). The callback receives the current index, the total
                 number of images and the image that was loaded.
-            onImageError (Callable[[Image, Exception], None]): A callback that is called when an
+            onImageError (Callable[[Exception, Image], None]): A callback that is called when an
                 image fails to load. The callback receives the exception and the image that failed
                 to load. The callback should return True to skip the image and continue or False
                 to stop the loading process. This callback is called before the onProgress callback.
         """
         onProgress = onProgress or (lambda index, total, image: None)
-        onImageError = onImageError or (lambda image, exception: False)
+        onImageError = onImageError or (lambda e, image: False)
         images = []
         count = len(paths)
         for index, path in enumerate(paths):
@@ -210,7 +210,7 @@ class Workspace(QtCore.QObject):
             try:
                 image.load()
             except Exception as e:
-                if onImageError(image, e):
+                if onImageError(e, image):
                     continue
                 else:
                     break
@@ -245,7 +245,7 @@ class Workspace(QtCore.QObject):
         self.imageProcessed.emit(image)
         self._removeImageFromBatch(image)
 
-    def _onImageError(self, image: Image, error: Exception):
+    def _onImageError(self, error: Exception, image: Image):
         """
         Callback called when an image processing error occurs.
         """
