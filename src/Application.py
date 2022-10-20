@@ -80,6 +80,10 @@ class Application(QtWidgets.QApplication):
         """
         Runs the application.
         """
+        if not self._projectManager.ensureModelsAreDownloaded():
+            sys.exit(1)
+            return
+
         from .Main.MainWindow import MainWindow  # Avoid circular importss
         win = MainWindow()
         win.showMaximized()

@@ -108,6 +108,16 @@
         "unsaved_changes": {
             "message": "The project has unsaved changes. Do you want to save the project before continuing?",
             "title": "Unsaved changes"
+        },
+        "downloading_models": {
+            "title": "Dowloading the latest version of the Phantom AI models",
+            "subtitle": "Please wait...",
+            "downloading": "Downloading... {current} of {total} ({percent}%)",
+            "extracting": "Extracting... {current} of {total}",
+            "error": {
+                "message": "An error occurred while downloading the models. Please restart the application and try again. Phantom Desktop require the AI models to be downloaded in order to work properly. The program will be closed.\n\nError: {error}",
+                "title": "Error while downloading the models"
+            }
         }
     },
     "About Phantom Desktop": "About Phantom Desktop",

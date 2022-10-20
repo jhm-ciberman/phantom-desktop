@@ -8,6 +8,7 @@ from .l10n import __
 from .Models import Image
 from .Widgets.BussyModal import BussyModal
 from .Workspace import Workspace
+from .ModelsDownloader import ModelsDownloader
 
 
 class ProjectManager:
@@ -458,3 +459,61 @@ class ProjectManager:
             self._workspace.closeProject()
             return True
         return False
+
+    def ensureModelsAreDownloaded(self, parent: QtWidgets.QWidget = None) -> bool:
+        """
+        Downloads the latest models if required and shows a bussy modal.
+
+        Args:
+            parent (QWidget): The parent widget.
+
+        Returns:
+            True if the models were updated or no update was required,
+            False if the update failed or the user cancelled the update.
+        """
+        downloader = ModelsDownloader()
+
+        if downloader.models_are_updated():
+            return True
+
+        bussyModal = BussyModal(
+            parent, title=__("@project_manager.downloading_models.title"),
+            subtitle=__("@project_manager.downloading_models.subtitle"))
+
+        def extractProgress(current: int, total: int):
+            bussyModal.setSubtitle(__("@project_manager.downloading_models.extracting", current=current, total=total))
+
+        def humanizeMb(size: int) -> str:
+            return "{:.2f} MB".format(size / 1024 / 1024) if size else "??? MB"
+
+        def downloadProgress(current: int, total: int):
+            currentMb = humanizeMb(current)
+            totalMb = humanizeMb(total)
+            percent = int(current / total * 100)
+            bussyModal.setSubtitle(
+                __("@project_manager.downloading_models.downloading", current=currentMb, total=totalMb, percent=percent))
+
+        error: Exception = None
+
+        def updateModelsWorker():
+            nonlocal downloader, error
+            downloader.on_download_progress = downloadProgress
+            downloader.on_extract_progress = extractProgress
+            try:
+                downloader.download_models()
+                error = None
+            except Exception as e:
+                print("Error updating models: {}".format(e))
+                error = e
+
+        bussyModal.exec(updateModelsWorker)
+
+        if error:
+            QtWidgets.QMessageBox.critical(
+                parent, __("@project_manager.downloading_models.error.title"),
+                __("@project_manager.downloading_models.error.message", error=error))
+            from .Application import Application
+            Application.instance().quit()
+            return False
+
+        return True

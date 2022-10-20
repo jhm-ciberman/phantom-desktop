@@ -10,9 +10,7 @@ build_options = {
         "scipy.optimize",
         "scipy.integrate",
     ],
-    'excludes': [],
     "include_files": [
-        "models/",
         "res/",
     ],
 }
