@@ -217,6 +217,17 @@ class Workspace(QtCore.QObject):
         self._removeImageFromBatch(image)
         self.setDirty(True)
 
+    def removeImages(self, images: list[Image]):
+        """
+        Removes a list of images from the current project.
+        """
+        self._project.remove_images(images)
+
+        self.imagesRemoved.emit(images)
+        for image in images:
+            self._removeImageFromBatch(image)
+        self.setDirty(True)
+
     def _onImageSuccess(self, image: Image):
         """
         Callback called when an image is successfully processed.

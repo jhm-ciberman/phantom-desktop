@@ -1,6 +1,7 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from ..Application import Application
+from ..l10n import __
 from ..Models import Image
 from ..Widgets.GridBase import GridBase
 
@@ -11,6 +12,22 @@ class ImageGrid(GridBase):
     """
 
     selectionChanged = QtCore.Signal()
+    """Raised when the selected image changes."""
+
+    deblurImagePressed = QtCore.Signal(Image)
+    """Raised when the "Deblur Filter" right-click action is invoked."""
+
+    perspectivePressed = QtCore.Signal(Image)
+    """Raised when the "Correct perspective" right-click action is invoked."""
+
+    openInExternalImageViewerPressed = QtCore.Signal(Image)
+    """Emitted when the "Open In External Image Viewer" right-click action is invoked."""
+
+    openInExplorerPressed = QtCore.Signal(Image)
+    """Raised when the "Open In Explorer" right-click action is invoked."""
+
+    removeFromProjectPressed = QtCore.Signal(list)  # list[Image]
+    """Emitted when the "Remove from Project" right-click action is invoked."""
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """
@@ -31,6 +48,60 @@ class ImageGrid(GridBase):
         self.itemSelectionChanged.connect(self._onItemSelectionChanged)
         Application.workspace().imageProcessed.connect(self._onImageProcessed)
 
+        def onPressed(sinal: QtCore.Signal):
+            image = self._images[self.selectedIndexes()[0].row()]
+            sinal.emit(image)
+
+        def onPressedMultiple(sinal: QtCore.Signal):
+            images = [self._images[i.row()] for i in self.selectedIndexes()]
+            sinal.emit(images)
+
+        # Right-click actions for when a user right-clicks on the image.
+        self._menu = QtWidgets.QMenu()
+
+        self._perspectiveAction = self._menu.addAction(
+            QtGui.QIcon("res/img/correct_perspective.png"),
+            __("Correct perspective"),
+            lambda: onPressed(self.perspectivePressed))
+
+        self._deblurAction = self._menu.addAction(
+            QtGui.QIcon("res/img/deblur.png"),
+            __("Deblur Filter"),
+            lambda: onPressed(self.deblurImagePressed))
+
+        self._menu.addSeparator()
+
+        self._openInExternalImageViewerAction = self._menu.addAction(
+            QtGui.QIcon("res/img/photo_viewer.png"),
+            __("Open In External Image Viewer"),
+            lambda: onPressed(self.openInExternalImageViewerPressed))
+
+        self._openInExplorerAction = self._menu.addAction(
+            QtGui.QIcon("res/img/folder.png"),
+            __("Open In Explorer"),
+            lambda: onPressed(self.openInExplorerPressed))
+
+        self._menu.addSeparator()
+
+        self._removeFromProjectAction = self._menu.addAction(
+            QtGui.QIcon("res/img/times.png"),
+            __("Remove from Project"),
+            lambda: onPressedMultiple(self.removeFromProjectPressed))
+
+    def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
+        """
+        Handles the context menu event.
+        """
+        count = len(self.selectedIndexes())
+        if count > 0:
+            self._openInExternalImageViewerAction.setEnabled(count == 1)
+            self._openInExplorerAction.setEnabled(count == 1)
+            self._deblurAction.setEnabled(count == 1)
+            self._perspectiveAction.setEnabled(count == 1)
+            self._removeFromProjectAction.setEnabled(True)
+
+            self._menu.exec_(event.globalPos())
+
     def addImage(self, image: Image) -> None:
         """
         Adds an image to the grid.
@@ -42,12 +113,17 @@ class ImageGrid(GridBase):
         self.addItemCore(pixmap, image.display_name)
         self._images.append(image)
 
-    def removeImage(self, index: int) -> None:
+    def removeImage(self, image: Image) -> None:
         """
         Removes an image from the grid.
         """
+        if image in self._selectedImages:
+            self._selectedImages.remove(image)
+        index = self._images.index(image)
+        if index < 0:
+            return
+        self._images.remove(image)
         self.takeItem(index)
-        self._images.pop(index)
 
     def images(self) -> list[Image]:
         """

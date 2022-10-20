@@ -8,238 +8,9 @@ from ..Models import Image
 from ..Widgets.BussyModal import BussyModal
 from ..Widgets.PixmapDisplay import PixmapDisplay
 from .LucyRichardsonDeconvolution import (LucyRichardsonDeconvolution,
-                                          PointSpreadFunction,
                                           ProgressiveDeblurTask)
-from .SliderWithSpinBox import SliderWithSpinBox
-
-
-class _PsfConfig(QtWidgets.QWidget):
-    """
-    Abstract class for deblur options
-    """
-    onPsfChanged = QtCore.Signal(np.ndarray)
-
-    def __init__(self, parent: QtWidgets.QWidget = None):
-        super().__init__(parent)
-        self._psf = None
-        self.setContentsMargins(0, 0, 0, 0)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
-        self._psfImagePadding = 1  # Padding around the PSF image to make it easier to see
-
-    def psf(self) -> np.ndarray:
-        return self._psf
-
-    def psfImage(self) -> QtGui.QImage:
-        psf = self.psf()
-        psfImg = PointSpreadFunction.to_grayscale(psf)
-        if self._psfImagePadding > 0:
-            psfImg = np.pad(psfImg, self._psfImagePadding, mode="constant", constant_values=0)
-        shape = psfImg.shape
-        w, h, bytesPerLine = shape[1], shape[0], shape[1]
-        return QtGui.QImage(psfImg.data, w, h, bytesPerLine, QtGui.QImage.Format_Grayscale8)
-
-    def title(self) -> str:
-        raise NotImplementedError()
-
-    def _onPsfChanged(self):
-        self.onPsfChanged.emit(self.psf())
-
-
-class GaussianPsfConfig(_PsfConfig):
-    """
-    Containst the options for a gaussian blur psf
-    """
-    def __init__(self, parent: QtWidgets.QWidget = None):
-        super().__init__(parent)
-        self._sigma = SliderWithSpinBox(QtCore.Qt.Horizontal)
-        self._sigma.setRange(0.5, 50)
-        self._sigma.setSingleStep(0.1)
-        self._sigma.setValue(3.0)
-        self._sigma.setLabelText(__("Sigma"))
-        self._sigma.valueChanged.connect(self._onConfigChanged)
-
-        layout = QtWidgets.QFormLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._sigma)
-
-        self.setLayout(layout)
-        self._onConfigChanged()
-
-    def title(self) -> str:
-        return __("Gaussian blur")
-
-    @QtCore.Slot(float)
-    def _onConfigChanged(self) -> None:
-        value = self._sigma.value()
-        self._psf = PointSpreadFunction.gaussian(value)
-        self._onPsfChanged()
-
-
-class MotionBlurPsfConfig(_PsfConfig):
-    """
-    Containst the options for a motion blur psf
-    """
-    def __init__(self, parent: QtWidgets.QWidget = None):
-        super().__init__(parent)
-        self._angle = QtWidgets.QDial(self)
-        self._angle.setWrapping(True)
-        self._angle.setNotchesVisible(True)
-        self._angle.setRange(0, 360)
-        self._angle.setSingleStep(1)
-        self._angle.valueChanged.connect(self._onConfigChanged)
-
-        self._length = QtWidgets.QSpinBox()
-        self._length.setRange(1, 100)
-        self._length.setSingleStep(1)
-        self._length.setValue(10)
-        self._length.valueChanged.connect(self._onConfigChanged)
-
-        self._width = QtWidgets.QSpinBox()
-        self._width.setRange(1, 10)
-        self._width.setSingleStep(1)
-        self._width.setValue(1)
-        self._width.valueChanged.connect(self._onConfigChanged)
-
-        layout = QtWidgets.QFormLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addRow(__("Angle:"), self._angle)
-        layout.addRow(__("Length:"), self._length)
-        layout.addRow(__("Width:"), self._width)
-
-        self.setLayout(layout)
-        self._onConfigChanged()
-
-    def title(self) -> str:
-        return __("Motion blur")
-
-    @QtCore.Slot()
-    def _onConfigChanged(self) -> None:
-        angle = self._angle.value()
-        length = self._length.value()
-        width = self._width.value()
-        self._psf = PointSpreadFunction.motion_blur(angle, length, width)
-        self._onPsfChanged()
-
-
-class BoxBlurPsfConfig(_PsfConfig):
-    """
-    Containst the options for a box blur psf
-    """
-    def __init__(self, parent: QtWidgets.QWidget = None):
-        super().__init__(parent)
-
-        self._size = QtWidgets.QSpinBox()
-        self._size.setRange(1, 100)
-        self._size.setSingleStep(1)
-        self._size.setValue(3.0)
-        self._size.valueChanged.connect(self._onConfigChanged)
-
-        layout = QtWidgets.QFormLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addRow(__("Size:"), self._size)
-        self.setLayout(layout)
-        self._onConfigChanged()
-
-    def title(self) -> str:
-        return __("Box blur")
-
-    @QtCore.Slot()
-    def _onConfigChanged(self) -> None:
-        self._psf = PointSpreadFunction.box_blur(int(self._size.value()))
-        self._onPsfChanged()
-
-
-class DiskBlurPsfConfig(_PsfConfig):
-    """
-    Containst the options for a disk blur psf
-    """
-    def __init__(self, parent: QtWidgets.QWidget = None):
-        super().__init__(parent)
-
-        self._size = SliderWithSpinBox(QtCore.Qt.Horizontal)
-        self._size.setRange(0.5, 50)
-        self._size.setSingleStep(0.1)
-        self._size.setValue(3.0)
-        self._size.setLabelText(__("Radius"))
-        self._size.valueChanged.connect(self._onConfigChanged)
-
-        layout = QtWidgets.QFormLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addRow(__("Size:"), self._size)
-        self.setLayout(layout)
-        self._onConfigChanged()
-
-    def title(self) -> str:
-        return __("Disk blur")
-
-    @QtCore.Slot()
-    def _onConfigChanged(self) -> None:
-        self._psf = PointSpreadFunction.disk_blur(self._size.value())
-        self._onPsfChanged()
-
-
-class CustomPsfConfig(_PsfConfig):
-    """
-    Contains the options for a custom psf. This option contains a button to open a file dialog to select a custom
-    image to be used as a psf. It also shows the file path (with elipsis)
-    """
-    def __init__(self, parent: QtWidgets.QWidget = None):
-        super().__init__(parent)
-        text = __("Select a grayscale image to use as kernel for the deconvolution")
-        self._label = QtWidgets.QLabel(text)
-        self._label.setWordWrap(True)
-        self._label.setAlignment(QtCore.Qt.AlignLeft)
-
-        self._filePath = QtWidgets.QLineEdit()
-        self._filePath.setReadOnly(True)
-        self._filePath.setPlaceholderText(__("No file selected"))
-        self._filePath.setFrame(False)
-
-        self._selectFileButton = QtWidgets.QPushButton(__("Select file"))
-        self._selectFileButton.clicked.connect(self._onSelectFile)
-
-        self._scale = QtWidgets.QDoubleSpinBox()
-        self._scale.setRange(1, 300)
-        self._scale.setSingleStep(1)
-        self._scale.setValue(100.0)
-        self._scale.setEnabled(False)
-        self._scale.setSuffix("%")
-        self._scale.valueChanged.connect(self._onConfigChanged)
-
-        layout = QtWidgets.QFormLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addRow(self._label)
-        layout.addRow(self._filePath)
-        layout.addRow(self._selectFileButton)
-        spacer = QtWidgets.QSpacerItem(0, 20, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        layout.addItem(spacer)
-        layout.addRow(__("Scale:"), self._scale)
-        self.setLayout(layout)
-
-        self._psf = np.array([[1]])  # default psf
-        self._unscaledPsf = self._psf
-
-    def title(self) -> str:
-        return __("Custom")
-
-    @QtCore.Slot()
-    def _onSelectFile(self) -> None:
-        title = __("Select Kernel")
-        filters = __("Image files") + " (*.png *.jpg *.jpeg *.bmp *.tif *.tiff)"
-        filePath, _ = QtWidgets.QFileDialog.getOpenFileName(self, title, "", filters)
-        if filePath:
-            self._filePath.setText(filePath)
-            self._psf = PointSpreadFunction.from_file(filePath)
-            self._unscaledPsf = self._psf
-            self._scale.setEnabled(True)
-            self._onConfigChanged()
-
-    @QtCore.Slot()
-    def _onConfigChanged(self) -> None:
-        scale = self._scale.value() / 100.0
-        # resizes the psf to the desired scale
-        self._psf = cv2.resize(self._unscaledPsf, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-        self._onPsfChanged()
+from .PsfConfig import (BoxBlurPsfConfig, CustomPsfConfig, DiskBlurPsfConfig,
+                        GaussianPsfConfig, MotionBlurPsfConfig, PsfConfig)
 
 
 class _PropertiesPanel(QtWidgets.QFrame):
@@ -252,6 +23,10 @@ class _PropertiesPanel(QtWidgets.QFrame):
     """
 
     configChanged = QtCore.Signal()
+    """Raised when the psf type or settings have been modified"""
+
+    isComparingChanged = QtCore.Signal(bool)
+    """Raised when the compare image is enabled or disabled"""
 
     def __init__(self, parent: QtWidgets.QWidget = None):
         super().__init__(parent)
@@ -303,6 +78,21 @@ class _PropertiesPanel(QtWidgets.QFrame):
         self._progressiveCheckBox = QtWidgets.QCheckBox(__("Progressive preview"))
         self._progressiveCheckBox.setChecked(True)
 
+        self._isComparing = False
+        self._compareButton = QtWidgets.QPushButton(__("Compare"))
+        self._compareButton.setIcon(QtGui.QIcon("res/img/image_compare.png"))
+        self._compareButton.setToolTip(__("Hold pressed to compare the result with the original image"))
+        self._compareButton.setIconSize(QtCore.QSize(20, 20))
+        # When the button is pressed we raise the isComparingChanged event.
+        # When the button is released we send it again to raise the event
+        self._compareButton.pressed.connect(self._onIsComparingChanged)
+        self._compareButton.released.connect(self._onIsComparingChanged)
+
+        checkBoxAndCompareLayout = QtWidgets.QHBoxLayout()
+        checkBoxAndCompareLayout.addWidget(self._progressiveCheckBox, 1)
+        checkBoxAndCompareLayout.setSpacing(10)
+        checkBoxAndCompareLayout.addWidget(self._compareButton, 0)
+
         self._psfImage = QtWidgets.QLabel()
         self._psfImage.setFixedSize(100, 100)
         self._psfImage.setScaledContents(False)
@@ -337,7 +127,7 @@ class _PropertiesPanel(QtWidgets.QFrame):
         layout.addWidget(QtWidgets.QLabel(__("Iterations:")))
         layout.addWidget(self._iterations)
         layout.addWidget(iterationsHelpLabel)
-        layout.addWidget(self._progressiveCheckBox)
+        layout.addLayout(checkBoxAndCompareLayout)
         layout.addSpacing(10)
         layout.addWidget(self._progressBar)
         layout.addWidget(psfFrame)
@@ -355,8 +145,13 @@ class _PropertiesPanel(QtWidgets.QFrame):
         self._onPsfChanged()
 
     @QtCore.Slot()
+    def _onIsComparingChanged(self) -> None:
+        self._isComparing = self._compareButton.isDown()
+        self.isComparingChanged.emit(self._isComparing)
+
+    @QtCore.Slot()
     def _onPsfChanged(self) -> None:
-        option = self._psfType.currentData()  # type: _PsfConfig
+        option = self._psfType.currentData()  # type: PsfConfig
         qimage = option.psfImage()
         psf = option.psf()
         w, h = psf.shape
@@ -374,7 +169,7 @@ class _PropertiesPanel(QtWidgets.QFrame):
         self.configChanged.emit()
 
     def psf(self) -> np.ndarray:
-        option = self._psfType.currentData()  # type: _PsfConfig
+        option = self._psfType.currentData()  # type: PsfConfig
         return option.psf()
 
     def iterations(self) -> int:
@@ -434,13 +229,30 @@ class DeblurWindow(QtWidgets.QWidget):
         self._imagePreview.setMinimumWidth(200)
         self._imagePreview.setPixmap(self._image.get_pixmap())
 
+        self._originalPreview = PixmapDisplay()
+        self._originalPreview.setStyleSheet("background-color: #f0f0f0;")
+        self._originalPreview.setAutoFillBackground(True)
+        self._originalPreview.setMinimumHeight(200)
+        self._originalPreview.setMinimumWidth(200)
+        self._originalPreview.setPixmap(self._image.get_pixmap())
+
+        self._leftSide = QtWidgets.QStackedLayout()
+        self._leftSide.addWidget(self._imagePreview)
+        self._leftSide.addWidget(self._originalPreview)
+        self._leftSide.setCurrentIndex(0)
+
+        leftSideFrame = QtWidgets.QFrame()
+        leftSideFrame.setFrameStyle(QtWidgets.QFrame.StyledPanel)
+        leftSideFrame.setLayout(self._leftSide)
+
         self._propertiesPanel = _PropertiesPanel()
         self._propertiesPanel.configChanged.connect(self._onConfigChanged)
         self._propertiesPanel.saveButton.clicked.connect(self._onSaveButtonClicked)
         self._propertiesPanel.saveAndAddToProjectButton.clicked.connect(self._onSaveAndAddToProjectButtonClicked)
+        self._propertiesPanel.isComparingChanged.connect(self._onComparingChanged)
 
-        layout.addWidget(self._imagePreview)
-        layout.addWidget(self._propertiesPanel)
+        layout.addWidget(leftSideFrame, 1)
+        layout.addWidget(self._propertiesPanel, 0)
 
         self._taskPreviewCalled.connect(self._onPreview)
         self._taskProgressCalled.connect(self._onProgress)
@@ -449,6 +261,10 @@ class DeblurWindow(QtWidgets.QWidget):
     @QtCore.Slot()
     def _onConfigChanged(self) -> None:
         self._updatePreview()
+
+    @QtCore.Slot()
+    def _onComparingChanged(self, comparing: bool):
+        self._leftSide.setCurrentIndex(1 if comparing else 0)
 
     def _updatePreview(self) -> None:
         if self._deblurTask is not None:

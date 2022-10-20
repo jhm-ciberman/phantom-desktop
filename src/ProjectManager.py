@@ -444,13 +444,17 @@ class ProjectManager:
         else:
             self.saveProjectAs(parent)
 
-    def closeProject(self, parent: QtWidgets.QWidget) -> None:
+    def closeProject(self, parent: QtWidgets.QWidget) -> bool:
         """
         Closes the project. If there are unsaved changes, asks the user to save them.
 
         Args:
             parent (QWidget): The parent widget.
+
+        Returns:
+            bool: True if the project was closed, False otherwise.
         """
-        if not self._checkUnsavedChanges(parent):
-            return
-        self._workspace.closeProject()
+        if self._checkUnsavedChanges(parent):
+            self._workspace.closeProject()
+            return True
+        return False

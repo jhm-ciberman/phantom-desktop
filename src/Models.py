@@ -614,6 +614,11 @@ class Project:
             for face in image.faces:
                 self.remove_face_from_groups(face)
 
+    def remove_images(self, images: Sequence[Image]):
+        """Removes multiple images from the project."""
+        for image in images:
+            self.remove_image(image)
+
     def has_image(self, image: Image) -> bool:
         """Returns True if the project contains the image."""
         return image.id in self._images_ids
