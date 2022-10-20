@@ -71,7 +71,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         optionsFrame.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         optionsFrame.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
         optionsFrame.setMinimumWidth(200)
-        optionsFrameLayout = QtWidgets.QFormLayout()
+        optionsFrameLayout = QtWidgets.QVBoxLayout()
         optionsFrameLayout.setContentsMargins(10, 10, 10, 10)
         optionsFrame.setLayout(optionsFrameLayout)
 
@@ -147,7 +147,15 @@ class PerspectiveWindow(QtWidgets.QWidget):
         for name, ratio in aspectRatios:
             self._aspectRatio.addItem(name, ratio)
 
+        formLayout = QtWidgets.QFormLayout()
+        formLayout.addRow(__("Aspect ratio"), self._aspectRatio)
+        formLayout.addRow(__("Output width"), self._outputWidth)
+        formLayout.addRow(__("Output height"), self._outputHeight)
+        formLayout.addRow(__("Rotation"), rotationLayout)
+        formLayout.addRow(__("Interpolation Mode"), self._interpolationMode)
+
         exportSaveLayout = QtWidgets.QHBoxLayout()
+        exportSaveLayout.addStretch()
         exportSaveLayout.setContentsMargins(0, 20, 0, 0)
         exportSaveLayout.setSpacing(10)
 
@@ -155,20 +163,19 @@ class PerspectiveWindow(QtWidgets.QWidget):
                 QtGui.QIcon("res/img/image_save.png"), __("Export Image"))
         self._saveButton.clicked.connect(self._onSavePressed)
         self._saveButton.setIconSize(QtCore.QSize(32, 32))
+        self._saveButton.setStyleSheet("padding: 5px 20px")
         exportSaveLayout.addWidget(self._saveButton)
 
         self._saveAndAddToProjectButton = QtWidgets.QPushButton(
                 QtGui.QIcon("res/img/collection.png"), __("Export and add to project"))
         self._saveAndAddToProjectButton.clicked.connect(self._onSaveAndAddToProjectPressed)
         self._saveAndAddToProjectButton.setIconSize(QtCore.QSize(32, 32))
+        self._saveAndAddToProjectButton.setStyleSheet("padding: 5px 20px")
         exportSaveLayout.addWidget(self._saveAndAddToProjectButton)
 
-        optionsFrameLayout.addRow(__("Aspect ratio"), self._aspectRatio)
-        optionsFrameLayout.addRow(__("Output width"), self._outputWidth)
-        optionsFrameLayout.addRow(__("Output height"), self._outputHeight)
-        optionsFrameLayout.addRow(__("Rotation"), rotationLayout)
-        optionsFrameLayout.addRow(__("Interpolation Mode"), self._interpolationMode)
-        optionsFrameLayout.addRow(exportSaveLayout)
+        optionsFrameLayout.addLayout(formLayout)
+        optionsFrameLayout.addStretch()
+        optionsFrameLayout.addLayout(exportSaveLayout)
 
         self._aspectRatio.currentIndexChanged.connect(self._onPreviewConfigChanged)
         self._interpolationMode.currentIndexChanged.connect(self._onPreviewConfigChanged)
