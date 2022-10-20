@@ -1,4 +1,0 @@
-[submodule "phantom"]
-	path = phantom
-	url = git@github.com:jhm-ciberman/phantom.git
-	branch = ci

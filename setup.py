@@ -6,6 +6,7 @@ from cx_Freeze import Executable, setup
 # fine tuning.
 build_options = {
     'packages': [
+        # scypy is used by sklearn
         "scipy.optimize",
         "scipy.integrate",
     ],
