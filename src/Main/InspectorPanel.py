@@ -137,7 +137,7 @@ class InspectorPanel(QtWidgets.QWidget):
 
         self._table.addRow(__("Filename"), os.path.basename(path))
         self._table.addRow(__("Folder"), os.path.dirname(path))
-        if path != original_path:
+        if path != original_path and original_path is not None:
             self._table.addRow(__("Original Filename"), os.path.basename(original_path))
             self._table.addRow(__("Original Folder"), os.path.dirname(original_path))
 

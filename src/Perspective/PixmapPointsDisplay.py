@@ -1,6 +1,6 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from .PixmapDisplay import PixmapDisplay
+from ..Widgets.PixmapDisplay import PixmapDisplay
 
 
 class PixmapPointsDisplay(PixmapDisplay):

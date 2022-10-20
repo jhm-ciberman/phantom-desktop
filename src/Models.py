@@ -298,6 +298,10 @@ class Image(Model):
     holds metadata about the image, and provides methods for accessing the raw color
     bytes of the image. The raw color bytes are stored in RGBA format, with each
     channel being a uint8 array.
+
+    An Image could be in one of two states: loaded or unloaded. An can have its "path" defined
+    (in case the image is actually saved on disk), but it can also be a "virtual" image that
+    is not saved on disk (in case the image was created by the user, or loaded from a URL).
     """
 
     path: str = None
@@ -315,19 +319,20 @@ class Image(Model):
     hashes themselves. Call the Image.compute_hashes() method to compute the hashes.
     """
 
-    def __init__(self, path: str, id: UUID = None) -> None:
+    def __init__(self, path: str = None, id: UUID = None, raw_rgba: np.ndarray = None) -> None:
         """
         Initializes the Image class. The image is NOT loaded into memory until you call
         the load() method.
 
         Args:
-            path (str): The absolute path to the image source. This is where the image file is actually stored..
+            path (str): The absolute path to the image source. This is where the image file
+                is actually stored on disk. If None, the image is considered to be a virtual image.
             id (UUID): The ID of the image. If None, a new ID will be generated. Defaults to None.
+            raw_image (np.ndarray): The raw image data. Defaults to None.
         """
         super().__init__(id)
-        self.path = os.path.abspath(path)
-        self._is_loaded = False
-        self._raw_image = None
+        self.path = os.path.abspath(path) if path else None
+        self._raw_image = raw_rgba
         self._faces: "list[Face]" = []
         self._processed: bool = False
         self.original_path = path
@@ -343,21 +348,28 @@ class Image(Model):
         Raises:
             FileNotFoundError: If the image could not be found.
         """
-        if not self._is_loaded:
+        if not self.is_loaded:
             if directory is not None:  # If a directory is specified, use it to load the image
                 self.path = os.path.join(directory, self.path)
             raw_image = cv2.imread(self.path, cv2.IMREAD_UNCHANGED)
             if raw_image is None:
                 raise FileNotFoundError(f"Could not load image at path {self.path}")
             self._raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
-            self._is_loaded = True
 
     def unload(self) -> None:
         """
         Unloads the image from memory.
         """
         self._raw_image = None
-        self._is_loaded = False
+
+    def set_pixels_rgba(self, pixels: np.ndarray) -> None:
+        """
+        Sets the raw image data in RGBA format.
+
+        Args:
+            pixels (np.ndarray): The raw image data.
+        """
+        self._raw_image = pixels
 
     @property
     def processed(self) -> bool:
@@ -374,24 +386,34 @@ class Image(Model):
         self._processed = value
 
     @property
+    def is_virtual(self) -> bool:
+        """
+        Gets whether or not the image is virtual. This means that the image is not saved on disk.
+        For example, this could be an image that was created by the user, or loaded from a URL.
+        """
+        return self.path is None
+
+    @property
     def display_name(self) -> str:
         """
         Gets the name of the image to be displayed in the UI.
         """
-        return os.path.basename(self.original_path)
+        return os.path.basename(self.original_path) if self.original_path else __("Untitled")
 
     @property
     def path_dirname(self) -> str:
         """
         Gets the folder path of the image source. The path always ends with a trailing slash.
+        If the image is virtual, this will return an empty string.
         """
-        return os.path.dirname(self.path) + os.path.sep
+        return os.path.dirname(self.path) + os.path.sep if self.path else ""
 
     @property
     def channels(self):
         """
         Gets the number of channels in the image source.
         """
+        self._assert_loaded()
         return self._raw_image.shape[2]
 
     @property
@@ -399,6 +421,7 @@ class Image(Model):
         """
         Gets the width of the image source.
         """
+        self._assert_loaded()
         return self._raw_image.shape[1]
 
     @property
@@ -406,6 +429,7 @@ class Image(Model):
         """
         Gets the height of the image source.
         """
+        self._assert_loaded()
         return self._raw_image.shape[0]
 
     @property
@@ -413,11 +437,11 @@ class Image(Model):
         """
         Gets whether or not the image is loaded into memory.
         """
-        return self._is_loaded
+        return self._raw_image is not None
 
     def _assert_loaded(self) -> None:
         if not self.is_loaded:
-            raise Exception("The image is not loaded. Call the load() method to load the image before accessing it.")
+            raise Exception("The image is not loaded. Call the load() or set_pixels_rgba() method first.")
 
     def save(self, path: str):
         """
@@ -425,7 +449,11 @@ class Image(Model):
         """
         self._assert_loaded()
         raw_bgra = cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2BGRA)
+        path = os.path.abspath(path)
         cv2.imwrite(path, raw_bgra)
+
+        if self.path is None:
+            self.path = path
 
     def get_image(self) -> QtGui.QImage:
         """

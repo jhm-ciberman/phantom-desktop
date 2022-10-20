@@ -1,14 +1,13 @@
 import glob
 import os
+from typing import Callable
 
 from PySide6 import QtWidgets
 
-from ..Application import Application
-from ..l10n import __
-from ..Models import Image
-from ..ProjectFile.ProjectFileReader import ProjectFileReader
-from ..ProjectFile.ProjectFileWriter import ProjectFileWriter
-from ..Widgets.BussyModal import BussyModal
+from .l10n import __
+from .Models import Image
+from .Widgets.BussyModal import BussyModal
+from .Workspace import Workspace
 
 
 class ProjectManager:
@@ -16,7 +15,8 @@ class ProjectManager:
     The project manager class provides high-level methods to manage the project
     and show dialogs to the user. This class has knowledge of Qt and the UI.
     On the other hand, the workspace class is a lower level class that has no
-    knowledge of Qt and the UI.
+    knowledge of Qt and the UI. This class provides the same functionality as
+    the Workspace but for the UI to interact with the user.
     """
 
     _importExtensions = ["png", "jpg", "jpeg", "tiff", "tif", "bmp"]
@@ -31,11 +31,14 @@ class ProjectManager:
 
     _warningImageCount = 2000
 
-    def __init__(self) -> None:
+    def __init__(self, workspace: Workspace) -> None:
         """
         Initializes a new instance of the ProjectManager class.
+
+        Args:
+            workspace (Workspace): The workspace
         """
-        self._workspace = Application.workspace()
+        self._workspace = workspace
 
     def addFolder(self, parent: QtWidgets.QWidget) -> None:
         """
@@ -56,12 +59,12 @@ class ProjectManager:
             return
 
         glob_base = folder_path + "/**/*."
-        file_paths = []
+        filePaths = []
         for ext in self._importExtensions:
-            file_paths += glob.glob(glob_base + ext, recursive=True)
+            filePaths += glob.glob(glob_base + ext, recursive=True)
 
         # Show a dialog asking the user to confirm the files to add.
-        count = len(file_paths)
+        count = len(filePaths)
         if count == 0:
             formats = ", ".join(self._importExtensions)
             QtWidgets.QMessageBox.warning(
@@ -85,17 +88,16 @@ class ProjectManager:
             if result == QtWidgets.QMessageBox.StandardButton.No:
                 return
 
-        # Add the files to the project.
-        # show a bussy modal
-        self._addImagesCore(parent, file_paths)
+        images = [Image(path) for path in filePaths]
+        self.addImagesToProject(parent, images)
 
-    def _addImagesCore(self, parent: QtWidgets.QWidget, file_paths: list[str]) -> None:
+    def addImagesToProject(self, parent: QtWidgets.QWidget, images: list[Image]) -> None:
         """
         Adds the images to the project and shows a bussy modal.
 
         Args:
             parent (QWidget): The parent widget.
-            file_paths (list[str]): The list of file paths.
+            images (list[Image]): The images to add.
         """
         bussyModal = BussyModal(parent, title=__("@project_manager.adding_images.title"))
 
@@ -110,7 +112,7 @@ class ProjectManager:
             skippedImages.append(image)
 
         def addFilesWorker():
-            self._workspace.addImages(file_paths, onProgress=onProgress, onImageError=onImageError)
+            self._workspace.addImages(images, onProgress=onProgress, onImageError=onImageError)
 
         bussyModal.exec(addFilesWorker)
 
@@ -120,7 +122,17 @@ class ProjectManager:
                 parent, __("@project_manager.add_images_error.title"),
                 __("@project_manager.add_images_error.message", list=listStr))
 
-    def addImages(self, parent: QtWidgets.QWidget) -> None:
+    def addImageToProject(self, parent: QtWidgets.QWidget, image: Image) -> None:
+        """
+        Adds the image to the project and shows a bussy modal.
+
+        Args:
+            parent (QWidget): The parent widget.
+            image (Image): The image to add.
+        """
+        self.addImagesToProject(parent, [image])
+
+    def importImages(self, parent: QtWidgets.QWidget) -> None:
         """
         Asks the user to select images and adds them to the project.
 
@@ -131,14 +143,15 @@ class ProjectManager:
             list[str]: The list of file paths.
         """
 
-        file_paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
+        filePaths, _ = QtWidgets.QFileDialog.getOpenFileNames(
             parent, __("@project_manager.select_images_caption"), "",
             self._importFilter)
 
-        if not file_paths:
+        if not filePaths:
             return
 
-        self._addImagesCore(parent, file_paths)
+        images = [Image(path) for path in filePaths]
+        self.addImagesToProject(parent, images)
 
     def exportImages(self, parent: QtWidgets.QWidget, images: list[Image]) -> None:
         """
@@ -161,12 +174,12 @@ class ProjectManager:
 
         if len(images) == 1:
             # If there is only one image, export a single file.
-            file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
+            filePath, _ = QtWidgets.QFileDialog.getSaveFileName(
                 parent, __("@project_manager.select_export_file_caption"), "",
                 self._exportFilter)
-            if not file_path:
+            if not filePath:
                 return
-            self._exportImagesCore(parent, [images[0]], [file_path])
+            self._exportImagesCore(parent, [images[0]], [filePath])
         else:
             # If there are multiple images, export a folder.
             folder_path = QtWidgets.QFileDialog.getExistingDirectory(
@@ -174,6 +187,46 @@ class ProjectManager:
 
             paths = [folder_path + "/" + image.display_name for image in images]
             self._exportImagesCore(parent, images, paths)
+
+    def exportImage(self, parent: QtWidgets.QWidget, image: Image, addToProject: bool = False) -> None:
+        """
+        Asks the user to select a file and exports the image to it.
+
+        Args:
+            parent (QWidget): The parent widget.
+            image (Image): The image to export.
+            addToProject (bool): If True, the exported image will be added to the project.
+        """
+        self.exportImages(parent, [image])
+        if addToProject:
+            self.addImageToProject(parent, image)
+
+    def exportImageLazy(
+            self, parent: QtWidgets.QWidget, generateImageFn: Callable[[], Image], addToProject: bool = False) -> Image:
+        """
+        Asks the user to select a file, then after the user has
+        properly selected a file, the image is generated and exported.
+
+        Args:
+            parent (QWidget): The parent widget.
+            generateImageFn (Callable[[], Image]): A function that generates the image to export.
+            addToProject (bool): If True, the exported image will be added to the project.
+
+        Returns:
+            Image: The generated image or None if the user cancelled the export.
+        """
+        filePath, _ = QtWidgets.QFileDialog.getSaveFileName(
+            parent, __("@project_manager.select_export_file_caption"), "",
+            self._exportFilter)
+        if not filePath:
+            return None
+
+        image = generateImageFn()
+        self._exportImagesCore(parent, [image], [filePath])
+        if addToProject:
+            self.addImageToProject(parent, image)
+
+        return image
 
     def _exportImagesCore(self, parent: QtWidgets.QWidget, images: list[Image], paths: list[str]) -> None:
         """
@@ -201,11 +254,11 @@ class ProjectManager:
         Args:
             parent (QWidget): The parent widget.
         """
-        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+        filePath, _ = QtWidgets.QFileDialog.getOpenFileName(
             parent, __("@project_manager.select_project_open_caption"), "",
             self._projectFilter)
 
-        if not file_path:
+        if not filePath:
             return
 
         # Load the project with a bussy modal.
@@ -218,8 +271,9 @@ class ProjectManager:
         imagesSkipped: list[Image] = []
 
         def openProjectWorker():
+            from .ProjectFile.ProjectFileReader import ProjectFileReader  # Avoids circular import
             reader = ProjectFileReader(on_progress=onProgress, on_image_error=onImageError)
-            project = reader.read(file_path)
+            project = reader.read(filePath)
             self._workspace.setProject(project)
 
         def onProgress(index: int, count: int, image: Image):
@@ -330,6 +384,7 @@ class ProjectManager:
             bussyModal.setSubtitle(__("@project_manager.saving_project.copying", current=current + 1, total=total))
 
         def saveProjectWorker():
+            from .ProjectFile.ProjectFileWriter import ProjectFileWriter  # Avoids circular import
             nonlocal portable
             project = self._workspace.project()
             writer = ProjectFileWriter(project, portable=portable, on_image_copied=onImageCopied)
@@ -345,8 +400,8 @@ class ProjectManager:
         Args:
             parent (QWidget): The parent widget.
         """
-        current_path = self._workspace.project().path
-        file_dir = os.path.dirname(current_path) if current_path else ""
+        currentPath = self._workspace.project().path
+        file_dir = os.path.dirname(currentPath) if currentPath else ""
 
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             parent, __("@project_manager.select_project_save_caption"), file_dir,

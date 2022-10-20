@@ -165,34 +165,16 @@ class Workspace(QtCore.QObject):
         """
         self.setProject(Project())
 
-    def addImage(self, imageOrPath: Image | str) -> Image:
-        """
-        Adds an image to the current project.
-
-        Args:
-            imageOrPath (Image | str): The image to add or the path of the image to add.
-        """
-        if isinstance(imageOrPath, str):
-            image = Image(imageOrPath)
-            image.load()
-
-        self._project.add_image(image)
-
-        self.imagesAdded.emit([image])
-        self._addImageToBatch(image)
-        self.setDirty(True)
-
-        self._imageProcessorService.process(image, self._onImageSuccess, self._onImageError)
-        return image
-
     def addImages(
-            self, paths: list[str], onProgress: Callable[[int, int, Image], None] = None,
+            self, images: list[Image],
+            onProgress: Callable[[int, int, Image], None] = None,
             onImageError: Callable[[Exception, Image], bool] = None):
         """
         Adds a list of images to the current project.
 
         Args:
-            paths (list[str]): The paths of the images to add.
+            images (list[Image]): The list of images to add or the paths of the images to add.
+                The images will be loaded from the disk if they are not already loaded.
             onProgress (Callable[[int, int, Image], None]): A callback that is called when an image
                 is loaded (or failed to load). The callback receives the current index, the total
                 number of images and the image that was loaded.
@@ -203,13 +185,11 @@ class Workspace(QtCore.QObject):
         """
         onProgress = onProgress or (lambda index, total, image: None)
         onImageError = onImageError or (lambda e, image: False)
-        images = []
-        count = len(paths)
-        for index, path in enumerate(paths):
-            image = Image(path)
-
+        imagesAdded = []
+        count = len(images)
+        for index, image in enumerate(images):
             try:
-                image.load()
+                image.load()  # If the image is already loaded, this is a no-op
             except Exception as e:
                 if onImageError(e, image):
                     continue
@@ -218,13 +198,13 @@ class Workspace(QtCore.QObject):
 
             image.compute_hashes()
             self._project.add_image(image)
-            images.append(image)
+            imagesAdded.append(image)
             onProgress(index, count, image)
             self._addImageToBatch(image)
             self._imageProcessorService.process(image, self._onImageSuccess, self._onImageError)
 
-        if len(images) > 0:
-            self.imagesAdded.emit(images)
+        if len(imagesAdded) > 0:
+            self.imagesAdded.emit(imagesAdded)
             self.setDirty(True)
 
     def removeImage(self, image: Image):

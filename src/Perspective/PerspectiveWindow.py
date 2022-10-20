@@ -8,8 +8,8 @@ from ..Application import Application
 from ..l10n import __
 from ..Models import Image
 from ..Widgets.PixmapDisplay import PixmapDisplay
-from ..Widgets.PixmapPointsDisplay import PixmapPointsDisplay
 from .PerspectiveTransform import perspective_transform
+from .PixmapPointsDisplay import PixmapPointsDisplay
 
 
 class PerspectiveWindow(QtWidgets.QWidget):
@@ -290,30 +290,23 @@ class PerspectiveWindow(QtWidgets.QWidget):
             self._recomputePoints()
         self._updatePreview()
 
-    def _saveImageTo(self, path):
+    def _createFinalImage(self) -> Image:
         if self._points is None or len(self._points) < 4:
             return
 
         interpolation = self._interpolationMode.currentData()
         outputShape = self._computeOutputShape()
         outputBuffer = np.zeros(outputShape, dtype=np.uint8)
-        perspective_transform(self._image.get_pixels_bgra(), outputBuffer, self._points, interpolation)
+        perspective_transform(self._image.get_pixels_rgba(), outputBuffer, self._points, interpolation)
 
-        cv2.imwrite(path, outputBuffer)
-
-    def _showSaveDialog(self) -> str:
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(self, __("Save Image"), "", "PNG (*.png);;JPEG (*.jpg)")
-        if path:
-            self._saveImageTo(path)
-            return path
-        return None
+        return Image(raw_rgba=outputBuffer)
 
     @QtCore.Slot()
     def _onSavePressed(self) -> None:
-        self._showSaveDialog()
+        image = self._createFinalImage()
+        Application.projectManager().exportImage(self, image)
 
     @QtCore.Slot()
     def _onSaveAndAddToProjectPressed(self) -> None:
-        path = self._showSaveDialog()
-        if path:
-            Application.workspace().addImage(path)
+        image = self._createFinalImage()
+        Application.projectManager().exportImage(self, image, addToProject=True)

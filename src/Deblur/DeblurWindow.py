@@ -2,10 +2,13 @@ import cv2
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from ..Application import Application
 from ..l10n import __
 from ..Models import Image
+from ..Widgets.BussyModal import BussyModal
 from ..Widgets.PixmapDisplay import PixmapDisplay
-from .LucyRichardsonDeconvolution import (PointSpreadFunction,
+from .LucyRichardsonDeconvolution import (LucyRichardsonDeconvolution,
+                                          PointSpreadFunction,
                                           ProgressiveDeblurTask)
 from .SliderWithSpinBox import SliderWithSpinBox
 
@@ -319,6 +322,14 @@ class _PropertiesPanel(QtWidgets.QFrame):
         psfLayout.addWidget(self._psfInfoLabel)
         psfFrame.setLayout(psfLayout)
 
+        self.saveButton = QtWidgets.QPushButton(
+                QtGui.QIcon("res/img/image_save.png"), __("Export Image"))
+        self.saveButton.setIconSize(QtCore.QSize(32, 32))
+
+        self.saveAndAddToProjectButton = QtWidgets.QPushButton(
+                QtGui.QIcon("res/img/collection.png"), __("Export and add to project"))
+        self.saveAndAddToProjectButton.setIconSize(QtCore.QSize(32, 32))
+
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self._psfType)
         layout.addWidget(self._stackWidget)
@@ -330,6 +341,9 @@ class _PropertiesPanel(QtWidgets.QFrame):
         layout.addSpacing(10)
         layout.addWidget(self._progressBar)
         layout.addWidget(psfFrame)
+        layout.addSpacing(10)
+        layout.addWidget(self.saveButton)
+        layout.addWidget(self.saveAndAddToProjectButton)
 
         self.setLayout(layout)
 
@@ -422,6 +436,8 @@ class DeblurWindow(QtWidgets.QWidget):
 
         self._propertiesPanel = _PropertiesPanel()
         self._propertiesPanel.configChanged.connect(self._onConfigChanged)
+        self._propertiesPanel.saveButton.clicked.connect(self._onSaveButtonClicked)
+        self._propertiesPanel.saveAndAddToProjectButton.clicked.connect(self._onSaveAndAddToProjectButtonClicked)
 
         layout.addWidget(self._imagePreview)
         layout.addWidget(self._propertiesPanel)
@@ -487,6 +503,51 @@ class DeblurWindow(QtWidgets.QWidget):
     @QtCore.Slot()
     def _onFinished(self) -> None:
         self._propertiesPanel.setProgress(100)
+
+    def _makeFinalImage(self) -> Image:
+        rawImage = self._image.get_pixels_rgb()
+        rect = self._imagePreview.imageRect()
+        dstW, dstH = rect.width(), rect.height()
+        iterations = self._propertiesPanel.iterations()
+        psf = self._propertiesPanel.psf()
+
+        modal = BussyModal(self, title=__("Deblurring Image"), subtitle=__("Working..."))
+        result: Image = None
+
+        def onProgress(current: int, total: int) -> None:
+            percentStr = "{:.0f}%".format(current / total * 100)
+            modal.setSubtitle(__("Working...") + " " + percentStr)
+
+        def workerThread():
+            nonlocal rawImage, dstW, dstH, iterations, psf, result
+            lrd = LucyRichardsonDeconvolution(rawImage, psf, num_iter=iterations)
+            raw_rgb = lrd.run(on_progress=onProgress)
+            raw_rgba = cv2.cvtColor(raw_rgb, cv2.COLOR_RGB2RGBA)
+            result = Image(raw_rgba=raw_rgba)
+
+        modal.exec(workerThread)
+
+        if result is None:
+            raise Exception("Deblur task failed")
+        return result
+
+    def _exportAndClose(self, addToProject: bool) -> None:
+        if self._deblurTask is not None:
+            self._deblurTask.cancel()
+
+        image = Application.projectManager().exportImageLazy(
+                self, self._makeFinalImage, addToProject=addToProject)
+
+        if image is not None:
+            self.close()
+
+    @QtCore.Slot()
+    def _onSaveButtonClicked(self) -> None:
+        self._exportAndClose(False)
+
+    @QtCore.Slot()
+    def _onSaveAndAddToProjectButtonClicked(self) -> None:
+        self._exportAndClose(True)
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         self._updatePreview()

@@ -383,7 +383,7 @@ class ProgressiveDeblurTask:
         self._on_progress = on_progress
         self._on_finished = on_finished
 
-        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread: threading.Thread = None
 
     @property
     def preview(self) -> np.ndarray:
@@ -396,6 +396,7 @@ class ProgressiveDeblurTask:
         """
         Starts the preview generation.
         """
+        self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
     def cancel(self):
@@ -434,6 +435,9 @@ class ProgressiveDeblurTask:
             self._on_progress(sum(self._progresses))
 
     def _run(self):
+        """
+        Runs the preview generation.
+        """
         for i in range(self._cycles):
             self._cycle_index = i
             self._run_cycle()

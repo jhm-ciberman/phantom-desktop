@@ -106,6 +106,7 @@ class ProjectFileWriter(ProjectFileBase):
         }
 
     def _encode_image(self, model: Image) -> dict:
+        self._assert_not_virtual(model)
         return {
             "id": str(model.id),
             "src": self._resolve_src(model.path, portable=self.portable),
@@ -114,6 +115,10 @@ class ProjectFileWriter(ProjectFileBase):
             "processed": model.processed,
             "hashes": model.hashes,  # dict[str, str] (e.g. {"md5": "1234", "sha1": "5678"})
         }
+
+    def _assert_not_virtual(self, image: Image):
+        if image.is_virtual:
+            raise ValueError(f"Cannot write virtual image {image.id} because it is not stored on disk.")
 
     def _resolve_src(self, src: str, portable: bool = False) -> str:
         # src could be absolute or relative. For absolute paths, the src looks like:
@@ -150,7 +155,8 @@ class ProjectFileWriter(ProjectFileBase):
 
     def write(self, path: str) -> None:
         """
-        Saves the project to the specified path.
+        Saves the project to the specified path. The project should not
+        contain any virtual images otherwise an exception will be raised.
 
         Args:
             path (str): The path to the project.
@@ -159,7 +165,7 @@ class ProjectFileWriter(ProjectFileBase):
         self._project.path = path
 
         if self.portable:
-            self._copy_portable_files(path)
+            self._store_portable_files(path)
 
         self._visit_project(self._project)
         data = self._encode_file(self._project)
@@ -191,9 +197,9 @@ class ProjectFileWriter(ProjectFileBase):
         folder_path = os.path.normpath(os.path.abspath(folder_path))
         return file_path.startswith(folder_path)
 
-    def _copy_portable_files(self, path: str) -> None:
+    def _store_portable_files(self, path: str) -> None:
         """
-        Copies the images to a subfolder named "{project_name}_images" inside the project file folder.
+        Copies or saves the images to a subfolder named "{project_name}_images" inside the project file folder.
 
         Args:
             path (str): The path to the project file.
@@ -219,21 +225,21 @@ class ProjectFileWriter(ProjectFileBase):
                 nonportable_images.append(image)
 
         for index, image in enumerate(portable_images):
-            self._copy_image(image, dir_path, resolve_conflicts=False)
+            self._store_image(image, dir_path, resolve_conflicts=False)
             self.on_image_copied(index, total, image)
 
         start_index = len(portable_images)
         for index, image in enumerate(nonportable_images):
-            self._copy_image(image, dir_path, resolve_conflicts=True)
+            self._store_image(image, dir_path, resolve_conflicts=True)
             self.on_image_copied(index + start_index, total, image)
 
-    def _copy_image(self, image: Image, dir_path: str, resolve_conflicts: bool) -> None:
+    def _store_image(self, image: Image, dir_path: str, resolve_conflicts: bool) -> None:
         """
-        Copies the specified image to the specified directory. The image will be renamed if a file with the same name
+        Copies or saves the specified image to the specified directory. The image will be renamed if a file with the same name
         already exists in the directory.
 
         Args:
-            image (Image): The image to copy.
+            image (Image): The image to copy or save.
             dir_path (str): The directory to copy the image to.
             resolve_conflicts (bool): If True, the image will be renamed if a file
                 with the same name already exists in the directory.

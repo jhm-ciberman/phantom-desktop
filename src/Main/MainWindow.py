@@ -11,7 +11,6 @@ from ..Workspace import BatchProgress
 from .AboutWindow import AboutWindow
 from .ImageGrid import ImageGrid
 from .InspectorPanel import InspectorPanel
-from .ProjectManager import ProjectManager
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -188,12 +187,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._workspace.projectChanged.connect(self._onProjectChanged)
         self._workspace.isDirtyChanged.connect(self._onIsDirtyChanged)
 
-        self._projectManager = ProjectManager()
         self._updateWindowTitle()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
 
-        if not self._projectManager.closeProject(self):
+        if not Application.projectManager().closeProject(self):
             event.ignore()
 
         super().closeEvent(event)
@@ -225,16 +223,16 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def _onAddImagesPressed(self) -> None:
-        self._projectManager.addImages(self)
+        Application.projectManager().importImages(self)
 
     @QtCore.Slot()
     def _onAddFolderPressed(self) -> None:
-        self._projectManager.addFolder(self)
+        Application.projectManager().addFolder(self)
 
     @QtCore.Slot()
     def _onExportImagePressed(self) -> None:
         selected_images = self._imageGrid.selectedImages()
-        self._projectManager.exportImages(self, selected_images)
+        Application.projectManager().exportImages(self, selected_images)
 
     @QtCore.Slot()
     def _onCorrectPerspectivePressed(self) -> None:
@@ -313,19 +311,19 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def _onOpenProjectPressed(self) -> None:
-        self._projectManager.openProject(self)
+        Application.projectManager().openProject(self)
 
     @QtCore.Slot()
     def _onNewProjectPressed(self) -> None:
-        self._projectManager.newProject(self)
+        Application.projectManager().newProject(self)
 
     @QtCore.Slot()
     def _onSaveProjectPressed(self) -> None:
-        self._projectManager.saveProject(self)
+        Application.projectManager().saveProject(self)
 
     @QtCore.Slot()
     def _onSaveProjectAsPressed(self) -> None:
-        self._projectManager.saveProjectAs(self)
+        Application.projectManager().saveProjectAs(self)
 
     @QtCore.Slot(bool)
     def _onIsDirtyChanged(self, is_dirty: bool) -> None:

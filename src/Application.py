@@ -2,6 +2,7 @@ import sys
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from .ProjectManager import ProjectManager
 from .Workspace import Workspace
 
 app_version = "1.0.0"
@@ -30,10 +31,17 @@ class Application(QtWidgets.QApplication):
     @staticmethod
     def workspace() -> Workspace:
         """
-        Returns the ProjectManager instance.
+        Returns the Workspace instance.
         """
-        # ProjectManager is not a singleton because this will enable
+        # Workspace is not a singleton because this will enable
         # in a future to have multiple projects open at the same time.
+        return Application.instance()._workspace
+
+    @staticmethod
+    def projectManager() -> "ProjectManager":
+        """
+        Returns the project manager.
+        """
         return Application.instance()._projectManager
 
     def __init__(self, args):
@@ -65,7 +73,8 @@ class Application(QtWidgets.QApplication):
         from .ImageProcessorService import \
             ImageProcessorService  # Avoid circular imports
         self._imageProcessorService = ImageProcessorService()
-        self._projectManager = Workspace(self._imageProcessorService)
+        self._workspace = Workspace(self._imageProcessorService)
+        self._projectManager = ProjectManager(self._workspace)
 
     def run(self):
         """
