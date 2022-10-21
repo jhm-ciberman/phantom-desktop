@@ -13,17 +13,11 @@ At the moment Phantom desktop is in development. Releases will be available soon
 ## Contributing
 ### Initial setup:
 
-Phantom desktop uses git submodules, so you need to clone the repository and then initialize the submodules:
+After cloning, create a virtual environment, activate it, and install the pip requirements:
 
 ```bash
 git clone git@github.com:jhm-ciberman/phantom-desktop.git
-cd ./phantom-desktop
-git submodule update --init --recursive
-```
-
-After that, create a virtual environment, activate it, and install the pip requirements:
-
-```bash
+cd phantom-desktop
 python -m venv .env
 source .env/Scripts/activate
 pip install -r requirements.txt
@@ -34,7 +28,7 @@ pip install -r requirements.txt
 To run Phantom Desktop from the command line, use the following command:
 
 ```bash
-python src/main.py
+python main.py
 ```
 
 Or in VSCode, you can use the "Run" command, it's already configured for this project in the launch.json file.
@@ -48,16 +42,6 @@ python setup.py build
 ```
 
 This will use [cx_Freeze](https://cx-freeze.readthedocs.io/en/latest/) to generate an executable file according to the current operating system. The output files will be placed in the `build` folder ready to be distributed.
-
-### Pulling changes from GitHub
-
-This project uses git submodules, so to pull the latest changes from GitHub, run the following command:
-
-```bash
-git pull --recurse-submodules
-```
-
-This will pull the latest changes from the main repository and update the submodules as well if required.
 
 ### Code conventions
 
