@@ -1,6 +1,7 @@
 import sys
 
 from cx_Freeze import Executable, setup
+import src.constants as constants
 
 # Dependencies are automatically detected, but it might need
 # fine tuning.
@@ -26,8 +27,9 @@ executables = [
     )
 ]
 
-setup(name='Phantom Desktop',
-      version='1.0',
-      description='A desktop application for forensic digital image processing',
-      options={'build_exe': build_options},
-      executables=executables)
+setup(
+    name=constants.app_name,
+    version=constants.app_version,
+    description=constants.app_description,
+    options={'build_exe': build_options},
+    executables=executables)
