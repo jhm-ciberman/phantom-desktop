@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from os import link
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from ..Application import Application
 from ..l10n import __
+
+from .. import constants
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,7 +74,7 @@ class AboutWindow(QtWidgets.QDialog):
         self._descriptionLabel.setFont(QtGui.QFont("Segoe UI", 10))
         self._descriptionLabel.setWordWrap(True)
 
-        github_link = Application.instance().repoUrl()
+        github_link = constants.app_repo_url
         image_link = "res/img/github_16.png"
         links_str = f"<img src=\"{image_link}\" width=\"16\" height=\"16\"/>    <a href=\"{github_link}\">GitHub</a>"
         self._linksLabel = QtWidgets.QLabel(links_str)

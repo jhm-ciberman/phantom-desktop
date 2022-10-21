@@ -1,15 +1,14 @@
 import sys
+import logging
 
 from PySide6 import QtCore, QtGui, QtWidgets
+
+from .ModelsDownloader import ModelsDownloader
 
 from .ProjectManager import ProjectManager
 from .Workspace import Workspace
 
-app_version = "1.0.0"
-app_name = "Phantom Desktop"
-repo_url = "https://github.com/jhm-ciberman/phantom-desktop"
-docs_url = "https://github.com/jhm-ciberman/phantom-desktop/wiki"
-bug_report_url = "https://github.com/jhm-ciberman/phantom-desktop/issues/new"
+from . import constants
 
 
 class Application(QtWidgets.QApplication):
@@ -54,8 +53,25 @@ class Application(QtWidgets.QApplication):
 
         Application._instance = self
 
-        self.setApplicationVersion(app_version)
-        self.setApplicationName(app_name)
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            handlers=[
+                logging.FileHandler(constants.app_log_file),
+                logging.StreamHandler()
+            ]
+        )
+
+        sys.excepthook = self._handleException
+
+        self._modelsDownloader = ModelsDownloader(
+            models_zip_url=constants.models_zip_url,
+            release_tag=constants.models_release_tag,
+            local_models_folder=constants.models_local_folder,
+        )
+
+        self.setApplicationVersion(constants.app_version)
+        self.setApplicationName(constants.app_name)
 
         self._icon = QtGui.QIcon("res/img/icon.png")
         self.setWindowIcon(self._icon)
@@ -75,6 +91,13 @@ class Application(QtWidgets.QApplication):
         self._imageProcessorService = ImageProcessorService()
         self._workspace = Workspace(self._imageProcessorService)
         self._projectManager = ProjectManager(self._workspace)
+
+    def _handleException(self, exctype, value, traceback):
+        """
+        Handles unhandled exceptions.
+        """
+        logging.error("Unhandled exception", exc_info=(exctype, value, traceback))
+        QtWidgets.QMessageBox.critical(None, "Unhandled exception", str(value))
 
     def run(self):
         """
@@ -102,20 +125,8 @@ class Application(QtWidgets.QApplication):
         """
         return self._icon
 
-    def docsUrl(self) -> str:
+    def modelsDownloader(self) -> ModelsDownloader:
         """
-        Returns the help URL.
+        Returns the models downloader.
         """
-        return docs_url
-
-    def repoUrl(self) -> str:
-        """
-        Returns the repository URL.
-        """
-        return repo_url
-
-    def bugReportUrl(self) -> str:
-        """
-        Returns the bug report URL.
-        """
-        return bug_report_url
+        return self._modelsDownloader

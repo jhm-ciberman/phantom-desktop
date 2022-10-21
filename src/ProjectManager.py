@@ -1,4 +1,5 @@
 import glob
+import logging
 import os
 from typing import Callable
 
@@ -109,7 +110,7 @@ class ProjectManager:
 
         def onImageError(e: Exception, image: Image):
             nonlocal skippedImages
-            print(f"Error adding image: {image.path}. Error: {e}")
+            logging.warn(f"Error adding image: {image.path}. Error: {e}")
             skippedImages.append(image)
 
         def addFilesWorker():
@@ -282,7 +283,7 @@ class ProjectManager:
 
         def onImageError(error: Exception, image: Image) -> bool:
             nonlocal imagesSkipped
-            print(f"Error loading image {image.display_name}: {error}")
+            logging.warn(f"Error loading image {image.display_name}: {error}")
             imagesSkipped.append(image)
             return True
 
@@ -471,7 +472,9 @@ class ProjectManager:
             True if the models were updated or no update was required,
             False if the update failed or the user cancelled the update.
         """
-        downloader = ModelsDownloader()
+        from .Application import Application  # Avoids circular import
+
+        downloader = Application.instance().modelsDownloader()
 
         if downloader.models_are_updated():
             return True
@@ -503,7 +506,7 @@ class ProjectManager:
                 downloader.download_models()
                 error = None
             except Exception as e:
-                print("Error updating models: {}".format(e))
+                logging.error("Error updating models: {}".format(e))
                 error = e
 
         bussyModal.exec(updateModelsWorker)

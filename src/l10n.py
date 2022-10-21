@@ -1,4 +1,5 @@
 import json
+import logging
 
 
 def __(key_or_string: str, **kwargs) -> str:
@@ -194,5 +195,5 @@ class LocalizationService:
             raise Exception("Missing string: " + key)
 
         if self.warn_on_missing and key not in self._warned_strings:
-            print("Missing string: " + key)
+            logging.warn("Missing string: " + key)
             self._warned_strings.add(key)

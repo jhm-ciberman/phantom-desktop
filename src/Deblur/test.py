@@ -14,7 +14,6 @@ if __name__ == '__main__':
     preview_size = (512, 512)
     psf_preview_scale = 4
     cycles = max(1, int(log2(preview_size[0]) - 5))
-    print(f'cycles: {cycles}')
     last_cycle_time = 0
 
     # Load image:

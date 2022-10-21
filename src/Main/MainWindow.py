@@ -14,6 +14,7 @@ from ..Workspace import BatchProgress
 from .AboutWindow import AboutWindow
 from .ImageGrid import ImageGrid
 from .InspectorPanel import InspectorPanel
+from .. import constants
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -344,15 +345,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def _onDocumentationPressed(self) -> None:
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(Application.instance().docsUrl()))
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(constants.app_docs_url))
 
     @QtCore.Slot()
     def _onReportIssuePressed(self) -> None:
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(Application.instance().bugReportUrl()))
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(constants.app_bugs_url))
 
     @QtCore.Slot()
     def _onGithubPressed(self) -> None:
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(Application.instance().repoUrl()))
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(constants.app_repo_url))
 
     def _updateWindowTitle(self) -> None:
         project = self._workspace.project()
