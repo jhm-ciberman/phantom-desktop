@@ -6,9 +6,15 @@
 
 Phantom Desktop is an application for forensic digital image processing.
 
+![Main screen](./docs/main-screen.jpg)
+
 ## Download
 
-At the moment Phantom desktop is in development. Releases will be available soon.
+At the moment Phantom desktop is in development. A pre-release version is available in the [releases](https://github.com/jhm-ciberman/phantom-desktop/releases) section. The application is available for Windows. This pre-release is not stable and the project file format may change at any moment. There is no guarantee of backwards compatibility if you use this version.
+
+## Wiki
+
+The [wiki](https://github.com/jhm-ciberman/phantom-desktop/wiki) contains information about the application and how to use it.
 
 ## Contributing
 ### Initial setup:
