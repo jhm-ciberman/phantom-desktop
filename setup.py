@@ -16,6 +16,7 @@ build_options = {
     ],
     "bin_includes": [
         "liblapack.so.3",
+        "libblas.so.3",
     ],
 }
 

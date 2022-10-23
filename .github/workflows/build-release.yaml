@@ -47,15 +47,15 @@ jobs:
       # name example: "PhantomDesktop-Windows-v1.0.0.zip", "PhantomDesktop-Linux-v2.5.1.zip"
       - name: Set release name
         id: release-name
-        run: echo "name=PhantomDesktop-${{ matrix.release-name }}-${{ steps.previoustag.outputs.tag }}.zip" >> $GITHUB_OUTPUT
+        run: echo "name=PhantomDesktop-${{ matrix.release-name }}-${{ steps.previoustag.outputs.tag }}" >> $GITHUB_OUTPUT
       - name: Archive Release
-        uses: thedoctor0/zip-release@main  # works on Windows, Linux, MacOS
+        uses: thedoctor0/zip-release@main  # works on Windows, Linux, MacOS. This is required to preserve chmod +x on Linux
         with:
           path: ./build
-          filename: ${{ steps.release-name.outputs.name }}
+          filename: ${{ steps.release-name.outputs.name }}.zip
       - name: Upload release
         uses: actions/upload-artifact@v2
         with:
           name: ${{ steps.release-name.outputs.name }}
-          path: ${{ steps.release-name.outputs.name }}
+          path: ${{ steps.release-name.outputs.name }}.zip
       
