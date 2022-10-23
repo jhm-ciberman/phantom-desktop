@@ -48,9 +48,11 @@ jobs:
       - name: Set release name
         id: release-name
         run: echo "name=PhantomDesktop-${{ matrix.release-name }}-v${{ steps.previoustag.outputs.tag }}.zip" >> $GITHUB_OUTPUT
-      # Use max compression level for zip
-      - name: Create zip file
-        run: zip -r -9 -q -X ${{ steps.release-name.outputs.name }} ./build
+      - name: Archive Release
+        uses: thedoctor0/zip-release@main  # works on Windows, Linux, MacOS
+        with:
+          files: ./build
+          name: ${{ steps.release-name.outputs.name }}
       - name: Upload release
         uses: actions/upload-artifact@v2
         with:
