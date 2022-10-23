@@ -8,15 +8,19 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.10.5]
+        os: 
+          - windows-latest
+          - ubuntu-latest
+          #- macos-latest
+        python-version: 
+          - 3.10.5
         include:
           - os: ubuntu-latest
             release-name: Linux
           - os: windows-latest
             release-name: Windows
-          - os: macos-latest
-            release-name: MacOS
+          #- os: macos-latest
+          #  release-name: MacOS
 
     # Use bash shell for all steps
     runs-on: ${{ matrix.os }}
@@ -32,27 +36,24 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      - name: Lint with flake8
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        run: pip install -r requirements.txt
       - name: Build release
-        run: |
-          python setup.py build
+        run: python setup.py build --build-exe=./build
       - name: Get latest release tag
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"
+      # name example: "PhantomDesktop-Windows-v1.0.0.zip", "PhantomDesktop-Linux-v2.5.1.zip"
+      - name: Set release name
+        id: release-name
+        run: echo "name=PhantomDesktop-${{ matrix.release-name }}-v${{ steps.previoustag.outputs.tag }}.zip" >> $GITHUB_OUTPUT
+      # Use max compression level for zip
+      - name: Create zip file
+        run: zip -r -9 -q -X ${{ steps.release-name.outputs.name }} ./build
       - name: Upload release
         uses: actions/upload-artifact@v2
         with:
-          # name example: "PhantomDesktop-Windows-v1.0.0.zip", "PhantomDesktop-Linux-v2.5.1.zip"
-          name: PhantomDesktop-${{ matrix.release-name }}-${{ steps.previoustag.outputs.tag }}.zip
-          path: ./build/
+          name: ${{ steps.release-name.outputs.name }}
+          path: ${{ steps.release-name.outputs.name }}
       
