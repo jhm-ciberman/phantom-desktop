@@ -8,15 +8,15 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest} #, windows-latest, macos-latest]
         python-version: [3.10.5]
         include:
           - os: ubuntu-latest
             release-name: Linux
-          - os: windows-latest
-            release-name: Windows
-          - os: macos-latest
-            release-name: MacOS
+          #- os: windows-latest
+          #  release-name: Windows
+          #- os: macos-latest
+          #  release-name: MacOS
 
     # Use bash shell for all steps
     runs-on: ${{ matrix.os }}
