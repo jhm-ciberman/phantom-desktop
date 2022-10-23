@@ -14,6 +14,9 @@ build_options = {
     "include_files": [
         "res/",
     ],
+    "bin_includes": [
+        "liblapack.so.3",
+    ],
 }
 
 base = 'Win32GUI' if sys.platform == 'win32' else None
