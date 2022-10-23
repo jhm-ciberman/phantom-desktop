@@ -47,12 +47,12 @@ jobs:
       # name example: "PhantomDesktop-Windows-v1.0.0.zip", "PhantomDesktop-Linux-v2.5.1.zip"
       - name: Set release name
         id: release-name
-        run: echo "name=PhantomDesktop-${{ matrix.release-name }}-v${{ steps.previoustag.outputs.tag }}.zip" >> $GITHUB_OUTPUT
+        run: echo "name=PhantomDesktop-${{ matrix.release-name }}-${{ steps.previoustag.outputs.tag }}.zip" >> $GITHUB_OUTPUT
       - name: Archive Release
         uses: thedoctor0/zip-release@main  # works on Windows, Linux, MacOS
         with:
-          files: ./build
-          name: ${{ steps.release-name.outputs.name }}
+          path: ./build
+          filename: ${{ steps.release-name.outputs.name }}
       - name: Upload release
         uses: actions/upload-artifact@v2
         with:
