@@ -196,6 +196,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._workspace.projectChanged.connect(self._onProjectChanged)
         self._workspace.isDirtyChanged.connect(self._onIsDirtyChanged)
 
+        self.setAcceptDrops(True)
+
         self._updateWindowTitle()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
@@ -386,3 +388,28 @@ class MainWindow(QtWidgets.QMainWindow):
     @QtCore.Slot(list)
     def _onRemoveFromProjectPressed(self, images: list[Image]) -> None:
         Application.workspace().removeImages(images)
+
+    # Drag and drop (User can drag image files, folders and projects onto the window to open them)
+    def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QtGui.QDropEvent) -> None:
+        imagesToAdd = []
+        for url in event.mimeData().urls():
+            path = url.toLocalFile()
+            if os.path.isfile(path):
+                extension = os.path.splitext(path)[1].lower()
+                extension = extension[1:] if extension.startswith(".") else extension
+                if extension == constants.app_project_extension:
+                    Application.projectManager().openProject(self, path)
+                    break  # Only one project can be opened at a time
+                elif extension in constants.app_import_extensions:
+                    imagesToAdd.append(path)
+            elif os.path.isdir(path):
+                Application.projectManager().addFolder(self, path)
+                # TODO: support adding multiple folders at once
+                break
+        if len(imagesToAdd) > 0:
+            images = [Image(path) for path in imagesToAdd]
+            Application.projectManager().addImagesToProject(self, images)

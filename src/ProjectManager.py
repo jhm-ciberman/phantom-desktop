@@ -9,7 +9,7 @@ from .l10n import __
 from .Models import Image
 from .Widgets.BussyModal import BussyModal
 from .Workspace import Workspace
-from .ModelsDownloader import ModelsDownloader
+from . import constants
 
 
 class ProjectManager:
@@ -21,15 +21,17 @@ class ProjectManager:
     the Workspace but for the UI to interact with the user.
     """
 
-    _importExtensions = ["png", "jpg", "jpeg", "tiff", "tif", "bmp"]
+    _importExtensions = constants.app_import_extensions
 
-    _importFilter = __("Images") + " (*.png *.jpg *.jpeg *.tiff *.tif *.bmp)"
+    _importFilter = __("Images") + " (".join(["*." + ext for ext in _importExtensions]) + ")"
 
-    _exportExtensions = ["png", "jpg"]
+    _exportExtensions = constants.app_export_extensions
 
-    _exportFilter = __("Images") + " (*.png *.jpg)"
+    _exportFilter = __("Images") + " (".join(["*." + ext for ext in _exportExtensions]) + ")"
 
-    _projectFilter = __("Phantom Project") + " (*.phantom)"
+    _projectExtension = constants.app_project_extension
+
+    _projectFilter = __("Phantom Project") + " (*." + _projectExtension + ")"
 
     _warningImageCount = 2000
 
@@ -42,23 +44,24 @@ class ProjectManager:
         """
         self._workspace = workspace
 
-    def addFolder(self, parent: QtWidgets.QWidget) -> None:
+    def addFolder(self, parent: QtWidgets.QWidget, folder_path: str = None) -> None:
         """
         Asks the user to select a folder and adds it to the project.
 
         Args:
             parent (QWidget): The parent widget.
+            folder_path (str): The folder path. If None, the user will be asked to select a folder.
 
         Returns:
             list[str]: The list of file paths.
         """
 
-        folder_path = QtWidgets.QFileDialog.getExistingDirectory(
-            parent, __("@project_manager.select_folder_caption"), ""
-        )
-
-        if not folder_path:
-            return
+        if folder_path is None:
+            folder_path = QtWidgets.QFileDialog.getExistingDirectory(
+                parent, __("@project_manager.select_folder_caption"), ""
+            )
+            if not folder_path:
+                return
 
         glob_base = folder_path + "/**/*."
         filePaths = []
@@ -249,19 +252,21 @@ class ProjectManager:
 
         bussyModal.exec(exportImagesWorker)
 
-    def openProject(self, parent: QtWidgets.QWidget) -> None:
+    def openProject(self, parent: QtWidgets.QWidget, file_path: str = None) -> None:
         """
         Asks the user to select a project file and opens it.
 
         Args:
             parent (QWidget): The parent widget.
+            file_path (str): The path to the project file to open. If None, the user will be asked to select a file.
         """
-        filePath, _ = QtWidgets.QFileDialog.getOpenFileName(
-            parent, __("@project_manager.select_project_open_caption"), "",
-            self._projectFilter)
+        if file_path is None:
+            filePath, _ = QtWidgets.QFileDialog.getOpenFileName(
+                parent, __("@project_manager.select_project_open_caption"), "",
+                self._projectFilter)
 
-        if not filePath:
-            return
+            if not filePath:
+                return
 
         # Load the project with a bussy modal.
         bussyModal = BussyModal(
