@@ -1,3 +1,4 @@
+from operator import le
 from PySide6 import QtCore, QtWidgets
 
 from ..Application import Application
@@ -148,21 +149,24 @@ class GroupFacesWindow(QtWidgets.QWidget):
         self._workspace.setDirty()
         self._refreshGroups()
 
-    @QtCore.Slot(Face)
-    def _onMoveToGroupTriggered(self, face: Face) -> None:
+    @QtCore.Slot(list)
+    def _onMoveToGroupTriggered(self, faces: list[Face]) -> None:
         """
-        Called when the user wants to move a face to another group.
+        Called when the user wants to move one or more faces to a group.
 
         Args:
-            face (Face): The face to move.
+            faces (list[Face]): The faces to move.
         """
-        if len(face.group.faces) == 1:
+        if len(self._selectedGroup.faces) == len(faces):
             QtWidgets.QMessageBox.warning(self, __("Cannot Move Face"), __("You cannot move the last face in a group."))
             return
 
         project = self._workspace.project()
         groupsToShow = [group for group in project.groups if group != self._selectedGroup]
         group = GroupSelector.getGroup(groupsToShow, self, __("Select a group to move the face to"), showNewGroupOption=True)
+
+        if group is None:
+            return
 
         if len(group.faces) == 0:  # The user wants to create a new group
             name, ok = QtWidgets.QInputDialog.getText(self, __("Group Name"), __("Enter a name for the new group:"))
@@ -172,8 +176,9 @@ class GroupFacesWindow(QtWidgets.QWidget):
             project.add_group(group)
 
         if group:
-            self._selectedGroup.remove_face(face)
-            group.add_face(face)
+            for face in faces:
+                self._selectedGroup.remove_face(face)
+                group.add_face(face)
             self.detailsGrid.refresh()
             self._refreshGroups()
 
@@ -192,20 +197,21 @@ class GroupFacesWindow(QtWidgets.QWidget):
             self.detailsHeader.refresh()
             self._workspace.setDirty()
 
-    @QtCore.Slot(Face)
-    def _onRemoveFromGroupTriggered(self, face: Face) -> None:
+    @QtCore.Slot(list)
+    def _onRemoveFromGroupTriggered(self, faces: list[Face]) -> None:
         """
-        Called when the user wants to remove a face from a group.
+        Called when the user wants to remove one or more faces from a group.
 
         Args:
-            face (Face): The face to remove.
+            faces (Face): The faces to remove.
         """
-        if len(self._selectedGroup.faces) == 1:
+        if len(self._selectedGroup.faces) == len(faces):
             QtWidgets.QMessageBox.warning(self, __("Cannot Remove Face"), __("You cannot remove the last face from a group."))
             return
         newGroup = Group()
-        self._selectedGroup.remove_face(face)
-        newGroup.add_face(face)
+        for face in faces:
+            self._selectedGroup.remove_face(face)
+            newGroup.add_face(face)
         newGroup.recompute_centroid()
         self._workspace.project().add_group(newGroup)
         self.detailsGrid.refresh()

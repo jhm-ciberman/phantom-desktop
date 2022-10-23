@@ -140,7 +140,7 @@ class GroupSelector(QtWidgets.QDialog):
             showNewGroupOption (bool): Whether to show the option to create a new group.
 
         Returns:
-            Group: The selected group.
+            Group: The selected group, or None if the user cancelled.
         """
         dialog = GroupSelector(groups, parent, title, showNewGroupOption)
         if dialog.exec():

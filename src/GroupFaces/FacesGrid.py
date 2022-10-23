@@ -13,10 +13,10 @@ class FacesGrid(GridBase):
     faceClicked = QtCore.Signal(Face)
     """Emited when a face is clicked."""
 
-    moveToGroupTriggered = QtCore.Signal(Face)
+    moveToGroupTriggered = QtCore.Signal(list)  # list[Face]
     """Emited when the "Move to group" action is triggered."""
 
-    removeFromGroupTriggered = QtCore.Signal(Face)
+    removeFromGroupTriggered = QtCore.Signal(list)  # list[Face]
     """Emited when the "Remove from group" action is triggered."""
 
     useAsMainFaceTriggered = QtCore.Signal(Face)
@@ -47,6 +47,8 @@ class FacesGrid(GridBase):
         self._contextMenu.addAction(self._moveToGroupAction)
         self._contextMenu.addAction(self._useAsMainFaceAction)
 
+        self.setSelectionMode(QtWidgets.QListView.SelectionMode.ExtendedSelection)
+
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         """
         Called when the context menu event is triggered.
@@ -54,9 +56,11 @@ class FacesGrid(GridBase):
         Args:
             event (QContextMenuEvent): The event.
         """
-        item = self.itemAt(event.pos())
-        if item is None:
-            return
+        count = len(self.selectedIndexes())
+        self._moveToGroupAction.setEnabled(count > 0)
+        self._removeFromGroupAction.setEnabled(count > 0)
+        self._useAsMainFaceAction.setEnabled(count == 1)
+
         self._contextMenu.exec_(event.globalPos())
 
     def setFaces(self, faces: list[Face]) -> None:
@@ -92,17 +96,14 @@ class FacesGrid(GridBase):
         """
         return self._faces
 
-    def _currentFace(self) -> Face:
+    def _currentFaces(self) -> list[Face]:
         """
-        Get the currently selected face.
+        Get the faces that are currently selected.
 
         Returns:
-            Face: The currently selected face.
+            list[Face]: The faces that are currently selected.
         """
-        item = self.currentItem()
-        if item is None:
-            return None
-        return self._faces[self.row(item)]
+        return [self._faces[qModelIndex.row()] for qModelIndex in self.selectedIndexes()]
 
     @QtCore.Slot(QtWidgets.QListWidgetItem)
     def _onItemClicked(self, item: QtWidgets.QWidgetItem) -> None:
@@ -112,25 +113,25 @@ class FacesGrid(GridBase):
         Args:
             item (QListWidgetItem): The item that was clicked.
         """
-        self.faceClicked.emit(self._currentFace())
+        self.faceClicked.emit(self._faces[self.row(item)])
 
     @QtCore.Slot()
     def _onMoveToGroupActionTriggered(self) -> None:
         """
         Called when the move to group action is triggered.
         """
-        self.moveToGroupTriggered.emit(self._currentFace())
+        self.moveToGroupTriggered.emit(self._currentFaces())
 
     @QtCore.Slot()
     def _onRemoveFromGroupActionTriggered(self) -> None:
         """
         Called when the remove from group action is triggered.
         """
-        self.removeFromGroupTriggered.emit(self._currentFace())
+        self.removeFromGroupTriggered.emit(self._currentFaces())
 
     @QtCore.Slot()
     def _onUseAsMainFaceActionTriggered(self) -> None:
         """
         Called when the use as main face action is triggered.
         """
-        self.useAsMainFaceTriggered.emit(self._currentFace())
+        self.useAsMainFaceTriggered.emit(self._currentFaces()[0])
