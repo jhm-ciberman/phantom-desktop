@@ -18,8 +18,11 @@ jobs:
           - os: macos-latest
             release-name: MacOS
 
-    # Runs on Windows, Linux, and macOS
+    # Use bash shell for all steps
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - uses: actions/checkout@v3
