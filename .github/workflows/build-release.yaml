@@ -17,6 +17,7 @@ jobs:
             release-name: Windows
           - os: macos-latest
             release-name: MacOS
+        fail-fast: false  # Don't stop the build if one of the jobs fails
 
     # Use bash shell for all steps
     runs-on: ${{ matrix.os }}
@@ -26,6 +27,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for all tags and branches, required for versioning
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
