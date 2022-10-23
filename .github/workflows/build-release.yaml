@@ -10,6 +10,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: [3.10.5]
+        fail-fast: false  # Don't stop the build if one of the jobs fails
         include:
           - os: ubuntu-latest
             release-name: Linux
@@ -17,7 +18,6 @@ jobs:
             release-name: Windows
           - os: macos-latest
             release-name: MacOS
-        fail-fast: false  # Don't stop the build if one of the jobs fails
 
     # Use bash shell for all steps
     runs-on: ${{ matrix.os }}
