@@ -19,6 +19,7 @@ build_options = {
         "liblapack.so.3",
         "libblas.so.3",
         "libgfortran.so.5",
+        "libopenblas.so.0",
     ],
 }
 
