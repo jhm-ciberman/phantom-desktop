@@ -15,8 +15,10 @@ build_options = {
         "res/",
     ],
     "bin_includes": [
+        # Required for dlib:
         "liblapack.so.3",
         "libblas.so.3",
+        "libgfortran.so.5",
     ],
 }
 
