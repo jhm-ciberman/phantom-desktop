@@ -9,16 +9,16 @@ jobs:
     strategy:
       matrix:
         os: 
-          #- windows-latest
+          - windows-latest
           - ubuntu-latest
-          #- macos-latest
+          #- macos-latest  # Not supported yet
         python-version: 
           - 3.10.5
         include:
           - os: ubuntu-latest
             release-name: Linux
-          #- os: windows-latest
-          #  release-name: Windows
+          - os: windows-latest
+            release-name: Windows
           #- os: macos-latest
           #  release-name: MacOS
 
