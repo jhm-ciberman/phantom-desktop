@@ -284,7 +284,7 @@ class ProjectManager:
             self._workspace.setProject(project)
 
         def onProgress(index: int, count: int, image: Image):
-            bussyModal.setSubtitle(__("@project_manager.loading_project.subtitle", current=index + 1, total=count))
+            bussyModal.setSubtitle(__("@project_manager.loading_project.progress", current=index + 1, total=count))
 
         def onImageError(error: Exception, image: Image) -> bool:
             nonlocal imagesSkipped

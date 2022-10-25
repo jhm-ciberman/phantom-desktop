@@ -35,6 +35,11 @@ credits = [
     Line("Universidad Fasta", "ufasta.edu.ar", "https://www.ufasta.edu.ar/"),
 ]
 
+logos = [
+    "res/img/ufasta.png",
+    "res/img/infolab.png",
+]
+
 
 class AboutWindow(QtWidgets.QDialog):
     """
@@ -47,8 +52,11 @@ class AboutWindow(QtWidgets.QDialog):
         """
         super().__init__(parent)
         self.setWindowTitle("About Phantom Desktop")
-        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowContextHelpButtonHint)
+        self.setWindowFlags(QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint)
         self.setWindowIcon(QtGui.QIcon("res/img/icon.png"))
+
+        # Disable resizing
+        self.setSizeGripEnabled(False)
 
         self._createUi()
 
@@ -99,6 +107,7 @@ class AboutWindow(QtWidgets.QDialog):
         layoutTop.addLayout(leftColumn)
         layoutTop.addSpacing(20)
         layoutTop.addWidget(self._creditsWidget)
+
         layoutTop.addStretch()
 
         layout = QtWidgets.QVBoxLayout()
@@ -158,6 +167,17 @@ class AboutWindow(QtWidgets.QDialog):
             else:
                 layout.addWidget(QtWidgets.QLabel(str(credit)))
         layout.addSpacing(10)
+
+        logosLayout = QtWidgets.QHBoxLayout()
+        logosLayout.setContentsMargins(0, 0, 0, 0)
+        logosLayout.setSpacing(0)
+        for logo in logos:
+            label = QtWidgets.QLabel()
+            label.setPixmap(QtGui.QPixmap(logo))
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            logosLayout.addWidget(label)
+
+        layout.addLayout(logosLayout)
         layout.addStretch()
         widget.setLayout(layout)
 

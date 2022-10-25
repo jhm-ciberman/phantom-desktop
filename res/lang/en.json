@@ -81,6 +81,7 @@
             "title": "Exporting images"
         },
         "loading_project": {
+            "progress": "Loaded {current} of {total} images",
             "subtitle": "Please wait...",
             "title": "Loading project"
         },

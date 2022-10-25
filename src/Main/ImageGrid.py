@@ -140,7 +140,9 @@ class ImageGrid(GridBase):
     def _onItemSelectionChanged(self) -> None:
         self._selectedImages = []
         for item in self.selectedIndexes():
-            self._selectedImages.append(self._images[item.row()])
+            i = item.row()
+            if i < len(self._images):
+                self._selectedImages.append(self._images[i])
 
         self.selectionChanged.emit()
 
