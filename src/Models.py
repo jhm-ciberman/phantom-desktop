@@ -175,7 +175,7 @@ class Group(Model):
     centroid: np.ndarray = None
     """The centroid of the group."""
 
-    name: str = None
+    name: str = ""
     """The name of the group."""
 
     main_face_override: Face = None
@@ -195,7 +195,7 @@ class Group(Model):
         self.centroid: np.ndarray = None  # a flattened list of 128 numbers
         self._faces: list[Face] = []
         self.main_face_override: Face = None
-        self.name: str = None
+        self.name: str = ""
         self.dont_merge_with: set[Group] = set()
 
     @property

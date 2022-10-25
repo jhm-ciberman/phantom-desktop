@@ -62,7 +62,7 @@ class GroupsGrid(GridBase):
         # Sort groups by the following criteria:
         # 1. If the group has a name, it is displayed first.
         # 2. In second place, the group with the most faces is displayed.
-        self._groups.sort(key=lambda group: (group.name is not None, len(group.faces)), reverse=True)
+        self._groups.sort(key=lambda group: (group.name != "", len(group.faces)), reverse=True)
 
         for group in self._groups:
             if len(group.faces) == 0:

@@ -31,24 +31,40 @@ class _Header(QtWidgets.QWidget):
         self._layout.addWidget(self._line)
 
 
-class _ValueCell(QtWidgets.QTableWidgetItem):
+class _AbstractValueCell(QtWidgets.QTableWidgetItem):
     """
     A cell that shows a value.
     """
-    def __init__(self, value: Any):
+
+    def __init__(self, value: Any = None):
         """
         Initializes the ValueCell class.
+
+        Args:
+            value: The value to show.
         """
+        super().__init__()
         self._originalValue = value
-        value = str(value) if value is not None else "—"  # em dash
-        super().__init__(value)
-        self.setToolTip(value)
 
     def originalValue(self) -> str:
         """
         Gets the original value.
         """
         return self._originalValue
+
+
+class _TextValueCell(_AbstractValueCell):
+    """
+    A cell that shows a value.
+    """
+    def __init__(self, value: Any = None):
+        """
+        Initializes the ValueCell class.
+        """
+        super().__init__(value)
+        value = str(value) if value is not None else "—"  # em dash
+        self.setText(value)
+        self.setToolTip(value)
 
 
 class _KeyCell(QtWidgets.QTableWidgetItem):
@@ -63,6 +79,19 @@ class _InfoCell(QtWidgets.QTableWidgetItem):
     A cell that shows an info text.
     """
     pass
+
+
+class _PixmapValueCell(_AbstractValueCell):
+    """
+    A cell that shows a pixmap.
+    """
+    def __init__(self, pixmap: QtGui.QPixmap, value: Any = None):
+        """
+        Initializes the PixmapValueCell class.
+        """
+        super().__init__(value)
+        self._pixmap = pixmap
+        self.setData(QtCore.Qt.ItemDataRole.DecorationRole, pixmap)
 
 
 class PropertiesTable(QtWidgets.QTableWidget):
@@ -90,9 +119,13 @@ class PropertiesTable(QtWidgets.QTableWidget):
         self.setShowGrid(False)
         self.setContentsMargins(5, 5, 5, 5)
 
+        self.setIconSize(QtCore.QSize(64, 64))
+
         self._menu = QtWidgets.QMenu()
         copyAction = self._menu.addAction(__("Copy"))
         copyAction.triggered.connect(self.copy)
+
+        self.itemSelectionChanged.connect(self._onSelectionChanged)
 
     def contextMenuEvent(self, e: QtGui.QContextMenuEvent) -> None:
         """
@@ -127,10 +160,12 @@ class PropertiesTable(QtWidgets.QTableWidget):
                     continue
                 if isinstance(item, _KeyCell):
                     text += item.text() + "\t"
-                elif isinstance(item, _ValueCell):
+                elif isinstance(item, _TextValueCell):
                     text += item.text() + "\n"
                 elif isinstance(item, _InfoCell):
                     text += item.text() + "\n"
+                elif isinstance(item, _PixmapValueCell):
+                    text += "\n"
             text = text[:-1]  # remove the last newline
         QtWidgets.QApplication.clipboard().setText(text)
 
@@ -158,7 +193,7 @@ class PropertiesTable(QtWidgets.QTableWidget):
         row = self.rowCount()
         self.insertRow(row)
         self.setItem(row, 0, _KeyCell(key))
-        self.setItem(row, 1, _ValueCell(value))
+        self.setItem(row, 1, _TextValueCell(value))
 
     def addHeader(self, text: str):
         """
@@ -174,9 +209,47 @@ class PropertiesTable(QtWidgets.QTableWidget):
         self.setSpan(row, 0, 1, 2)
         self.setCellWidget(row, 0, header)
 
+    def addPixmapRow(self, key: str, pixmap: QtGui.QPixmap, value: Any = None):
+        """
+        Adds a row to the inspector panel with the given key and pixmap.
+
+        Args:
+            key (str): The key to show in the first column.
+            pixmap (QPixmap): The pixmap to show in the second column.
+        """
+        row = self.rowCount()
+        self.insertRow(row)
+        self.setRowHeight(row, pixmap.height())
+        self.setItem(row, 0, _KeyCell(key))
+        self.setItem(row, 1, _PixmapValueCell(pixmap, value))
+
     def clear(self):
         """
         Clears the inspector panel.
         """
         self.clearContents()
         self.setRowCount(0)
+
+    def selectedValueChangedEvent(self, value: Any):
+        """
+        Called when the value of the selected item changes.
+
+        Args:
+            value (Any): The new value, or None if no item is selected.
+        """
+        pass
+
+    @QtCore.Slot()
+    def _onSelectionChanged(self):
+        """
+        Called when the selection changes.
+        """
+        items = self.selectedItems()
+
+        if len(items) == 2:  # 2 because we have 2 columns
+            for item in items:
+                if isinstance(item, _AbstractValueCell):
+                    self.selectedValueChangedEvent(item.originalValue())
+                    return
+
+        self.selectedValueChangedEvent(None)

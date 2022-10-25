@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from PIL import Image as PILImage
 from PIL.ExifTags import TAGS
@@ -6,7 +7,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 
 from ..Application import Application
 from ..l10n import __
-from ..Models import Image, Project, Rect
+from ..Models import Face, Image, Project, Rect
 from ..Widgets.PixmapDisplay import PixmapDisplay
 from ..Widgets.PropertiesTable import PropertiesTable
 
@@ -58,6 +59,9 @@ class _InspectorPropertiesTable(PropertiesTable):
     """
     A properties table for displaying image metadata.
     """
+
+    faceSelected = QtCore.Signal(Face)
+    """Signal emitted when a face is selected in the table."""
 
     def inspectImageInfo(self, image: Image):
         pilImage = PILImage.open(image.path)
@@ -144,11 +148,18 @@ class _InspectorPropertiesTable(PropertiesTable):
             self.addInfo(__("No faces detected."))
         elif (count == 1):
             self.addInfo(__("1 face detected."))
-            self.addRow(__("Confidence"), image.faces[0].confidence)
+            self._printFaces(image.faces)
         else:
             self.addInfo(__("{count} faces detected.", count=count))
-            for i, face in enumerate(image.faces):
-                self.addRow(__("Face {index} Confidence", index=i + 1), face.confidence)
+            self._printFaces(image.faces)
+
+    def _printFaces(self, faces: list[Face]):
+        for face in faces:
+            pixmap = face.get_avatar_pixmap(64)
+            group = face.group
+            name = group.name if group is not None else __("Unknown")
+            name = name if name != "" else __("Unknown")
+            self.addPixmapRow(name, pixmap, value=face)
 
     def inspectProjectInfo(self, project: Project):
         self.addHeader(__("Project Information"))
@@ -180,6 +191,12 @@ class _InspectorPropertiesTable(PropertiesTable):
         if count > 10:
             self.addInfo(__("And {count} more...", count=count - 10))
 
+    def selectedValueChangedEvent(self, value: Any):
+        if isinstance(value, Face):
+            self.faceSelected.emit(value)
+        else:
+            self.faceSelected.emit(None)
+
 
 class InspectorPanel(QtWidgets.QWidget):
     """
@@ -198,6 +215,7 @@ class InspectorPanel(QtWidgets.QWidget):
         splitter.setOrientation(QtCore.Qt.Vertical)
 
         self._table = _InspectorPropertiesTable()
+        self._table.faceSelected.connect(self._onFaceSelected)
 
         topLayout = QtWidgets.QVBoxLayout()
         topLayout.setContentsMargins(0, 0, 0, 0)
@@ -332,3 +350,15 @@ class InspectorPanel(QtWidgets.QWidget):
         self._pixmapDisplay.setPixmap(image.get_pixmap())
         rects = [face.aabb for face in image.faces] if self._facesRectsAreVisible else []
         self._pixmapDisplay.setRects(rects)
+
+    @QtCore.Slot(Face)
+    def _onFaceSelected(self, face: Face):
+        """
+        Called when the user selects a face.
+        """
+        if face is None:
+            self._pixmapDisplay.setSelectedRectIndex(-1)
+        else:
+            faces = face.image.faces
+            index = faces.index(face) if face in faces else -1
+            self._pixmapDisplay.setSelectedRectIndex(index)
