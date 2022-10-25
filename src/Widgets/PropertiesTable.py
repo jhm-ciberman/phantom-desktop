@@ -97,8 +97,11 @@ class _PixmapValueCell(_AbstractValueCell):
 class PropertiesTable(QtWidgets.QTableWidget):
     """
     A widget that shows a table with "Property" and "Value" columns. It can display headers
-    and perform basic formating.
+    and perform basic formating. It also provides a context menu with a "Copy" action.
     """
+
+    selectedValueChanged = QtCore.Signal()
+    """Signal emited when the selected value changes."""
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """
@@ -230,26 +233,20 @@ class PropertiesTable(QtWidgets.QTableWidget):
         self.clearContents()
         self.setRowCount(0)
 
-    def selectedValueChangedEvent(self, value: Any):
-        """
-        Called when the value of the selected item changes.
-
-        Args:
-            value (Any): The new value, or None if no item is selected.
-        """
-        pass
-
     @QtCore.Slot()
     def _onSelectionChanged(self):
         """
         Called when the selection changes.
         """
+        if self._infoProvider is None:
+            return
         items = self.selectedItems()
 
+        value = None
         if len(items) == 2:  # 2 because we have 2 columns
             for item in items:
                 if isinstance(item, _AbstractValueCell):
-                    self.selectedValueChangedEvent(item.originalValue())
-                    return
+                    value = item.originalValue()
+                    break
 
-        self.selectedValueChangedEvent(None)
+        self._infoProvider.onSelectedValueChanged(self, value)

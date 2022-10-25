@@ -130,11 +130,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._imageGrid.deblurImagePressed.connect(self._onDeblurPressed)
         self._imageGrid.perspectivePressed.connect(self._onCorrectPerspectivePressed)
 
-        self.inspector_panel = InspectorPanel()
-        self.inspector_panel.setContentsMargins(0, 0, 0, 0)
+        self._inspector = InspectorPanel()
+        self._inspector.setContentsMargins(0, 0, 0, 0)
 
         splitter.addWidget(self._imageGrid)
-        splitter.addWidget(self.inspector_panel)
+        splitter.addWidget(self._inspector)
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 1)
 
@@ -215,13 +215,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot()
     def _onImageGridSelectionChanged(self) -> None:
-        selected_images = self._imageGrid.selectedImages()
-        self.inspector_panel.setSelectedImages(selected_images)
-        count = len(selected_images)
+        selectedImages = self._imageGrid.selectedImages()
+        self._inspector.setSelectedImages(selectedImages)
+        count = len(selectedImages)
         if (count == 0):
             self.statusBar().showMessage(__("{count} images in the collection", count=len(self._imageGrid.images())))
         elif (count == 1):
-            self.statusBar().showMessage(selected_images[0].path)
+            self.statusBar().showMessage(selectedImages[0].path)
         else:
             self.statusBar().showMessage(__("{count} images selected", count=count))
 

@@ -1,5 +1,7 @@
-from operator import le
 from PySide6 import QtCore, QtWidgets
+
+from ..Main.InspectorPanel import InspectorPanel
+
 
 from ..Application import Application
 from ..l10n import __
@@ -58,26 +60,30 @@ class GroupFacesWindow(QtWidgets.QWidget):
         detailsLayout.setContentsMargins(0, 0, 0, 0)
         detailsWidget.setLayout(detailsLayout)
 
-        self.detailsHeader = GroupDetailsHeaderWidget()
-        self.detailsGrid = FacesGrid()
+        self._detailsHeader = GroupDetailsHeaderWidget()
+        self._detailsGrid = FacesGrid()
 
-        detailsLayout.addWidget(self.detailsHeader)
-        detailsLayout.addWidget(self.detailsGrid)
-
+        detailsLayout.addWidget(self._detailsHeader)
+        detailsLayout.addWidget(self._detailsGrid)
         splitter.addWidget(detailsWidget)
+
+        self._inspectorPanel = InspectorPanel()
+        splitter.addWidget(self._inspectorPanel)
+
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
+        splitter.setStretchFactor(2, 1)
 
         # Connect signals
         self._groupsGrid.groupClicked.connect(self._onGroupClicked)
         self._groupsGrid.renameGroupTriggered.connect(self._onRenameGroupTriggered)
         self._groupsGrid.combineGroupTriggered.connect(self._onCombineGroupTriggered)
-        self.detailsGrid.faceClicked.connect(self._onFaceClicked)
-        self.detailsGrid.moveToGroupTriggered.connect(self._onMoveToGroupTriggered)
-        self.detailsGrid.removeFromGroupTriggered.connect(self._onRemoveFromGroupTriggered)
-        self.detailsGrid.useAsMainFaceTriggered.connect(self._onUseAsMainFaceTriggered)
-        self.detailsHeader.renameGroupTriggered.connect(self._onRenameGroupTriggered)
-        self.detailsHeader.combineGroupTriggered.connect(self._onCombineGroupTriggered)
+        self._detailsGrid.faceClicked.connect(self._onFaceClicked)
+        self._detailsGrid.moveToGroupTriggered.connect(self._onMoveToGroupTriggered)
+        self._detailsGrid.removeFromGroupTriggered.connect(self._onRemoveFromGroupTriggered)
+        self._detailsGrid.useAsMainFaceTriggered.connect(self._onUseAsMainFaceTriggered)
+        self._detailsHeader.renameGroupTriggered.connect(self._onRenameGroupTriggered)
+        self._detailsHeader.combineGroupTriggered.connect(self._onCombineGroupTriggered)
         self._mergingWizard.groupsMerged.connect(self._onGroupsMerged)
         self._mergingWizard.groupsDontMerged.connect(self._onGroupsDontMerged)
 
@@ -179,7 +185,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
             for face in faces:
                 self._selectedGroup.remove_face(face)
                 group.add_face(face)
-            self.detailsGrid.refresh()
+            self._detailsGrid.refresh()
             self._refreshGroups()
 
     @QtCore.Slot(Group)
@@ -194,7 +200,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
         if ok:
             group.name = name
             self._refreshGroups()
-            self.detailsHeader.refresh()
+            self._detailsHeader.refresh()
             self._workspace.setDirty()
 
     @QtCore.Slot(list)
@@ -214,7 +220,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
             newGroup.add_face(face)
         newGroup.recompute_centroid()
         self._workspace.project().add_group(newGroup)
-        self.detailsGrid.refresh()
+        self._detailsGrid.refresh()
         self._refreshGroups()
 
     @QtCore.Slot(Group)
@@ -226,8 +232,8 @@ class GroupFacesWindow(QtWidgets.QWidget):
             group (Group): The group.
         """
         self._selectedGroup = group
-        self.detailsGrid.setFaces(group.faces)
-        self.detailsHeader.setGroup(group)
+        self._detailsGrid.setFaces(group.faces)
+        self._detailsHeader.setGroup(group)
         self._groupsGrid.selectGroup(group)
 
     @QtCore.Slot(Face)
@@ -249,7 +255,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
             face (Face): The face.
         """
         self._selectedGroup.main_face_override = face
-        self.detailsGrid.refresh()
+        self._detailsGrid.refresh()
         self._refreshGroups()
         self._workspace.setDirty()
 

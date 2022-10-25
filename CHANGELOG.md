@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Bug: Pressing Cancel in the "Are you sure you want to exit?" dialog closes the application instead of canceling the exit.
+- Bug: The "Faces merging wizard" card shows even if there are no faces to merge.
 
 ## [0.1.0] - 2022-10-20
 

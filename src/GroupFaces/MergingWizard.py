@@ -349,10 +349,9 @@ class MergingWizard(QtWidgets.QWidget):
             autoStart (bool): Whether to automatically start the wizard if there are merge opportunities.
         """
         self._mergeOportunities = find_merge_oportunities(self._project.groups, self._ignoredOportunities)
-        total = len(self._mergeOportunities)
         self._currentIndex = 0
 
-        if autoStart and total > 0:
+        if autoStart:
             self.nextQuestion()
 
     def nextQuestion(self) -> None:
