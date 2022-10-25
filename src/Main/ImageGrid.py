@@ -20,15 +20,6 @@ class ImageGrid(GridBase):
     perspectivePressed = QtCore.Signal(Image)
     """Raised when the "Correct perspective" right-click action is invoked."""
 
-    openInExternalImageViewerPressed = QtCore.Signal(Image)
-    """Emitted when the "Open In External Image Viewer" right-click action is invoked."""
-
-    openInExplorerPressed = QtCore.Signal(Image)
-    """Raised when the "Open In Explorer" right-click action is invoked."""
-
-    removeFromProjectPressed = QtCore.Signal(list)  # list[Image]
-    """Emitted when the "Remove from Project" right-click action is invoked."""
-
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """
         Initializes a new instance of the ImageGrid class.
@@ -52,10 +43,6 @@ class ImageGrid(GridBase):
             image = self._images[self.selectedIndexes()[0].row()]
             sinal.emit(image)
 
-        def onPressedMultiple(sinal: QtCore.Signal):
-            images = [self._images[i.row()] for i in self.selectedIndexes()]
-            sinal.emit(images)
-
         # Right-click actions for when a user right-clicks on the image.
         self._menu = QtWidgets.QMenu()
 
@@ -74,19 +61,19 @@ class ImageGrid(GridBase):
         self._openInExternalImageViewerAction = self._menu.addAction(
             QtGui.QIcon("res/img/photo_viewer.png"),
             __("Open In External Image Viewer"),
-            lambda: onPressed(self.openInExternalImageViewerPressed))
+            self._onOpenInExternalImageViewer)
 
         self._openInExplorerAction = self._menu.addAction(
             QtGui.QIcon("res/img/folder.png"),
             __("Open In Explorer"),
-            lambda: onPressed(self.openInExplorerPressed))
+            self._onOpenInExplorer)
 
         self._menu.addSeparator()
 
         self._removeFromProjectAction = self._menu.addAction(
             QtGui.QIcon("res/img/times.png"),
             __("Remove from Project"),
-            lambda: onPressedMultiple(self.removeFromProjectPressed))
+            self._onRemoveFromProject)
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         """
@@ -164,6 +151,35 @@ class ImageGrid(GridBase):
             return
         index = self._images.index(image)
         self.update(self.model().index(index, 0))
+
+    @QtCore.Slot()
+    def _onOpenInExternalImageViewer(self) -> None:
+        """
+        Opens the selected image in the default image viewer.
+        """
+        indexes = self.selectedIndexes()
+        if len(indexes) != 1:
+            return
+        image = self._images[indexes[0].row()]
+        Application.projectManager().openImageExternally(image)
+
+    @QtCore.Slot()
+    def _onOpenInExplorer(self) -> None:
+        """
+        Opens the selected image in the default file explorer.
+        """
+        indexes = self.selectedIndexes()
+        if len(indexes) != 1:
+            return
+        image = self._images[indexes[0].row()]
+        Application.projectManager().openImageInExplorer(image)
+
+    @QtCore.Slot()
+    def _onRemoveFromProject(self) -> None:
+        """
+        Removes the selected image from the project.
+        """
+        Application.workspace().removeImages(self.selectedImages())
 
 
 class _TextOverDelegate(QtWidgets.QStyledItemDelegate):

@@ -1,7 +1,6 @@
 import os
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from startfile import startfile
 
 from ..Application import Application
 from ..Deblur.DeblurWindow import DeblurWindow
@@ -130,9 +129,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._imageGrid.selectionChanged.connect(self._onImageGridSelectionChanged)
         self._imageGrid.deblurImagePressed.connect(self._onDeblurPressed)
         self._imageGrid.perspectivePressed.connect(self._onCorrectPerspectivePressed)
-        self._imageGrid.openInExternalImageViewerPressed.connect(self._onOpenInExternalImageViewerPressed)
-        self._imageGrid.openInExplorerPressed.connect(self._onOpenInExplorerPressed)
-        self._imageGrid.removeFromProjectPressed.connect(self._onRemoveFromProjectPressed)
 
         self.inspector_panel = InspectorPanel()
         self.inspector_panel.setContentsMargins(0, 0, 0, 0)
@@ -204,6 +200,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if not Application.projectManager().closeProject(self):
             event.ignore()
+            return
 
         super().closeEvent(event)
 
@@ -362,32 +359,6 @@ class MainWindow(QtWidgets.QMainWindow):
         dirtyDot = "*" if self._workspace.isDirty() else ""
         appName = Application.applicationName()
         self.setWindowTitle(f"{project.name}{dirtyDot} - {appName}")
-
-    def _checkImageFileExists(self, image: Image) -> bool:
-        if image.is_virtual:
-            return False
-        if not os.path.exists(image.path):
-            QtWidgets.QMessageBox.critical(
-                self, __("Image file not found"),
-                __("Image file {path} not found.", path=image.path))
-            return False
-        return True
-
-    @QtCore.Slot(Image)
-    def _onOpenInExternalImageViewerPressed(self, image: Image) -> None:
-        if not self._checkImageFileExists(image):
-            return
-        startfile(image.path)
-
-    @QtCore.Slot(Image)
-    def _onOpenInExplorerPressed(self, image: Image) -> None:
-        if not self._checkImageFileExists(image):
-            return
-        startfile(os.path.dirname(image.path))
-
-    @QtCore.Slot(list)
-    def _onRemoveFromProjectPressed(self, images: list[Image]) -> None:
-        Application.workspace().removeImages(images)
 
     # Drag and drop (User can drag image files, folders and projects onto the window to open them)
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:

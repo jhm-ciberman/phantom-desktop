@@ -5,6 +5,7 @@ from typing import Callable
 
 from PySide6 import QtWidgets
 
+from startfile import startfile
 from .l10n import __
 from .Models import Image
 from .Widgets.BussyModal import BussyModal
@@ -23,11 +24,11 @@ class ProjectManager:
 
     _importExtensions = constants.app_import_extensions
 
-    _importFilter = __("Images") + " (".join(["*." + ext for ext in _importExtensions]) + ")"
+    _importFilter = __("Images") + " (" + " ".join(["*." + ext for ext in _importExtensions]) + ")"
 
     _exportExtensions = constants.app_export_extensions
 
-    _exportFilter = __("Images") + " (".join(["*." + ext for ext in _exportExtensions]) + ")"
+    _exportFilter = __("Images") + " (" + " ".join(["*." + ext for ext in _exportExtensions]) + ")"
 
     _projectExtension = constants.app_project_extension
 
@@ -361,7 +362,6 @@ class ProjectManager:
                 self.saveProject(parent)
             elif result == QtWidgets.QMessageBox.StandardButton.Cancel:
                 return False
-
         return True
 
     def newProject(self, parent: QtWidgets.QWidget) -> None:
@@ -525,3 +525,23 @@ class ProjectManager:
             return False
 
         return True
+
+    def _checkImageFileExists(self, image: Image) -> bool:
+        if image.is_virtual:
+            return False
+        if not os.path.exists(image.path):
+            QtWidgets.QMessageBox.critical(
+                self, __("Image file not found"),
+                __("Image file {path} not found.", path=image.path))
+            return False
+        return True
+
+    def openImageExternally(self, image: Image) -> None:
+        if not self._checkImageFileExists(image):
+            return
+        startfile(image.path)
+
+    def openImageInExplorer(self, image: Image) -> None:
+        if not self._checkImageFileExists(image):
+            return
+        startfile(os.path.dirname(image.path))

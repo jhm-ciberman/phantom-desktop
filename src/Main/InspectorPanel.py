@@ -2,70 +2,91 @@ import os
 
 from PIL import Image as PILImage
 from PIL.ExifTags import TAGS
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets, QtGui
 
 from ..Application import Application
 from ..l10n import __
-from ..Models import Image, Project
+from ..Models import Image, Project, Rect
 from ..Widgets.PixmapDisplay import PixmapDisplay
 from ..Widgets.PropertiesTable import PropertiesTable
 
 
-class InspectorPanel(QtWidgets.QWidget):
+class _InspectorPixmapDisplay(PixmapDisplay):
     """
-    A widget that displays a the properties of an image or a group of images.
-    It shows the image itself, the basic information about the image, the EXIF data and the face detection results.
+    A preview image that optionally draws rectangles over the faces in the image.
     """
 
-    def __init__(self):
-        """
-        Initializes the InspectorPanel class.
-        """
-        super().__init__()
+    _rects: list[Rect] = []
 
-        splitter = QtWidgets.QSplitter()
-        splitter.setContentsMargins(0, 0, 0, 0)
-        splitter.setOrientation(QtCore.Qt.Vertical)
+    _defaultRectPen: QtGui.QPen = QtGui.QPen(QtCore.Qt.gray, 2)
 
-        self._table = PropertiesTable()
+    _selectedRectPen: QtGui.QPen = QtGui.QPen(QtCore.Qt.green, 2)
 
-        self._pixmapDisplay = PixmapDisplay()
-        self._pixmapDisplay.setMinimumHeight(200)
-        self.setMinimumWidth(200)
+    _selectedRectIndex: int = -1
 
-        previewFrame = QtWidgets.QFrame()
-        previewFrame.setFrameStyle(QtWidgets.QFrame.StyledPanel)
-        previewFrame.setStyleSheet("background-color: #e0e0e0;")
-        previewFrameLayout = QtWidgets.QVBoxLayout()
-        previewFrameLayout.setContentsMargins(0, 0, 0, 0)
-        previewFrameLayout.addWidget(self._pixmapDisplay)
-        previewFrame.setLayout(previewFrameLayout)
+    def __init__(self, parent: QtWidgets.QWidget = None):
+        super().__init__(parent)
+        self._defaultRectPen.setCosmetic(True)  # This makes the pen width independent of the zoom level
+        self._selectedRectPen.setCosmetic(True)
 
-        splitter.addWidget(previewFrame)
-        splitter.addWidget(self._table)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 1)
+    def setRects(self, rects: list[Rect]):
+        self._rects = rects
+        self.update()
 
-        layout = QtWidgets.QVBoxLayout()
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(splitter)
+    def rects(self) -> list[Rect]:
+        return self._rects
 
-        self.setLayout(layout)
+    def selectedRectIndex(self) -> int:
+        return self._selectedRectIndex
 
-        self._selectedImages = []
+    def setSelectedRectIndex(self, index: int):
+        self._selectedRectIndex = index
+        self.update()
 
-    def setSelectedImages(self, images: list[Image]):
-        """
-        Sets the selected images.
-        """
-        self._selectedImages = images
-        self._refreshInfo()
+    def paintEvent(self, event: QtCore.QEvent):
+        super().paintEvent(event)
+        painter = QtGui.QPainter(self)
+        painter.setTransform(self._imageToWidgetTransform)  # Rects are in image coordinate space
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        for i, rect in enumerate(self._rects):
+            pen = self._selectedRectPen if i == self._selectedRectIndex else self._defaultRectPen
+            painter.setPen(pen)
+            painter.drawRect(rect.x, rect.y, rect.width, rect.height)
 
-    def selectedImages(self) -> list[Image]:
-        """
-        Gets the selected images.
-        """
-        return self._selectedImages
+
+class _InspectorPropertiesTable(PropertiesTable):
+    """
+    A properties table for displaying image metadata.
+    """
+
+    def inspectImageInfo(self, image: Image):
+        pilImage = PILImage.open(image.path)
+        self._printBasicInformation(image, pilImage)
+        self._printHashes(image)
+        self._printExif(pilImage)
+        self._printFaceDetection(image)
+
+    def _printBasicInformation(self, image: Image, pilImage: PILImage):
+        self.addHeader(__("Basic Information"))
+        fileSize = os.path.getsize(image.path)
+        path = image.path
+        original_path = image.original_path
+
+        self.addRow(__("Filename"), os.path.basename(path))
+        self.addRow(__("Folder"), os.path.dirname(path))
+        if path != original_path and original_path is not None:
+            self.addRow(__("Original Filename"), os.path.basename(original_path))
+            self.addRow(__("Original Folder"), os.path.dirname(original_path))
+
+        self.addRow(__("Image Width"), pilImage.width)
+        self.addRow(__("Image Height"), pilImage.height)
+        self.addRow(__("File Size"), self._humanizeBytes(fileSize))
+        self.addRow(__("Image Format"), pilImage.format_description)
+        self.addRow(__("Color Channels"), pilImage.mode)
+        self.addRow(__("Animated"), self._bool(getattr(pilImage, "is_animated", False)))
+        frames = getattr(pilImage, "n_frames", 1)
+        if frames > 1:
+            self.addRow(__("Number of Frames"), frames)
 
     def _getExif(self, image: PILImage) -> dict[str, str]:
         """
@@ -96,105 +117,218 @@ class InspectorPanel(QtWidgets.QWidget):
             bytes /= 1024.0
         return "%.1f %s" % (bytes, "YB")
 
-    def _refreshInfo(self):
+    def _printHashes(self, image: Image):
+        self.addHeader(__("Hashes"))
+        hashes = image.hashes
+        if len(hashes) == 0:
+            self.addInfo(__("No hashes available"))
+        else:
+            for hash_type, hash in hashes.items():
+                self.addRow(hash_type.upper(), hash)
+
+    def _printExif(self, pilImage: PILImage):
+        self.addHeader(__("EXIF Data"))
+        exif = self._getExif(pilImage)
+        if (len(exif) == 0):
+            self.addInfo(__("No EXIF data available."))
+        else:
+            for key, value in exif.items():
+                self.addRow(key, value)
+
+    def _printFaceDetection(self, image: Image):
+        self.addHeader(__("Face detection"))
+        count = len(image.faces)
+        if not image._processed:
+            self.addInfo(__("Waiting for processing..."))
+        elif (count == 0):
+            self.addInfo(__("No faces detected."))
+        elif (count == 1):
+            self.addInfo(__("1 face detected."))
+            self.addRow(__("Confidence"), image.faces[0].confidence)
+        else:
+            self.addInfo(__("{count} faces detected.", count=count))
+            for i, face in enumerate(image.faces):
+                self.addRow(__("Face {index} Confidence", index=i + 1), face.confidence)
+
+    def inspectProjectInfo(self, project: Project):
+        self.addHeader(__("Project Information"))
+        self.addRow(__("Project Name"), project.name)
+        self.addRow(__("Project Path"), project.path)
+        self.addRow(__("Number of Images"), len(project.images))
+
+        if project.is_portable:
+            self.addRow(__("Portable Project"), __("Yes"))
+            self.addInfo(__("Portable projects can be moved to another location or copied to another computer."))
+        else:
+            self.addRow(__("Portable Project"), __("No"))
+            self.addInfo(__("Non-portable projects can only be opened on the computer they were created on."))
+
+    def inspectImagesInfo(self, images: list[Image]):
+        """
+        Inspects multiple images.
+        """
+        count = len(images)
+        if count == 1:
+            self.inspectImageInfo(images[0])
+            return
+
+        label = __("Selected {count} images", count=count)
+        self.addHeader(label)
+        # print first 10 images
+        for i in range(min(10, count)):
+            self.addInfo(images[i].display_name)
+        if count > 10:
+            self.addInfo(__("And {count} more...", count=count - 10))
+
+
+class InspectorPanel(QtWidgets.QWidget):
+    """
+    A widget that displays a the properties of an image or a group of images.
+    It shows the image itself, the basic information about the image, the EXIF data and the face detection results.
+    """
+
+    def __init__(self):
+        """
+        Initializes the InspectorPanel class.
+        """
+        super().__init__()
+
+        splitter = QtWidgets.QSplitter()
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.setOrientation(QtCore.Qt.Vertical)
+
+        self._table = _InspectorPropertiesTable()
+
+        topLayout = QtWidgets.QVBoxLayout()
+        topLayout.setContentsMargins(0, 0, 0, 0)
+
+        buttonsLayout = QtWidgets.QHBoxLayout()
+        buttonsLayout.setContentsMargins(0, 0, 0, 0)
+        buttonsLayout.setSpacing(0)
+        topLayout.addLayout(buttonsLayout)
+
+        self._openButton = QtWidgets.QPushButton(__("Open"))
+        self._openButton.setIcon(QtGui.QIcon("res/img/photo_viewer.png"))
+        self._openButton.clicked.connect(self._openButtonClicked)
+        buttonsLayout.addWidget(self._openButton)
+
+        self._facesRectsAreVisible: bool = True
+        self._toggleShowFacesButton = QtWidgets.QPushButton(__("Show Faces"))
+        self._toggleShowFacesButton.setIcon(QtGui.QIcon("res/img/face.png"))
+        self._toggleShowFacesButton.clicked.connect(self._toggleShowFacesButtonClicked)
+        buttonsLayout.addWidget(self._toggleShowFacesButton)
+
+        self._pixmapDisplay = _InspectorPixmapDisplay()
+        self._pixmapDisplay.setMinimumHeight(200)
+        self.setMinimumWidth(200)
+        previewFrame = QtWidgets.QFrame()
+        previewFrame.setFrameStyle(QtWidgets.QFrame.StyledPanel)
+        previewFrame.setStyleSheet("background-color: #e0e0e0;")
+        previewFrameLayout = QtWidgets.QVBoxLayout()
+        previewFrameLayout.setContentsMargins(0, 0, 0, 0)
+        previewFrameLayout.addWidget(self._pixmapDisplay)
+        previewFrame.setLayout(previewFrameLayout)
+        topLayout.addWidget(previewFrame)
+
+        topWidget = QtWidgets.QWidget()
+        topWidget.setLayout(topLayout)
+
+        splitter.addWidget(topWidget)
+        splitter.addWidget(self._table)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(splitter)
+
+        self.setLayout(layout)
+
+        self._selectedImages = []
+
+    def setSelectedImages(self, images: list[Image]):
+        """
+        Sets the selected images.
+        """
+        self._selectedImages = images
+        count = len(images)
+        self._openButton.setEnabled(count == 1)
+        hasFaces = False
+        if count == 1:
+            hasFaces = len(images[0].faces) > 0
+        self._toggleShowFacesButton.setEnabled(hasFaces)
+        self._refreshTable()
+        self._refreshPreview()
+
+    def selectedImages(self) -> list[Image]:
+        """
+        Gets the selected images.
+        """
+        return self._selectedImages
+
+    @QtCore.Slot()
+    def _openButtonClicked(self):
+        """
+        Called when the user clicks the "Open" button.
+        """
+        if len(self._selectedImages) == 1:
+            image = self._selectedImages[0]
+            Application.projectManager().openImageExternally(image)
+
+    @QtCore.Slot()
+    def _toggleShowFacesButtonClicked(self):
+        """
+        Called when the user clicks the "Show Faces" button.
+        """
+        self._facesRectsAreVisible = not self._facesRectsAreVisible
+        self._refreshPreview()
+
+    def _refreshPreview(self):
+        """
+        Refreshes the image preview.
+        """
+        count = len(self._selectedImages)
+        facesCount = len(self._selectedImages[0].faces) if count == 1 else 0
+        facesButtonText = ""
+        if facesCount == 0:
+            facesButtonText = __("No faces found")
+        else:
+            facesButtonText = __("Hide Faces") if self._facesRectsAreVisible else __("Show Faces")
+        self._toggleShowFacesButton.setText(facesButtonText)
+
+        if count == 1:
+            self._setDisplayImage(self._selectedImages[0])
+        else:
+            self._clearDisplayImage()
+
+    def _refreshTable(self):
         """
         Refreshes the information displayed in the inspector panel.
         """
         # Clear the table
         self._table.clear()
 
-        selected_count = len(self._selectedImages)
-        if selected_count == 0:
-            self._pixmapDisplay.setPixmap(None)
-            self._printProjectInfo()
-        elif selected_count == 1:
-            image = self._selectedImages[0]
-            self._inspectImage(image)
+        count = len(self._selectedImages)
+        if count == 0:
+            project = Application.workspace().project()
+            self._table.inspectProjectInfo(project)
+        elif count == 1:
+            self._table.inspectImageInfo(self._selectedImages[0])
         else:
-            self._pixmapDisplay.setPixmap(None)
-            label = __("Selected {count} images", count=selected_count)
-            self._table.addHeader(label)
-            # print first 10 images
-            for i in range(min(10, selected_count)):
-                self._table.addInfo(self._selectedImages[i].display_name)
-            if selected_count > 10:
-                self._table.addInfo(__("And {count} more...", count=selected_count - 10))
+            self._table.inspectImagesInfo(self._selectedImages)
 
-    def _inspectImage(self, image: Image):  # noqa: C901
+    def _clearDisplayImage(self):
+        """
+        Clears the image information.
+        """
+        self._pixmapDisplay.setPixmap(None)
+        self._pixmapDisplay.setRects([])
+        self._pixmapDisplay.setSelectedRectIndex(-1)
+
+    def _setDisplayImage(self, image: Image):
+        """
+        Sets the image to display.
+        """
         self._pixmapDisplay.setPixmap(image.get_pixmap())
-
-        pilImage = PILImage.open(image.path)
-        self._printBasicInformation(image, pilImage)
-        self._printHashes(image)
-        self._printExif(pilImage)
-        self._printFaceDetection(image)
-
-    def _printBasicInformation(self, image: Image, pilImage: PILImage):
-        self._table.addHeader(__("Basic Information"))
-        fileSize = os.path.getsize(image.path)
-        path = image.path
-        original_path = image.original_path
-
-        self._table.addRow(__("Filename"), os.path.basename(path))
-        self._table.addRow(__("Folder"), os.path.dirname(path))
-        if path != original_path and original_path is not None:
-            self._table.addRow(__("Original Filename"), os.path.basename(original_path))
-            self._table.addRow(__("Original Folder"), os.path.dirname(original_path))
-
-        self._table.addRow(__("Image Width"), pilImage.width)
-        self._table.addRow(__("Image Height"), pilImage.height)
-        self._table.addRow(__("File Size"), self._humanizeBytes(fileSize))
-        self._table.addRow(__("Image Format"), pilImage.format_description)
-        self._table.addRow(__("Color Channels"), pilImage.mode)
-        self._table.addRow(__("Animated"), self._bool(getattr(pilImage, "is_animated", False)))
-        frames = getattr(pilImage, "n_frames", 1)
-        if frames > 1:
-            self._table.addRow(__("Number of Frames"), frames)
-
-    def _printHashes(self, image: Image):
-        self._table.addHeader(__("Hashes"))
-        hashes = image.hashes
-        if len(hashes) == 0:
-            self._table.addInfo(__("No hashes available"))
-        else:
-            for hash_type, hash in hashes.items():
-                self._table.addRow(hash_type.upper(), hash)
-
-    def _printExif(self, pilImage: PILImage):
-        self._table.addHeader(__("EXIF Data"))
-        exif = self._getExif(pilImage)
-        if (len(exif) == 0):
-            self._table.addInfo(__("No EXIF data available."))
-        else:
-            for key, value in exif.items():
-                self._table.addRow(key, value)
-
-    def _printFaceDetection(self, image: Image):
-        self._table.addHeader(__("Face detection"))
-        count = len(image.faces)
-        if not image._processed:
-            self._table.addInfo(__("Waiting for processing..."))
-        elif (count == 0):
-            self._table.addInfo(__("No faces detected."))
-        elif (count == 1):
-            self._table.addInfo(__("1 face detected."))
-            self._table.addRow(__("Confidence"), image.faces[0].confidence)
-        else:
-            self._table.addInfo(__("{count} faces detected.", count=count))
-            for i, face in enumerate(image.faces):
-                self._table.addRow(__("Face {index} Confidence", index=i + 1), face.confidence)
-
-    def _printProjectInfo(self):
-        project: Project = Application.workspace().project()
-
-        self._table.addHeader(__("Project Information"))
-        self._table.addRow(__("Project Name"), project.name)
-        self._table.addRow(__("Project Path"), project.path)
-        self._table.addRow(__("Number of Images"), len(project.images))
-
-        if project.is_portable:
-            self._table.addRow(__("Portable Project"), __("Yes"))
-            self._table.addInfo(__("Portable projects can be moved to another location or copied to another computer."))
-        else:
-            self._table.addRow(__("Portable Project"), __("No"))
-            self._table.addInfo(__("Non-portable projects can only be opened on the computer they were created on."))
+        rects = [face.aabb for face in image.faces] if self._facesRectsAreVisible else []
+        self._pixmapDisplay.setRects(rects)
