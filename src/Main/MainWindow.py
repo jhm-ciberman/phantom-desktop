@@ -12,7 +12,7 @@ from ..Widgets.GridBase import GridBase
 from ..Workspace import BatchProgress
 from .AboutWindow import AboutWindow
 from .ImageGrid import ImageGrid
-from .InspectorPanel import InspectorPanel
+from .MainInspectorPanel import MainInspectorPanel
 from .. import constants
 
 
@@ -130,7 +130,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._imageGrid.deblurImagePressed.connect(self._onDeblurPressed)
         self._imageGrid.perspectivePressed.connect(self._onCorrectPerspectivePressed)
 
-        self._inspector = InspectorPanel()
+        self._inspector = MainInspectorPanel()
         self._inspector.setContentsMargins(0, 0, 0, 0)
 
         splitter.addWidget(self._imageGrid)

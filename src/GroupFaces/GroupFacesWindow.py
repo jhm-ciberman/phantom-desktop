@@ -1,8 +1,6 @@
 from PySide6 import QtCore, QtWidgets
 
-from ..Main.InspectorPanel import InspectorPanel
-
-
+from .FaceInspectorPanel import FaceInspectorPanel
 from ..Application import Application
 from ..l10n import __
 from ..Models import Face, Group, Image
@@ -67,8 +65,8 @@ class GroupFacesWindow(QtWidgets.QWidget):
         detailsLayout.addWidget(self._detailsGrid)
         splitter.addWidget(detailsWidget)
 
-        self._inspectorPanel = InspectorPanel()
-        splitter.addWidget(self._inspectorPanel)
+        self._inspector = FaceInspectorPanel()
+        splitter.addWidget(self._inspector)
 
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
@@ -78,12 +76,14 @@ class GroupFacesWindow(QtWidgets.QWidget):
         self._groupsGrid.groupClicked.connect(self._onGroupClicked)
         self._groupsGrid.renameGroupTriggered.connect(self._onRenameGroupTriggered)
         self._groupsGrid.combineGroupTriggered.connect(self._onCombineGroupTriggered)
-        self._detailsGrid.faceClicked.connect(self._onFaceClicked)
+
+        self._detailsGrid.selectedFacesChanged.connect(self._onSelectedFacesChanged)
         self._detailsGrid.moveToGroupTriggered.connect(self._onMoveToGroupTriggered)
         self._detailsGrid.removeFromGroupTriggered.connect(self._onRemoveFromGroupTriggered)
         self._detailsGrid.useAsMainFaceTriggered.connect(self._onUseAsMainFaceTriggered)
         self._detailsHeader.renameGroupTriggered.connect(self._onRenameGroupTriggered)
         self._detailsHeader.combineGroupTriggered.connect(self._onCombineGroupTriggered)
+
         self._mergingWizard.groupsMerged.connect(self._onGroupsMerged)
         self._mergingWizard.groupsDontMerged.connect(self._onGroupsDontMerged)
 
@@ -237,16 +237,6 @@ class GroupFacesWindow(QtWidgets.QWidget):
         self._groupsGrid.selectGroup(group)
 
     @QtCore.Slot(Face)
-    def _onFaceClicked(self, face: Face) -> None:
-        """
-        Called when the user clicks a face.
-
-        Args:
-            face (Face): The face.
-        """
-        pass
-
-    @QtCore.Slot(Face)
     def _onUseAsMainFaceTriggered(self, face: Face) -> None:
         """
         Called when the user wants to use a face as the main face.
@@ -300,3 +290,13 @@ class GroupFacesWindow(QtWidgets.QWidget):
             mergeOportunity (MergeOportunity): The merge oportunity.
         """
         self._workspace.setDirty()
+
+    @QtCore.Slot(list)
+    def _onSelectedFacesChanged(self, faces: list[Face]) -> None:
+        """
+        Called when the selected faces change.
+
+        Args:
+            faces (list[Face]): The selected faces.
+        """
+        self._inspector.setSelectedFaces(faces)

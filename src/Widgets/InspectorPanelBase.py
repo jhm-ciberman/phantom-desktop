@@ -1,9 +1,13 @@
+from typing import Any
 from PySide6 import QtCore, QtWidgets, QtGui
+from .InfoProviders import ImageInfoProvider, MultiImageInfoProvider, ProjectInfoProvider
+
+from .PropertiesTable import PropertiesTable
 
 from ..Application import Application
 from ..l10n import __
 from ..Models import Face, Image
-from ..Widgets.PixmapDisplay import PixmapDisplay
+from .PixmapDisplay import PixmapDisplay
 
 
 class _InspectorPixmapDisplay(PixmapDisplay):
@@ -17,7 +21,7 @@ class _InspectorPixmapDisplay(PixmapDisplay):
 
     _selectedFacePen: QtGui.QPen = QtGui.QPen(QtCore.Qt.green, 2)
 
-    _highlightedFacePen: QtGui.QPen = QtGui.QPen(QtCore.Qt.red, 2)
+    _highlightedFacePen: QtGui.QPen = QtGui.QPen(QtGui.QColor("#fff"), 3)
 
     _selectedFace: Face = None
 
@@ -29,6 +33,7 @@ class _InspectorPixmapDisplay(PixmapDisplay):
         super().__init__(parent)
         self._defaultFacePen.setCosmetic(True)  # This makes the pen width independent of the zoom level
         self._selectedFacePen.setCosmetic(True)
+        self._highlightedFacePen.setCosmetic(True)
 
     def setFaces(self, faces: list[Face]):
         self._faces = faces
@@ -170,3 +175,91 @@ class ImagePreview(QtWidgets.QWidget):
 
     def setSelectedFace(self, face: Face):
         self._pixmapDisplay.setSelectedFace(face)
+
+    def selectedFace(self) -> Face:
+        return self._pixmapDisplay.selectedFace()
+
+    def setHighlightedFace(self, face: Face):
+        self._pixmapDisplay.setHighlightedFace(face)
+
+    def highlightedFace(self) -> Face:
+        return self._pixmapDisplay.highlightedFace()
+
+
+class InspectorPanelBase(QtWidgets.QWidget):
+    """
+    An abstract widget that serves as a base for the inspector panels.
+    """
+
+    def __init__(self):
+        """
+        Initializes the InspectorPanel class.
+        """
+        super().__init__()
+
+        splitter = QtWidgets.QSplitter()
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.setOrientation(QtCore.Qt.Vertical)
+
+        self._table = PropertiesTable()
+        self._table.selectedValueChanged.connect(self._onTableSelectionChanged)
+
+        self._preview = ImagePreview()
+        splitter.addWidget(self._preview)
+        splitter.addWidget(self._table)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(splitter)
+
+        self.setLayout(layout)
+
+    def inspectProject(self):
+        """
+        Inspects the current project.
+        """
+        self._table.clear()
+        ProjectInfoProvider().populate(self._table)
+        self._preview.setImage(None)
+
+    def inspectImage(self, image: Image):
+        """
+        Inspects the given image.
+        """
+        self._table.clear()
+        ImageInfoProvider(image).populate(self._table)
+        self._preview.setImage(image)
+
+    def inspectImages(self, images: list[Image]):
+        """
+        Inspects the given images.
+        """
+        self._table.clear()
+        MultiImageInfoProvider(images).populate(self._table)
+        self._preview.setImage(None)
+
+    def inspectFaces(self, faces: list[Face]):
+        """
+        Inspects the given faces.
+        """
+        images = [face.image for face in faces]
+        self.inspectImages(images)
+
+    def inspectFace(self, face: Face):
+        """
+        Inspects the given face.
+        """
+        self.inspectImage(face.image)
+        self._preview.setHighlightedFace(face)
+
+    @QtCore.Slot()
+    def _onTableSelectionChanged(self, value: Any):
+        """
+        Called when the user selects a value in the table.
+        """
+        if isinstance(value, Face):
+            self._preview.setSelectedFace(value)
+        else:
+            self._preview.setSelectedFace(None)

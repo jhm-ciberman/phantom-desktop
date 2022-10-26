@@ -57,7 +57,7 @@ class _TextValueCell(_AbstractValueCell):
     """
     A cell that shows a value.
     """
-    def __init__(self, value: Any = None):
+    def __init__(self, value: object = None):
         """
         Initializes the ValueCell class.
         """
@@ -85,7 +85,7 @@ class _PixmapValueCell(_AbstractValueCell):
     """
     A cell that shows a pixmap.
     """
-    def __init__(self, pixmap: QtGui.QPixmap, value: Any = None):
+    def __init__(self, pixmap: QtGui.QPixmap, value: object = None):
         """
         Initializes the PixmapValueCell class.
         """
@@ -100,8 +100,10 @@ class PropertiesTable(QtWidgets.QTableWidget):
     and perform basic formating. It also provides a context menu with a "Copy" action.
     """
 
-    selectedValueChanged = QtCore.Signal()
+    selectedValueChanged = QtCore.Signal(object)
     """Signal emited when the selected value changes."""
+
+    _selectedValue: object = None
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         """
@@ -238,8 +240,6 @@ class PropertiesTable(QtWidgets.QTableWidget):
         """
         Called when the selection changes.
         """
-        if self._infoProvider is None:
-            return
         items = self.selectedItems()
 
         value = None
@@ -249,4 +249,6 @@ class PropertiesTable(QtWidgets.QTableWidget):
                     value = item.originalValue()
                     break
 
-        self._infoProvider.onSelectedValueChanged(self, value)
+        if value != self._selectedValue:
+            self._selectedValue = value
+            self.selectedValueChanged.emit(self._selectedValue)

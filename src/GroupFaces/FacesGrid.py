@@ -10,7 +10,7 @@ class FacesGrid(GridBase):
     Widget that displays a list of faces in form of a grid of thumbnails.
     """
 
-    faceClicked = QtCore.Signal(Face)
+    selectedFacesChanged = QtCore.Signal(list)  # list[Face]
     """Emited when a face is clicked."""
 
     moveToGroupTriggered = QtCore.Signal(list)  # list[Face]
@@ -31,7 +31,6 @@ class FacesGrid(GridBase):
         """
         super().__init__(parent)
         self._faces = []  # type: list[Face]
-        self.itemClicked.connect(self._onItemClicked)
 
         self._moveToGroupAction = QtGui.QAction(__("Move to group..."), self)
         self._moveToGroupAction.triggered.connect(self._onMoveToGroupActionTriggered)
@@ -48,6 +47,7 @@ class FacesGrid(GridBase):
         self._contextMenu.addAction(self._useAsMainFaceAction)
 
         self.setSelectionMode(QtWidgets.QListView.SelectionMode.ExtendedSelection)
+        self.selectionModel().selectionChanged.connect(self._onSelectionChanged)
 
     def contextMenuEvent(self, event: QtGui.QContextMenuEvent) -> None:
         """
@@ -81,6 +81,10 @@ class FacesGrid(GridBase):
             imageBasename = face.image.display_name
             self.addItemCore(pixmap, imageBasename)
 
+        # Select the first item
+        if len(self._faces) > 0:
+            self.setCurrentIndex(self.model().index(0, 0))
+
     def refresh(self) -> None:
         """
         Refresh the grid.
@@ -105,16 +109,6 @@ class FacesGrid(GridBase):
         """
         return [self._faces[qModelIndex.row()] for qModelIndex in self.selectedIndexes()]
 
-    @QtCore.Slot(QtWidgets.QListWidgetItem)
-    def _onItemClicked(self, item: QtWidgets.QWidgetItem) -> None:
-        """
-        Called when an item is clicked.
-
-        Args:
-            item (QListWidgetItem): The item that was clicked.
-        """
-        self.faceClicked.emit(self._faces[self.row(item)])
-
     @QtCore.Slot()
     def _onMoveToGroupActionTriggered(self) -> None:
         """
@@ -135,3 +129,10 @@ class FacesGrid(GridBase):
         Called when the use as main face action is triggered.
         """
         self.useAsMainFaceTriggered.emit(self._currentFaces()[0])
+
+    @QtCore.Slot()
+    def _onSelectionChanged(self) -> None:
+        """
+        Called when the selection changes.
+        """
+        self.selectedFacesChanged.emit(self._currentFaces())

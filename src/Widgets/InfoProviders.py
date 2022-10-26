@@ -1,5 +1,4 @@
 import os
-from typing import Any
 
 from PIL import Image as PILImage
 from PIL.ExifTags import TAGS
@@ -119,10 +118,10 @@ class ImageInfoProvider(InfoProvider):
             table.addInfo(__("No faces detected."))
         elif (count == 1):
             table.addInfo(__("1 face detected."))
-            self._printFaces(image.faces)
+            self._printFaces(table, image.faces)
         else:
             table.addInfo(__("{count} faces detected.", count=count))
-            self._printFaces(image.faces)
+            self._printFaces(table, image.faces)
 
     def _printFaces(self, table: PropertiesTable, faces: list[Face]):
         for face in faces:
