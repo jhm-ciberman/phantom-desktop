@@ -319,6 +319,9 @@ class Image(Model):
     hashes themselves. Call the Image.compute_hashes() method to compute the hashes.
     """
 
+    _data: "ImageData" = None
+    """The raw image data."""
+
     def __init__(self, path: str = None, id: UUID = None, raw_rgba: np.ndarray = None) -> None:
         """
         Initializes the Image class. The image is NOT loaded into memory until you call
@@ -336,34 +339,28 @@ class Image(Model):
         self._faces: "list[Face]" = []
         self._processed: bool = False
         self.original_path = path
+        self._data = None if raw_rgba is None else ImageData(raw_rgba)
 
-    def load(self) -> None:
+    def load(self):
         """
         Loads the image into memory.
 
         Raises:
             FileNotFoundError: If the image could not be found.
         """
-        if not self.is_loaded:
-            raw_image = cv2.imread(self.path, cv2.IMREAD_UNCHANGED)
-            if raw_image is None:
-                raise FileNotFoundError(f"Could not load image at path {self.path}")
-            self._raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
+        if self._data is not None:
+            return
+
+        if self.path is None:
+            raise FileNotFoundError("The image could not be found.")
+
+        self._data = ImageData.from_file(self.path)
 
     def unload(self) -> None:
         """
         Unloads the image from memory.
         """
-        self._raw_image = None
-
-    def set_pixels_rgba(self, pixels: np.ndarray) -> None:
-        """
-        Sets the raw image data in RGBA format.
-
-        Args:
-            pixels (np.ndarray): The raw image data.
-        """
-        self._raw_image = pixels
+        self._data = None
 
     @property
     def processed(self) -> bool:
@@ -403,90 +400,11 @@ class Image(Model):
         return os.path.dirname(self.path) + os.path.sep if self.path else ""
 
     @property
-    def channels(self):
-        """
-        Gets the number of channels in the image source.
-        """
-        self._assert_loaded()
-        return self._raw_image.shape[2]
-
-    @property
-    def width(self):
-        """
-        Gets the width of the image source.
-        """
-        self._assert_loaded()
-        return self._raw_image.shape[1]
-
-    @property
-    def height(self):
-        """
-        Gets the height of the image source.
-        """
-        self._assert_loaded()
-        return self._raw_image.shape[0]
-
-    @property
     def is_loaded(self) -> bool:
         """
         Gets whether or not the image is loaded into memory.
         """
         return self._raw_image is not None
-
-    def _assert_loaded(self) -> None:
-        lazy_loading = True
-        if lazy_loading and not self.is_loaded:
-            self.load()
-
-        if not self.is_loaded:
-            raise Exception("The image is not loaded. Call the load() or set_pixels_rgba() method first.")
-
-    def save(self, path: str):
-        """
-        Saves the image to a path.
-        """
-        self._assert_loaded()
-        raw_bgra = cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2BGRA)
-        path = os.path.abspath(path)
-        cv2.imwrite(path, raw_bgra)
-
-        if self.path is None:
-            self.path = path
-
-    def get_image(self) -> QtGui.QImage:
-        """
-        Returns a QImage of the image.
-        """
-        self._assert_loaded()
-        return QtGui.QImage(self._raw_image.data, self.width, self.height, QtGui.QImage.Format_RGBA8888)
-
-    def get_pixmap(self) -> QtGui.QPixmap:
-        """
-        Returns a QPixmap of the image.
-        """
-        self._assert_loaded()
-        return QtGui.QPixmap(self.get_image())
-
-    def get_pixels_rgb(self) -> np.ndarray:
-        """
-        Returns the raw image data in RGB format. (No alpha channel)
-        """
-        self._assert_loaded()
-        return cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2RGB)
-
-    def get_pixels_rgba(self) -> np.ndarray:
-        """
-        Returns the raw image data in RGBA format.
-        """
-        self._assert_loaded()
-        return self._raw_image
-
-    def get_pixels_bgra(self) -> np.ndarray:
-        """
-        Returns the raw image data in BGRA format.
-        """
-        self._assert_loaded()
-        return cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2BGRA)
 
     @property
     def faces(self) -> list[Face]:
@@ -534,6 +452,174 @@ class Image(Model):
         self.hashes["sha1"] = hashlib.sha1(bytes).hexdigest()
         self.hashes["sha256"] = hashlib.sha256(bytes).hexdigest()
         self.hashes["sha512"] = hashlib.sha512(bytes).hexdigest()
+
+    def data(self) -> "ImageData":
+        """
+        Gets the raw image data.
+        """
+        if self._data is None:
+            self.load()
+        return self._data
+
+    @property
+    def channels(self):
+        """
+        Gets the number of channels in the image source.
+        """
+        return self.data().channels
+
+    @property
+    def width(self):
+        """
+        Gets the width of the image source.
+        """
+        return self.data().width
+
+    @property
+    def height(self):
+        """
+        Gets the height of the image source.
+        """
+        return self.data().height
+
+    def save(self, path: str):
+        """
+        Saves the image to a path.
+        """
+        self.data().save(path)
+
+    def get_image(self) -> QtGui.QImage:
+        """
+        Returns a QImage of the image.
+        """
+        return self.data().get_image()
+
+    def get_pixmap(self) -> QtGui.QPixmap:
+        """
+        Returns a QPixmap of the image.
+        """
+        return self.data().get_pixmap()
+
+    def get_pixels_rgb(self) -> np.ndarray:
+        """
+        Returns the raw image data in RGB format. (No alpha channel)
+        """
+        return self.data().get_pixels_rgb()
+
+    def get_pixels_rgba(self) -> np.ndarray:
+        """
+        Returns the raw image data in RGBA format.
+        """
+        return self.data().get_pixels_rgba()
+
+    def get_pixels_bgra(self) -> np.ndarray:
+        """
+        Returns the raw image data in BGRA format.
+        """
+        return self.data().get_pixels_bgra()
+
+
+class ImageData:
+    """
+    Represents the raw image data in RGBA format.
+    """
+    _raw_image: np.ndarray = None
+
+    def __init__(self, raw_image_rgba: np.ndarray) -> None:
+        self._raw_image = raw_image_rgba
+
+    @staticmethod
+    def from_file(path: str) -> "ImageData":
+        """
+        Loads the image data from a file.
+
+        Args:
+            path (str): The absolute path to the image file.
+
+        Returns:
+            ImageData: The image data.
+        """
+        raw_image = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+        if raw_image is None:
+            raise FileNotFoundError(f"Could not load image at path {path}")
+        raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
+        return ImageData(raw_image)
+
+    @staticmethod
+    def from_bytes(bytes: bytes) -> "ImageData":
+        """
+        Loads the image data from raw bytes.
+
+        Args:
+            bytes (bytes): The raw image data.
+
+        Returns:
+            ImageData: The image data.
+        """
+        raw_image = cv2.imdecode(np.frombuffer(bytes, np.uint8), cv2.IMREAD_UNCHANGED)
+        if raw_image is None:
+            raise Exception("Could not load image from bytes")
+        raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGR2RGBA)
+        return ImageData(raw_image)
+
+    @property
+    def channels(self):
+        """
+        Gets the number of channels in the image source.
+        """
+        return self._raw_image.shape[2]
+
+    @property
+    def width(self):
+        """
+        Gets the width of the image source.
+        """
+        return self._raw_image.shape[1]
+
+    @property
+    def height(self):
+        """
+        Gets the height of the image source.
+        """
+        return self._raw_image.shape[0]
+
+    def save(self, path: str):
+        """
+        Saves the image to a path.
+        """
+        raw_bgra = cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2BGRA)
+        path = os.path.abspath(path)
+        cv2.imwrite(path, raw_bgra)
+
+    def get_image(self) -> QtGui.QImage:
+        """
+        Returns a QImage of the image.
+        """
+        return QtGui.QImage(self._raw_image.data, self.width, self.height, QtGui.QImage.Format_RGBA8888)
+
+    def get_pixmap(self) -> QtGui.QPixmap:
+        """
+        Returns a QPixmap of the image.
+        """
+        return QtGui.QPixmap(self.get_image())
+
+    def get_pixels_rgb(self) -> np.ndarray:
+        """
+        Returns the raw image data in RGB format. (No alpha channel)
+        """
+        return cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2RGB)
+
+    def get_pixels_rgba(self) -> np.ndarray:
+        """
+        Returns the raw image data in RGBA format.
+        """
+        return self._raw_image
+
+    def get_pixels_bgra(self) -> np.ndarray:
+        """
+        Returns the raw image data in BGRA format.
+        """
+        return cv2.cvtColor(self._raw_image, cv2.COLOR_RGBA2BGRA)
 
 
 class Project:

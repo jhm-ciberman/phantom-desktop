@@ -248,7 +248,10 @@ class ProjectManager:
         def exportImagesWorker():
             count = len(images)
             for i, image in enumerate(images):
-                image.save(paths[i])
+                path = paths[i]
+                image.save(path)
+                if image.path is None:
+                    image.path = path
                 bussyModal.setSubtitle(__("@project_manager.exporting_images.subtitle", current=i + 1, total=count))
 
         bussyModal.exec(exportImagesWorker)
