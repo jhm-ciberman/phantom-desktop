@@ -1,4 +1,5 @@
 import gzip
+from io import BufferedReader
 import json
 import os
 from functools import partial
@@ -141,24 +142,24 @@ class ProjectFileReader(ProjectFileBase):
         # In the future, add more elif statements here to migrate from version 2 to 3, from 3 to 4, etc.
         raise UnsuportedFileVersionException(version, self._current_version, "File version is not supported.")
 
-    def _is_gzip(self, file) -> bool:
+    def _is_gzip(self, file: BufferedReader) -> bool:
         file.seek(0)
         return file.read(2) == b"\x1f\x8b"  # gzip magic number
 
-    def _is_json(self, file) -> bool:
+    def _is_json(self, file: BufferedReader) -> bool:
         file.seek(0)
         return file.read(1) == b"{"
 
-    def _load_json(self, file) -> dict[str, Any]:
+    def _load_json(self, file: BufferedReader) -> dict[str, Any]:
         file.seek(0)
         return json.load(file)
 
-    def _load_gzip(self, file) -> dict[str, Any]:
+    def _load_gzip(self, file: BufferedReader) -> dict[str, Any]:
         file.seek(0)
         with gzip.open(file, "rt") as gzip_file:
             return json.load(gzip_file)
 
-    def _load(self, file) -> dict[str, Any]:
+    def _load(self, file: BufferedReader) -> dict[str, Any]:
         if self._is_gzip(file):
             return self._load_gzip(file)
         elif self._is_json(file):
@@ -202,7 +203,7 @@ class ProjectFileReader(ProjectFileBase):
 
         # Now, load the images into memory and return the project:
         for i, image in enumerate(self._images):
-            self._load_image(image, project, i)
+            self._load_image(image, i)
             project.add_image(image)
 
         for group in self._groups.models:
@@ -214,9 +215,9 @@ class ProjectFileReader(ProjectFileBase):
         if version != self._current_version:
             raise UnsuportedFileVersionException(version, self._current_version, "File version is not supported.")
 
-    def _load_image(self, image: Image, project: Project, index: int):
+    def _load_image(self, image: Image, index: int):
         try:
-            image.load(project.files_dir)
+            image.load()
         except Exception as e:
             if not self.on_image_error(e, image):
                 raise e

@@ -337,20 +337,14 @@ class Image(Model):
         self._processed: bool = False
         self.original_path = path
 
-    def load(self, directory: str = None) -> None:
+    def load(self) -> None:
         """
         Loads the image into memory.
-
-        Args:
-            directory (str): The directory to load the image from. If None, the image will be loaded
-                from the path specified in the constructor. Defaults to None.
 
         Raises:
             FileNotFoundError: If the image could not be found.
         """
         if not self.is_loaded:
-            if directory is not None:  # If a directory is specified, use it to load the image
-                self.path = os.path.join(directory, self.path)
             raw_image = cv2.imread(self.path, cv2.IMREAD_UNCHANGED)
             if raw_image is None:
                 raise FileNotFoundError(f"Could not load image at path {self.path}")
@@ -440,6 +434,10 @@ class Image(Model):
         return self._raw_image is not None
 
     def _assert_loaded(self) -> None:
+        lazy_loading = True
+        if lazy_loading and not self.is_loaded:
+            self.load()
+
         if not self.is_loaded:
             raise Exception("The image is not loaded. Call the load() or set_pixels_rgba() method first.")
 
