@@ -18,6 +18,7 @@ class _PropertiesPanel(QtWidgets.QFrame):
     A properties panel for the DeblurWindow that shows:
     - A combo box for selecting the type of the PSF
     - The options for that selected PSF.
+    - A button to reset the PSF to its default values
     - At the bottom, a progress bar (to show the progress of the preview)
     - At the bottom, an image showing the current PSF in grayscale.
     """
@@ -38,7 +39,7 @@ class _PropertiesPanel(QtWidgets.QFrame):
 
         self._psfType = QtWidgets.QComboBox()
 
-        options = [
+        self._psfOptions: list[PsfConfig] = [
             GaussianPsfConfig(self),  # default
             MotionBlurPsfConfig(self),
             BoxBlurPsfConfig(self),
@@ -46,7 +47,7 @@ class _PropertiesPanel(QtWidgets.QFrame):
             CustomPsfConfig(self),
         ]
 
-        for option in options:
+        for option in self._psfOptions:
             self._psfType.addItem(option.title(), option)
             option.onPsfChanged.connect(self._onPsfChanged)
 
@@ -56,7 +57,7 @@ class _PropertiesPanel(QtWidgets.QFrame):
         self._stackWidget = QtWidgets.QStackedWidget()
         self._stackWidget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self._stackWidget.setContentsMargins(0, 10, 0, 0)
-        for option in options:
+        for option in self._psfOptions:
             self._stackWidget.addWidget(option)
 
         self._iterations = QtWidgets.QSpinBox()
@@ -120,6 +121,11 @@ class _PropertiesPanel(QtWidgets.QFrame):
                 QtGui.QIcon("res/img/collection.png"), __("Export and add to project"))
         self.saveAndAddToProjectButton.setIconSize(QtCore.QSize(32, 32))
 
+        self._resetButton = QtWidgets.QPushButton(
+                QtGui.QIcon("res/img/reset.png"), __("Reset to defaults"))
+        self._resetButton.setIconSize(QtCore.QSize(32, 32))
+        self._resetButton.clicked.connect(self._onReset)
+
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self._psfType)
         layout.addWidget(self._stackWidget)
@@ -132,12 +138,14 @@ class _PropertiesPanel(QtWidgets.QFrame):
         layout.addWidget(self._progressBar)
         layout.addWidget(psfFrame)
         layout.addSpacing(10)
+        layout.addWidget(self._resetButton)
         layout.addWidget(self.saveButton)
         layout.addWidget(self.saveAndAddToProjectButton)
 
         self.setLayout(layout)
 
-        self._onPsfTypeChanged()
+        self._isResetting = False
+        self._onReset()
 
     @QtCore.Slot()
     def _onPsfTypeChanged(self) -> None:
@@ -166,7 +174,19 @@ class _PropertiesPanel(QtWidgets.QFrame):
 
     @QtCore.Slot()
     def _onConfigChanged(self) -> None:
-        self.configChanged.emit()
+        if not self._isResetting:
+            self.configChanged.emit()
+
+    @QtCore.Slot()
+    def _onReset(self) -> None:
+        self._isResetting = True
+        self._iterations.setValue(50)
+        self._progressiveCheckBox.setChecked(True)
+        for option in self._psfOptions:
+            option.reset()
+        self._psfType.setCurrentIndex(0)
+        self._isResetting = False
+        self._onConfigChanged()
 
     def psf(self) -> np.ndarray:
         option = self._psfType.currentData()  # type: PsfConfig

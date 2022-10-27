@@ -19,8 +19,11 @@ class PsfConfig(QtWidgets.QWidget):
         self.setContentsMargins(0, 0, 0, 0)
         self.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self._psfImagePadding = 1  # Padding around the PSF image to make it easier to see
+        self._isResetting = False
 
     def psf(self) -> np.ndarray:
+        if self._psf is None:
+            self._psf = self._createPsfCore()
         return self._psf
 
     def psfImage(self) -> QtGui.QImage:
@@ -35,8 +38,23 @@ class PsfConfig(QtWidgets.QWidget):
     def title(self) -> str:
         raise NotImplementedError()
 
+    def reset(self):
+        self._isResetting = True
+        self._resetCore()
+        self._isResetting = False
+        self._onPsfChanged()
+
+    @QtCore.Slot()
     def _onPsfChanged(self):
-        self.onPsfChanged.emit(self.psf())
+        if not self._isResetting:
+            self._psf = None
+            self.onPsfChanged.emit(self.psf())
+
+    def _createPsfCore(self) -> np.ndarray:
+        raise NotImplementedError()
+
+    def _resetCore(self):
+        raise NotImplementedError()
 
 
 class GaussianPsfConfig(PsfConfig):
@@ -48,25 +66,24 @@ class GaussianPsfConfig(PsfConfig):
         self._sigma = SliderWithSpinBox(QtCore.Qt.Horizontal)
         self._sigma.setRange(0.5, 50)
         self._sigma.setSingleStep(0.1)
-        self._sigma.setValue(3.0)
         self._sigma.setLabelText(__("Sigma"))
-        self._sigma.valueChanged.connect(self._onConfigChanged)
+        self._sigma.valueChanged.connect(self._onPsfChanged)
 
         layout = QtWidgets.QFormLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._sigma)
 
         self.setLayout(layout)
-        self._onConfigChanged()
+        self.reset()
 
     def title(self) -> str:
         return __("Gaussian blur")
 
-    @QtCore.Slot(float)
-    def _onConfigChanged(self) -> None:
-        value = self._sigma.value()
-        self._psf = PointSpreadFunction.gaussian(value)
-        self._onPsfChanged()
+    def _createPsfCore(self) -> np.ndarray:
+        return PointSpreadFunction.gaussian(self._sigma.value())
+
+    def _resetCore(self):
+        self._sigma.setValue(3.0)
 
 
 class MotionBlurPsfConfig(PsfConfig):
@@ -80,19 +97,17 @@ class MotionBlurPsfConfig(PsfConfig):
         self._angle.setNotchesVisible(True)
         self._angle.setRange(0, 360)
         self._angle.setSingleStep(1)
-        self._angle.valueChanged.connect(self._onConfigChanged)
+        self._angle.valueChanged.connect(self._onPsfChanged)
 
         self._length = QtWidgets.QSpinBox()
         self._length.setRange(1, 100)
         self._length.setSingleStep(1)
-        self._length.setValue(10)
-        self._length.valueChanged.connect(self._onConfigChanged)
+        self._length.valueChanged.connect(self._onPsfChanged)
 
         self._width = QtWidgets.QSpinBox()
         self._width.setRange(1, 10)
         self._width.setSingleStep(1)
-        self._width.setValue(1)
-        self._width.valueChanged.connect(self._onConfigChanged)
+        self._width.valueChanged.connect(self._onPsfChanged)
 
         layout = QtWidgets.QFormLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -101,18 +116,21 @@ class MotionBlurPsfConfig(PsfConfig):
         layout.addRow(__("Width:"), self._width)
 
         self.setLayout(layout)
-        self._onConfigChanged()
+        self.reset()
 
     def title(self) -> str:
         return __("Motion blur")
 
-    @QtCore.Slot()
-    def _onConfigChanged(self) -> None:
+    def _createPsfCore(self) -> np.ndarray:
         angle = self._angle.value()
         length = self._length.value()
         width = self._width.value()
-        self._psf = PointSpreadFunction.motion_blur(angle, length, width)
-        self._onPsfChanged()
+        return PointSpreadFunction.motion_blur(angle, length, width)
+
+    def _resetCore(self):
+        self._angle.setValue(0)
+        self._length.setValue(10)
+        self._width.setValue(1)
 
 
 class BoxBlurPsfConfig(PsfConfig):
@@ -125,22 +143,22 @@ class BoxBlurPsfConfig(PsfConfig):
         self._size = QtWidgets.QSpinBox()
         self._size.setRange(1, 100)
         self._size.setSingleStep(1)
-        self._size.setValue(3.0)
-        self._size.valueChanged.connect(self._onConfigChanged)
+        self._size.valueChanged.connect(self._onPsfChanged)
 
         layout = QtWidgets.QFormLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addRow(__("Size:"), self._size)
         self.setLayout(layout)
-        self._onConfigChanged()
+        self.reset()
 
     def title(self) -> str:
         return __("Box blur")
 
-    @QtCore.Slot()
-    def _onConfigChanged(self) -> None:
-        self._psf = PointSpreadFunction.box_blur(int(self._size.value()))
-        self._onPsfChanged()
+    def _createPsfCore(self) -> np.ndarray:
+        return PointSpreadFunction.box_blur(int(self._size.value()))
+
+    def _resetCore(self):
+        self._size.setValue(3)
 
 
 class DiskBlurPsfConfig(PsfConfig):
@@ -153,23 +171,23 @@ class DiskBlurPsfConfig(PsfConfig):
         self._size = SliderWithSpinBox(QtCore.Qt.Horizontal)
         self._size.setRange(0.5, 50)
         self._size.setSingleStep(0.1)
-        self._size.setValue(3.0)
         self._size.setLabelText(__("Radius"))
-        self._size.valueChanged.connect(self._onConfigChanged)
+        self._size.valueChanged.connect(self._onPsfChanged)
 
         layout = QtWidgets.QFormLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addRow(__("Size:"), self._size)
         self.setLayout(layout)
-        self._onConfigChanged()
+        self.reset()
 
     def title(self) -> str:
         return __("Disk blur")
 
-    @QtCore.Slot()
-    def _onConfigChanged(self) -> None:
-        self._psf = PointSpreadFunction.disk_blur(self._size.value())
-        self._onPsfChanged()
+    def _createPsfCore(self) -> np.ndarray:
+        return PointSpreadFunction.disk_blur(self._size.value())
+
+    def _resetCore(self):
+        self._size.setValue(3.0)
 
 
 class CustomPsfConfig(PsfConfig):
@@ -198,7 +216,7 @@ class CustomPsfConfig(PsfConfig):
         self._scale.setValue(100.0)
         self._scale.setEnabled(False)
         self._scale.setSuffix("%")
-        self._scale.valueChanged.connect(self._onConfigChanged)
+        self._scale.valueChanged.connect(self._onPsfChanged)
 
         layout = QtWidgets.QFormLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -212,6 +230,8 @@ class CustomPsfConfig(PsfConfig):
 
         self._psf = np.array([[1]])  # default psf
         self._unscaledPsf = self._psf
+
+        self.reset()
 
     def title(self) -> str:
         return __("Custom")
@@ -228,9 +248,14 @@ class CustomPsfConfig(PsfConfig):
             self._scale.setEnabled(True)
             self._onConfigChanged()
 
-    @QtCore.Slot()
-    def _onConfigChanged(self) -> None:
+    def _createPsfCore(self) -> np.ndarray:
         scale = self._scale.value() / 100.0
         # resizes the psf to the desired scale
-        self._psf = cv2.resize(self._unscaledPsf, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-        self._onPsfChanged()
+        return cv2.resize(self._unscaledPsf, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+
+    def _resetCore(self):
+        self._filePath.setText("")
+        self._scale.setEnabled(False)
+        self._scale.setValue(100.0)
+        self._psf = np.array([[1]])
+        self._unscaledPsf = self._psf
