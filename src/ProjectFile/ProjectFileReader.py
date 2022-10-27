@@ -203,8 +203,7 @@ class ProjectFileReader(ProjectFileBase):
 
         # Now, load the images into memory and return the project:
         for i, image in enumerate(self._images):
-            self._load_image(image, i)
-            project.add_image(image)
+            self._load_image(image, i, project)
 
         for group in self._groups.models:
             project.add_group(group)
@@ -215,9 +214,10 @@ class ProjectFileReader(ProjectFileBase):
         if version != self._current_version:
             raise UnsuportedFileVersionException(version, self._current_version, "File version is not supported.")
 
-    def _load_image(self, image: Image, index: int):
+    def _load_image(self, image: Image, index: int, project: Project):
         try:
             image.load()
+            project.add_image(image)
         except Exception as e:
             if not self.on_image_error(e, image):
                 raise e

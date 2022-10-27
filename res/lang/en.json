@@ -101,6 +101,10 @@
             "message": "Portable mode will save all the referenced images in a subfolder in the same location where the project file is saved. This is useful if you want to move the project to another computer or share it with someone else but could take a few minutes if you have thousands of images and take extra storage space. Do you want to save the project in portable mode?",
             "title": "Save project in portable mode?"
         },
+        "removed_images": {
+            "message": "The following images could not be loaded and were removed from the project: \n{list}\n\nPlease make sure that the files exist and are readable.",
+            "title": "Some images could not be loaded"
+        },
         "saving_project": {
             "copying": "Copying image {current} of {total}...",
             "subtitle": "Please wait...",
@@ -112,10 +116,6 @@
         "select_images_caption": "Select images to add to the project",
         "select_project_open_caption": "Select a project to open",
         "select_project_save_caption": "Select where to save the project",
-        "skipped_images": {
-            "message": "The following images could not be loaded: \n{list}\n\nPlease make sure that the files exist and are readable. Do you want to remove them from the project?",
-            "title": "Some images could not be loaded"
-        },
         "unsaved_changes": {
             "message": "The project has unsaved changes. Do you want to save the project before continuing?",
             "title": "Unsaved changes"
@@ -245,6 +245,7 @@
     "Scale:": "Scale:",
     "Search": "Search",
     "Select": "Select",
+    "Select All": "Select All",
     "Select Kernel": "Select Kernel",
     "Select a face to see its properties.": "Select a face to see its properties.",
     "Select a folder to add to the project": "Select a folder to add to the project",

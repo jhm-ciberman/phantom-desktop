@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inspector panel: Added a button for opening the image in the default image viewer.
 - Inspector panel: Now the detected faces bounding boxes are shown in the image.
 - Inspector panel: Added a button to show and hide the detected faces bounding boxes.
+- Main screen: Added "Edit > Select All" menu item.
 
 ### Changed
 
@@ -24,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Bug: Pressing Cancel in the "Are you sure you want to exit?" dialog closes the application instead of canceling the exit.
 - Bug: The "Faces merging wizard" card shows even if there are no faces to merge.
+- Bug: The program crashes when loading a project with missing or corrupt image files.
 
 ## [0.1.0] - 2022-10-20
 

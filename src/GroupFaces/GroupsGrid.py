@@ -65,11 +65,12 @@ class GroupsGrid(GridBase):
         self._groups.sort(key=lambda group: (group.name != "", len(group.faces)), reverse=True)
 
         for group in self._groups:
-            if len(group.faces) == 0:
+            count = len(group.faces)
+            if count == 0:
                 continue
             w, h = self.iconSize().width(), self.iconSize().height()
             pixmap = group.main_face.get_avatar_pixmap(w, h)
-            text = group.name if group.name else ""
+            text = f"{group.name} ({count})" if group.name else f"({count})"            
             self.addItemCore(pixmap, text)
 
     def groups(self) -> list[Group]:

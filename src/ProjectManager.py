@@ -7,7 +7,7 @@ from PySide6 import QtWidgets
 
 from startfile import startfile
 from .l10n import __
-from .Models import Image
+from .Models import Image, Project
 from .Widgets.BussyModal import BussyModal
 from .Workspace import Workspace
 from . import constants
@@ -281,11 +281,13 @@ class ProjectManager:
         # Skipped images are images that could not be loaded
         imagesSkipped: list[Image] = []
 
+        loadedProject: Project = None
+
         def openProjectWorker():
+            nonlocal loadedProject
             from .ProjectFile.ProjectFileReader import ProjectFileReader  # Avoids circular import
             reader = ProjectFileReader(on_progress=onProgress, on_image_error=onImageError)
-            project = reader.read(filePath)
-            self._workspace.setProject(project)
+            loadedProject = reader.read(filePath)
 
         def onProgress(index: int, count: int, image: Image):
             bussyModal.setSubtitle(__("@project_manager.loading_project.progress", current=index + 1, total=count))
@@ -298,26 +300,16 @@ class ProjectManager:
 
         bussyModal.exec(openProjectWorker)
 
+        if loadedProject is None:
+            return
+
+        self._workspace.setProject(loadedProject)  # This will broadcast the changes to the UI.
+
+        # If there were any skipped images, show a warning.
         if len(imagesSkipped) > 0:
-            if self._askToRemoveSkippedImages(parent, imagesSkipped):
-                for image in imagesSkipped:
-                    self._workspace.project().remove_image(image)
-
-    def _askToRemoveSkippedImages(self, parent: QtWidgets.QWidget, imagesSkipped: list[Image]) -> bool:
-        """
-        Asks the user if the skipped images should be removed from the project.
-
-        Args:
-            parent (QWidget): The parent widget.
-            imagesSkipped (list[Image]): The list of images that were skipped from loading.
-
-        Returns:
-            bool: True if the images should be removed, False otherwise.
-        """
-        listStr = self._getImagesList(imagesSkipped)
-        message = __("@project_manager.skipped_images.message", list=listStr)
-        return QtWidgets.QMessageBox.question(
-            parent, __("@project_manager.skipped_images.title"), message) == QtWidgets.QMessageBox.Yes
+            listStr = self._getImagesList(imagesSkipped)
+            message = __("@project_manager.removed_images.message", list=listStr)
+            QtWidgets.QMessageBox.warning(parent, __("@project_manager.removed_images.title"), message)
 
     def _getImagesList(self, images: list[Image], topCount=5) -> str:
         """

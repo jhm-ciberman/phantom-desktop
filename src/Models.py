@@ -335,6 +335,7 @@ class Image(Model):
         """
         super().__init__(id)
         self.path = os.path.abspath(path) if path else None
+        self.exists = os.path.exists(self.path) if self.path else False
         self._raw_image = raw_rgba
         self._faces: "list[Face]" = []
         self._processed: bool = False
@@ -353,6 +354,7 @@ class Image(Model):
 
         if self.path is None:
             raise FileNotFoundError("The image could not be found.")
+
 
         self._data = ImageData.from_file(self.path)
 
@@ -389,7 +391,9 @@ class Image(Model):
         """
         Gets the name of the image to be displayed in the UI.
         """
-        return os.path.basename(self.original_path) if self.original_path else __("Untitled")
+        original = os.path.basename(self.original_path) if self.original_path else None
+        path = os.path.basename(self.path) if self.path else None
+        return original or path or __("Untitled")
 
     @property
     def path_dirname(self) -> str:

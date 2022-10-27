@@ -97,6 +97,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self._saveProjectAsAction.setShortcut("Ctrl+Shift+S")
         self._saveProjectAsAction.triggered.connect(self._onSaveProjectAsPressed)
 
+        self._selectAllAction = QtGui.QAction(__("Select All"), self)
+        self._selectAllAction.setShortcut("Ctrl+A")
+        self._selectAllAction.triggered.connect(self._onSelectAllPressed)
+
         self._exitAction = QtGui.QAction(
             QtGui.QIcon("res/img/exit.png"), __("Exit"), self)
         self._exitAction.setShortcut("Ctrl+Q")
@@ -159,6 +163,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._editMenu.addAction(self._correctPerspectiveAction)
         self._editMenu.addAction(self._deblurAction)
         self._editMenu.addAction(self._groupFacesAction)
+        self._editMenu.addSeparator()
+        self._editMenu.addAction(self._selectAllAction)
 
         self._viewMenu = self._menuBar.addMenu(__("@menubar.view.header"))
         self._sizePresetActions = []
@@ -384,3 +390,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if len(imagesToAdd) > 0:
             images = [Image(path) for path in imagesToAdd]
             Application.projectManager().addImagesToProject(self, images)
+
+    @QtCore.Slot()
+    def _onSelectAllPressed(self) -> None:
+        self._imageGrid.selectAll()
