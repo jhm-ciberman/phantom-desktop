@@ -39,4 +39,5 @@ setup(
     version=constants.app_version,
     description=constants.app_description,
     options={'build_exe': build_options},
-    executables=executables)
+    executables=executables,
+)

@@ -4,7 +4,7 @@ import os
 
 app_version = "0.1.0"  # Any semver is fine
 app_name = "Phantom Desktop"
-app_description = "A desktop application for forensic digital image processing"
+app_description = "Phantom Desktop"  # This is shown in the task manager so it should be short
 app_repo_url = "https://github.com/jhm-ciberman/phantom-desktop"
 app_docs_url = f"{app_repo_url}/wiki"
 app_bugs_url = f"{app_repo_url}/issues/new"
