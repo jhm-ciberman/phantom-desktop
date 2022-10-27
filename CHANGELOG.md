@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inspector panel: Now the detected faces bounding boxes are shown in the image.
 - Inspector panel: Added a button to show and hide the detected faces bounding boxes.
 - Main screen: Added "Edit > Select All" menu item.
+- Clustering window: Added the number of faces in each group in the group label.
 
 ### Changed
 
