@@ -11,7 +11,7 @@ class ImageGrid(GridBase):
     A widget that displays a grid of images.
     """
 
-    selectionChanged = QtCore.Signal()
+    imageSelectionChanged = QtCore.Signal()
     """Raised when the selected image changes."""
 
     deblurImagePressed = QtCore.Signal(Image)
@@ -131,7 +131,7 @@ class ImageGrid(GridBase):
             if i < len(self._images):
                 self._selectedImages.append(self._images[i])
 
-        self.selectionChanged.emit()
+        self.imageSelectionChanged.emit()
 
     def clear(self) -> None:
         """
@@ -140,7 +140,7 @@ class ImageGrid(GridBase):
         self._images = []
         self._selectedImages = []
         super().clear()
-        self.selectionChanged.emit()
+        self.imageSelectionChanged.emit()
 
     @QtCore.Slot(Image)
     def _onImageProcessed(self, image: Image) -> None:

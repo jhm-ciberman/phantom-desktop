@@ -107,8 +107,8 @@ class Application(QtWidgets.QApplication):
             sys.exit(1)
             return
 
-        from .Main.MainWindow import MainWindow  # Avoid circular importss
-        win = MainWindow()
+        from .Main.MainPage import ShellWindow  # Avoid circular imports
+        win = ShellWindow()
         win.showMaximized()
 
         self._imageProcessorService.start()

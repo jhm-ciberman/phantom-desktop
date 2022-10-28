@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from ..ShellWindow import NavigationPage
+
 from ..Application import Application
 from ..l10n import __
 from ..Models import Image
@@ -202,7 +204,7 @@ class _PropertiesPanel(QtWidgets.QFrame):
         self._progressBar.setValue(progress)
 
 
-class DeblurWindow(QtWidgets.QWidget):
+class DeblurPage(NavigationPage):
     """
     A window that allows the user to deblur an image.
     """
@@ -235,7 +237,7 @@ class DeblurWindow(QtWidgets.QWidget):
 
         self._deblurTask: ProgressiveDeblurTask = None
 
-        self.setWindowTitle(str(image.display_name) + " - Phantom")
+        self.setWindowTitle(image.display_name)
         self.setMinimumSize(800, 600)
 
         layout = QtWidgets.QHBoxLayout()

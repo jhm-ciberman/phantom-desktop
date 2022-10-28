@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from ..ShellWindow import NavigationPage
 from ..Application import Application
 from ..l10n import __
 from ..Models import Image
@@ -12,7 +13,7 @@ from .PerspectiveTransform import perspective_transform
 from .PixmapPointsDisplay import PixmapPointsDisplay
 
 
-class PerspectiveWindow(QtWidgets.QWidget):
+class PerspectivePage(NavigationPage):
     def __init__(self, image: Image) -> None:
         super().__init__()
 
@@ -23,7 +24,7 @@ class PerspectiveWindow(QtWidgets.QWidget):
         self._rotationIndex = 0
         self._points = []  # type: list[(int, int)]
 
-        self.setWindowTitle(str(image.display_name) + " - Phantom")
+        self.setWindowTitle(image.display_name)
         self.setMinimumSize(800, 600)
 
         layout = QtWidgets.QVBoxLayout()

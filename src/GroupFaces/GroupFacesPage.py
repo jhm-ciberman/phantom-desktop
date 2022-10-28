@@ -1,5 +1,7 @@
 from PySide6 import QtCore, QtWidgets
 
+from ..ShellWindow import NavigationPage
+
 from .FaceInspectorPanel import FaceInspectorPanel
 from ..Application import Application
 from ..l10n import __
@@ -12,7 +14,7 @@ from .GroupsGrid import GroupsGrid
 from .MergingWizard import MergingWizard
 
 
-class GroupFacesWindow(QtWidgets.QWidget):
+class GroupFacesPage(NavigationPage):
     """
     A window that allows the user to group faces.
     """
@@ -30,7 +32,7 @@ class GroupFacesWindow(QtWidgets.QWidget):
         self._selectedGroup = None  # type: Group
 
         self.setMinimumSize(800, 600)
-        self.setWindowTitle(__("Group Faces") + " - Phantom")
+        self.setWindowTitle(__("Group Faces"))
 
         layout = QtWidgets.QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
