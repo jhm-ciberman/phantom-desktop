@@ -54,7 +54,7 @@ class PixmapPointsDisplay(PixmapDisplay):
         self._pointsImageSpace.append(point)
         self._pointsWidgetSpace.append(self.imageToWidgetTransform().map(point))
         self.pointsChanged.emit()
-        self.repaint()
+        self.update()
 
     def setPoint(self, index: int, point: QtCore.QPoint):
         """
@@ -66,7 +66,7 @@ class PixmapPointsDisplay(PixmapDisplay):
         self._pointsImageSpace[index] = point
         self._pointsWidgetSpace[index] = self.imageToWidgetTransform().map(point)
         self.pointsChanged.emit()
-        self.repaint()
+        self.update()
 
     def removePoint(self, index: int):
         """
@@ -77,7 +77,7 @@ class PixmapPointsDisplay(PixmapDisplay):
         self._pointsImageSpace.pop(index)
         self._pointsWidgetSpace.pop(index)
         self.pointsChanged.emit()
-        self.repaint()
+        self.update()
 
     def clearPoints(self) -> None:
         """
@@ -87,7 +87,7 @@ class PixmapPointsDisplay(PixmapDisplay):
         self._pointsWidgetSpace.clear()
         self._hasFinished = False
         self.pointsChanged.emit()
-        self.repaint()
+        self.update()
 
     def points(self) -> list[QtCore.QPoint]:
         """
@@ -218,7 +218,7 @@ class PixmapPointsDisplay(PixmapDisplay):
                     self._pointsImageSpace.pop()
                     self._pointsWidgetSpace.pop()
                     self.pointsChanged.emit()
-                    self.repaint()
+                    self.update()
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         """
@@ -241,7 +241,7 @@ class PixmapPointsDisplay(PixmapDisplay):
                     minDist = distance
 
         self._updateCursor()
-        self.repaint()
+        self.update()
 
     def _updateCursor(self):
         if self._draggedPointIndex >= 0:
@@ -269,4 +269,4 @@ class PixmapPointsDisplay(PixmapDisplay):
                     self._hasFinished = True
                     self.finished.emit()
             self._updateCursor()
-            self.repaint()
+            self.update()

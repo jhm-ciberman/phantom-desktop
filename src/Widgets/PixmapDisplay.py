@@ -26,15 +26,7 @@ class PixmapDisplay(QtWidgets.QWidget):
         self._imageToWidgetTransform = QtGui.QTransform()
         self._widgetToImageTransform = QtGui.QTransform()
         self._isDirty = True
-        self._isInPaintEvent = False  # Used to prevent recursive calls to repaint()
         pixmap is not None and self.setPixmap(pixmap)
-
-    def repaint(self) -> None:
-        """
-        Repaints the widget.
-        """
-        if not self._isInPaintEvent:
-            super().repaint()
 
     def setPixmap(self, pixmap: QtGui.QPixmap) -> None:
         """
@@ -45,7 +37,7 @@ class PixmapDisplay(QtWidgets.QWidget):
         """
         self._pixmap = pixmap
         self._isDirty = True
-        self.repaint()
+        self.update()
 
     def pixmap(self) -> QtGui.QPixmap:
         """
@@ -59,7 +51,7 @@ class PixmapDisplay(QtWidgets.QWidget):
         """
         self._transformationMode = transformationMode
         self._isDirty = True
-        self.repaint()
+        self.update()
 
     def transformationMode(self) -> QtCore.Qt.TransformationMode:
         """
@@ -73,7 +65,7 @@ class PixmapDisplay(QtWidgets.QWidget):
         """
         self._aspectRatioMode = aspectRatioMode
         self._isDirty = True
-        self.repaint()
+        self.update()
 
     def aspectRatioMode(self) -> QtCore.Qt.AspectRatioMode:
         """
@@ -82,15 +74,12 @@ class PixmapDisplay(QtWidgets.QWidget):
         return self._aspectRatioMode
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
-        self._isInPaintEvent = True
         self._processDirty()
 
         super().paintEvent(event)
 
         if self._resizedPixmap is not None:
             QtGui.QPainter(self).drawPixmap(self._imageRect, self._resizedPixmap)
-
-        self._isInPaintEvent = False
 
     def imageRectChangedEvent(self, imageRect: QtCore.QRect) -> None:
         """
