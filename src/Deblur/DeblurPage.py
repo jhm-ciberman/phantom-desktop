@@ -204,7 +204,7 @@ class _PropertiesPanel(QtWidgets.QFrame):
         self._progressBar.setValue(progress)
 
 
-class DeblurPage(NavigationPage):
+class DeblurPage(QtWidgets.QWidget, NavigationPage):
     """
     A window that allows the user to deblur an image.
     """
@@ -238,6 +238,7 @@ class DeblurPage(NavigationPage):
         self._deblurTask: ProgressiveDeblurTask = None
 
         self.setWindowTitle(image.display_name)
+        self.setWindowIcon(QtGui.QIcon("res/img/deblur.png"))
         self.setMinimumSize(800, 600)
 
         layout = QtWidgets.QHBoxLayout()

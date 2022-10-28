@@ -149,9 +149,9 @@ class MainMenuBar(QtWidgets.QMenuBar):
         self.exportImageAction.setEnabled(len(images) != 0)
 
 
-class NavigationPage(QtWidgets.QWidget):
+class NavigationPage:
     """
-    An abstract class that defines a page that can be shown in the ShellWindow in the main tab widget.
+    A interrface class that defines a page that can be shown in the ShellWindow in the main tab widget.
     """
 
     def customMenus(self) -> list[QtWidgets.QMenu]:
@@ -161,21 +161,15 @@ class NavigationPage(QtWidgets.QWidget):
         """
         return []
 
-    def title(self) -> str:
-        """
-        Returns the title of the page.
-        """
-        return self.windowTitle()
-
 
 class ShellWindow(QtWidgets.QMainWindow):
     """
     The main window of the application. It displays the toolbars and a tab widget.
     """
 
-    _currentPage: NavigationPage = None
+    _currentPage: QtWidgets.QWidget = None
 
-    _mainPage: NavigationPage = None
+    _mainPage: QtWidgets.QWidget = None
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -200,6 +194,7 @@ class ShellWindow(QtWidgets.QMainWindow):
 
         self._tabWidget = QtWidgets.QTabWidget()
         self._tabWidget.setTabsClosable(True)  # We need to hide the close button for the main page
+        self._tabWidget.setIconSize(QtCore.QSize(24, 24))
         self.setCentralWidget(self._tabWidget)
         self._tabWidget.currentChanged.connect(self._onTabChanged)
         self._tabWidget.tabCloseRequested.connect(self._onTabCloseRequested)
@@ -210,8 +205,8 @@ class ShellWindow(QtWidgets.QMainWindow):
         Application.workspace().isDirtyChanged.connect(self._onIsDirtyChanged)
         Application.workspace().projectChanged.connect(self._onProjectChanged)
 
-        from .Main.MainPage import MainPage
-        self._mainPage = MainPage(self)
+        from .Main.ProjectExplorerPage import ProjectExplorerPage
+        self._mainPage = ProjectExplorerPage(self)
         self.openPage(self._mainPage)
         self._hideCloseButtonForTab(index=0)
 
@@ -256,21 +251,22 @@ class ShellWindow(QtWidgets.QMainWindow):
             self._currentPage = None
             return
 
-        page: NavigationPage = self._tabWidget.widget(index)
-        self._currentPage = page
+        widget: QtWidgets.QWidget = self._tabWidget.widget(index)
+        self._currentPage = widget
 
         self._menuBar.clearCustomMenus()
-        for menu in page.customMenus():
-            self._menuBar.addCustomMenu(menu)
+        if isinstance(widget, NavigationPage):
+            for menu in widget.customMenus():
+                self._menuBar.addCustomMenu(menu)
 
-    def openPage(self, page: NavigationPage) -> None:
+    def openPage(self, page: QtWidgets.QWidget) -> None:
         """
         Adds a page to the tab widget.
         """
-        index = self._tabWidget.addTab(page, page.title())
+        index = self._tabWidget.addTab(page, page.windowIcon(), page.windowTitle())
         self._tabWidget.setCurrentIndex(index)
 
-    def closePage(self, page: NavigationPage) -> None:
+    def closePage(self, page: QtWidgets.QWidget) -> None:
         """
         Removes a page from the tab widget.
         """

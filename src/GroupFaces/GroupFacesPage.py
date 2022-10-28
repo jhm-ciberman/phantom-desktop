@@ -1,4 +1,4 @@
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets, QtGui
 
 from ..ShellWindow import NavigationPage
 
@@ -14,7 +14,7 @@ from .GroupsGrid import GroupsGrid
 from .MergingWizard import MergingWizard
 
 
-class GroupFacesPage(NavigationPage):
+class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
     """
     A window that allows the user to group faces.
     """
@@ -31,7 +31,7 @@ class GroupFacesPage(NavigationPage):
 
         self._selectedGroup = None  # type: Group
 
-        self.setMinimumSize(800, 600)
+        self.setWindowIcon(QtGui.QIcon("res/img/group_faces.png"))
         self.setWindowTitle(__("Group Faces"))
 
         layout = QtWidgets.QVBoxLayout()

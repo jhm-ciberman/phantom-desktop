@@ -13,7 +13,7 @@ from .PerspectiveTransform import perspective_transform
 from .PixmapPointsDisplay import PixmapPointsDisplay
 
 
-class PerspectivePage(NavigationPage):
+class PerspectivePage(QtWidgets.QWidget, NavigationPage):
     def __init__(self, image: Image) -> None:
         super().__init__()
 
@@ -25,6 +25,7 @@ class PerspectivePage(NavigationPage):
         self._points = []  # type: list[(int, int)]
 
         self.setWindowTitle(image.display_name)
+        self.setWindowIcon(QtGui.QIcon("res/img/correct_perspective.png"))
         self.setMinimumSize(800, 600)
 
         layout = QtWidgets.QVBoxLayout()

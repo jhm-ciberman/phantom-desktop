@@ -107,7 +107,7 @@ class Application(QtWidgets.QApplication):
             sys.exit(1)
             return
 
-        from .Main.MainPage import ShellWindow  # Avoid circular imports
+        from .Main.ProjectExplorerPage import ShellWindow  # Avoid circular imports
         win = ShellWindow()
         win.showMaximized()
 

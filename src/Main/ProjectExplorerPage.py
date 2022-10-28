@@ -16,7 +16,7 @@ from .MainInspectorPanel import MainInspectorPanel
 from .. import constants
 
 
-class MainPage(NavigationPage):
+class ProjectExplorerPage(QtWidgets.QWidget, NavigationPage):
     """
     The main window of the application.
     """
@@ -31,6 +31,9 @@ class MainPage(NavigationPage):
         """
         super().__init__(parent)
         self._shell = shell
+
+        self.setWindowIcon(QtGui.QIcon("res/img/collection.png"))
+        self.setWindowTitle(__("Project Explorer"))
 
         self._layout = QtWidgets.QHBoxLayout()
         self._layout.setContentsMargins(0, 0, 0, 0)
@@ -127,9 +130,6 @@ class MainPage(NavigationPage):
         self._workspace.projectChanged.connect(self._onProjectChanged)
 
         self.setAcceptDrops(True)
-
-    def title(self) -> str:
-        return __("Project")
 
     def customMenus(self) -> list[QtWidgets.QMenu]:
         return [self._editMenu, self._viewMenu]
