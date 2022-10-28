@@ -4,6 +4,23 @@ from PySide6 import QtCore, QtGui, QtWidgets
 class PixmapDisplay(QtWidgets.QWidget):
 
     imageRectChanged = QtCore.Signal(QtCore.QRect)
+    """Signal emmited when the image rectangle changes."""
+
+    _pixmap: QtGui.QPixmap = None
+
+    _resizedPixmap: QtGui.QPixmap = None
+
+    _imageRect: QtCore.QRect = None
+
+    _aspectRatioMode = QtCore.Qt.AspectRatioMode.KeepAspectRatio
+
+    _transformationMode = QtCore.Qt.TransformationMode.SmoothTransformation
+
+    _imageToWidgetTransform = QtGui.QTransform()
+
+    _widgetToImageTransform = QtGui.QTransform()
+
+    _isDirty = True
 
     """
     Widget for displaying a QPixmap. The image is scaled proportionally to fit the widget.
@@ -18,14 +35,7 @@ class PixmapDisplay(QtWidgets.QWidget):
         """
         super().__init__(parent)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self._pixmap = None
-        self._resizedPixmap = None
-        self._imageRect = None  # type: QtCore.QRect
-        self._aspectRatioMode = QtCore.Qt.AspectRatioMode.KeepAspectRatio
-        self._transformationMode = QtCore.Qt.TransformationMode.SmoothTransformation
-        self._imageToWidgetTransform = QtGui.QTransform()
-        self._widgetToImageTransform = QtGui.QTransform()
-        self._isDirty = True
+
         pixmap is not None and self.setPixmap(pixmap)
 
     def setPixmap(self, pixmap: QtGui.QPixmap) -> None:
