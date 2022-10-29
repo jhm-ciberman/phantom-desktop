@@ -308,7 +308,7 @@ class EmptyProjectMessageWidget(QtWidgets.QFrame):
         self._title.setStyleSheet("font-size: 24px;")
         self._layout.addWidget(self._title)
 
-        self._subtitle = QtWidgets.QLabel(__("Drag images to the project to start"))
+        self._subtitle = QtWidgets.QLabel(__("Drag images here to start"))
         self._subtitle.setAlignment(QtCore.Qt.AlignCenter)
         self._subtitle.setStyleSheet("font-size: 16px; color: #666;")
         self._layout.addWidget(self._subtitle)
