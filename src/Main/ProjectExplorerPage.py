@@ -1,6 +1,9 @@
+from ctypes import alignment
 import os
 
 from PySide6 import QtCore, QtGui, QtWidgets
+
+from .PhantomMascotAnimationWidget import PhantomMascotAnimationWidget
 
 from ..ShellWindow import NavigationPage, ShellWindow
 
@@ -106,15 +109,23 @@ class ProjectExplorerPage(QtWidgets.QWidget, NavigationPage):
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
         splitter.setContentsMargins(10, 10, 10, 10)
 
+        self._stackWidget = QtWidgets.QStackedWidget()
+
+        self._emptyWidget = EmptyProjectMessageWidget(self)
+        self._stackWidget.addWidget(self._emptyWidget)
+
         self._imageGrid = ImageGrid()
         self._imageGrid.imageSelectionChanged.connect(self._onImageGridSelectionChanged)
         self._imageGrid.deblurImagePressed.connect(self._onDeblurPressed)
         self._imageGrid.perspectivePressed.connect(self._onCorrectPerspectivePressed)
+        self._stackWidget.addWidget(self._imageGrid)
+
+        self._stackWidget.setCurrentWidget(self._emptyWidget)
 
         self._inspector = MainInspectorPanel()
         self._inspector.setContentsMargins(0, 0, 0, 0)
 
-        splitter.addWidget(self._imageGrid)
+        splitter.addWidget(self._stackWidget)
         splitter.addWidget(self._inspector)
         splitter.setStretchFactor(0, 2)
         splitter.setStretchFactor(1, 1)
@@ -222,6 +233,10 @@ class ProjectExplorerPage(QtWidgets.QWidget, NavigationPage):
     def _onNumberOfImagesChanged(self) -> None:
         imagesCount = len(self._workspace.project().images)
         self._groupFacesAction.setEnabled(imagesCount > 0)
+        if imagesCount == 0:
+            self._stackWidget.setCurrentWidget(self._emptyWidget)
+        else:
+            self._stackWidget.setCurrentWidget(self._imageGrid)
 
     # Drag and drop (User can drag image files, folders and projects onto the window to open them)
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
@@ -267,3 +282,88 @@ class ProjectExplorerPage(QtWidgets.QWidget, NavigationPage):
     @QtCore.Slot()
     def _onSaveProjectAsPressed(self) -> None:
         Application.projectManager().saveProjectAs(self)
+
+
+class EmptyProjectMessageWidget(QtWidgets.QFrame):
+    def __init__(self, parent: QtWidgets.QWidget):
+        super().__init__(parent)
+        self.setFrameStyle(QtWidgets.QFrame.StyledPanel)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
+        contentWidget = QtWidgets.QWidget(self)
+        contentWidget.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self._layout = QtWidgets.QVBoxLayout(contentWidget)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(5)
+        self._layout.setAlignment(QtCore.Qt.AlignCenter)
+
+        self._phantomMascotAnimation = PhantomMascotAnimationWidget(self)
+        self._layout.addWidget(self._phantomMascotAnimation)
+
+        self._layout.addSpacing(40)
+
+        self._title = QtWidgets.QLabel(__("The project is empty"))
+        self._title.setAlignment(QtCore.Qt.AlignCenter)
+        self._title.setStyleSheet("font-size: 24px;")
+        self._layout.addWidget(self._title)
+
+        self._subtitle = QtWidgets.QLabel(__("Drag images to the project to start"))
+        self._subtitle.setAlignment(QtCore.Qt.AlignCenter)
+        self._subtitle.setStyleSheet("font-size: 16px; color: #666;")
+        self._layout.addWidget(self._subtitle)
+
+        self._layout.addSpacing(40)
+
+        buttonsLayout = QtWidgets.QHBoxLayout()
+        buttonsLayout.setContentsMargins(0, 0, 0, 0)
+        self._layout.addLayout(buttonsLayout)
+
+        self._addImageButton = QtWidgets.QPushButton(QtGui.QIcon("res/img/image_add.png"), __("Add Images"))
+        self._addImageButton.setIconSize(QtCore.QSize(32, 32))
+        self._addImageButton.clicked.connect(self._onAddImagesPressed)
+
+        self._addFolderButton = QtWidgets.QPushButton(QtGui.QIcon("res/img/folder_add.png"), __("Add From Folder"))
+        self._addFolderButton.setIconSize(QtCore.QSize(32, 32))
+        self._addFolderButton.clicked.connect(self._onAddFolderPressed)
+
+        buttonsLayout.addStretch()
+        buttonsLayout.addWidget(self._addImageButton, 1)
+        buttonsLayout.addWidget(self._addFolderButton, 1)
+        buttonsLayout.addStretch()
+
+        self._layout.addSpacing(20)
+
+        rtfmLayout = QtWidgets.QHBoxLayout()
+        rtfmLayout.setSpacing(5)
+        self._layout.addLayout(rtfmLayout)
+
+        self._rtfmLabel = QtWidgets.QLabel(__("Don't know where to start?"))
+        self._rtfmLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self._rtfmLabel.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self._rtfmLabel.setStyleSheet("font-size: 16px; color: #666;")
+        rtfmLayout.addWidget(self._rtfmLabel, 0)
+
+        self._rtfmButton = QtWidgets.QPushButton(__("Check the online help"))
+        self._rtfmButton.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        self._rtfmButton.clicked.connect(self._onRTFMPressed)
+        rtfmLayout.addWidget(self._rtfmButton, 0)
+
+        frameLayout = QtWidgets.QVBoxLayout(self)
+        frameLayout.setContentsMargins(0, 0, 0, 0)
+        frameLayout.addWidget(contentWidget, alignment=QtCore.Qt.AlignCenter)
+        self.setLayout(frameLayout)
+
+
+
+    @QtCore.Slot()
+    def _onAddImagesPressed(self) -> None:
+        Application.projectManager().importImages(self)
+
+    @QtCore.Slot()
+    def _onAddFolderPressed(self) -> None:
+        Application.projectManager().addFolder(self)
+
+    @QtCore.Slot()
+    def _onRTFMPressed(self) -> None:
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(constants.app_docs_url))
