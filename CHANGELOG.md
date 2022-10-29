@@ -6,9 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2022-10-28
+
 ### Added
 
 - Linux releases are now available on the [releases page](https://github.com/jhm-ciberman/phantom-desktop/releases) as well as the regular Windows releases.
+- The tools in Phantom Desktop now opens in new tabs instead of new windows.
+- Added a new welcome screen that shows when the project is empty.
 - Added drag and drop support. Now you can drag and drop image files and Phantom Desktop project files to the main window to open them.
 - Inspector panel: Added a button for opening the image in the default image viewer.
 - Inspector panel: Now the detected faces bounding boxes are shown in the image.
@@ -48,4 +52,5 @@ version.
 
 
 [Unreleased]: https://github.com/jhm-ciberman/phantom-desktop/compare/v0.1.0...HEAD
-[v0.1.0]: https://github.com/jhm-ciberman/phantom-desktop/releases/tag/v0.1.0
+[1.0.0]: https://github.com/jhm-ciberman/phantom-desktop/compare/v0.1.0...v1.0.0
+[0.1.0]: https://github.com/jhm-ciberman/phantom-desktop/releases/tag/v0.1.0
