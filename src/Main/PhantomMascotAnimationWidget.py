@@ -31,8 +31,8 @@ class PhantomMascotAnimationWidget(QtWidgets.QWidget):
         self._width = 400
         self._height = 200
         self._mascot = PhantomMascot(moveStartX=100, moveEndX=300, baseY=90)
-        self._tumbleweedBack = Tumbleweed(moveStartX=50, moveEndX=350, baseY=110, scale=0.5, alphaMulti=0.6)
-        self._tumbleweedFront = Tumbleweed(moveStartX=40, moveEndX=360, baseY=160, scale=0.8)
+        self._tumbleweedBack = Tumbleweed(moveStartX=50, moveEndX=350, baseY=110, scale=0.5, alphaMulti=0.6, hspeed=40)
+        self._tumbleweedFront = Tumbleweed(moveStartX=40, moveEndX=360, baseY=160, scale=0.8, alphaMulti=1.0, hspeed=60)
 
     def _update(self):
         t = time_ns() * 1e-9  # seconds
@@ -174,7 +174,11 @@ class Tumbleweed:
 
     _bounceDeltaY = 15  # From (0,0) to (0, bounceDeltaY) and back
 
-    _bounceSpeed = 2  # cycles per second
+    _bounceSpeedMin = 0.5  # cycles per second
+
+    _bounceSpeedMax = 1.5  # cycles per second
+
+    _bounceSpeed = 0  # cycles per second
 
     _movingSpeedX = 60  # pixels per second
 
@@ -202,7 +206,9 @@ class Tumbleweed:
 
     _isMoving = False
 
-    def __init__(self, moveStartX: int, moveEndX: int, baseY: int, scale: float = 1.0, alphaMulti: float = 1.0) -> None:
+    def __init__(
+            self, moveStartX: int, moveEndX: int, baseY: int,
+            scale: float = 1.0, alphaMulti: float = 1.0, hspeed: float = 60) -> None:
         self._timer = QtCore.QTimer()
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._onTimerTimeout)
@@ -215,6 +221,7 @@ class Tumbleweed:
         self._baseY = baseY
         self._scale = scale
         self._alphaMulti = alphaMulti
+        self._movingSpeedX = hspeed
 
         self._transform = QtGui.QTransform()
         self._alpha = 0
@@ -230,6 +237,7 @@ class Tumbleweed:
         self._x = self._movingStartX
         self._y = self._baseY
         self._isMoving = True
+        self._bounceSpeed = random.uniform(self._bounceSpeedMin, self._bounceSpeedMax)
 
     def update(self, dt: float, t: float):
         if self._isMoving:

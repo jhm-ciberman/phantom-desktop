@@ -1,4 +1,3 @@
-from ctypes import alignment
 import os
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -288,7 +287,6 @@ class EmptyProjectMessageWidget(QtWidgets.QFrame):
     def __init__(self, parent: QtWidgets.QWidget):
         super().__init__(parent)
         self.setFrameStyle(QtWidgets.QFrame.StyledPanel)
-        self.setContentsMargins(0, 0, 0, 0)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
 
         contentWidget = QtWidgets.QWidget(self)
@@ -353,8 +351,6 @@ class EmptyProjectMessageWidget(QtWidgets.QFrame):
         frameLayout.setContentsMargins(0, 0, 0, 0)
         frameLayout.addWidget(contentWidget, alignment=QtCore.Qt.AlignCenter)
         self.setLayout(frameLayout)
-
-
 
     @QtCore.Slot()
     def _onAddImagesPressed(self) -> None:

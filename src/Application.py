@@ -108,8 +108,8 @@ class Application(QtWidgets.QApplication):
             return
 
         from .Main.ProjectExplorerPage import ShellWindow  # Avoid circular imports
-        win = ShellWindow()
-        win.showMaximized()
+        self._shell = ShellWindow()
+        self._shell.showMaximized()
 
         self._imageProcessorService.start()
 
@@ -130,3 +130,9 @@ class Application(QtWidgets.QApplication):
         Returns the models downloader.
         """
         return self._modelsDownloader
+
+    def shell(self):
+        """
+        Returns the shell window.
+        """
+        return self._shell
