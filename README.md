@@ -3,6 +3,7 @@
 
 [![Build](https://github.com/jhm-ciberman/phantom-desktop/actions/workflows/build.yaml/badge.svg?branch=master)](https://github.com/jhm-ciberman/phantom-desktop/actions/workflows/build.yaml)
 ![For Windows](https://img.shields.io/badge/for-Windows-blue)
+![For Linux](https://img.shields.io/badge/for-Linux-blue)
 
 Phantom Desktop is an application for forensic digital image processing.
 
@@ -10,7 +11,12 @@ Phantom Desktop is an application for forensic digital image processing.
 
 ## Download
 
-At the moment Phantom desktop is in development. A pre-release version is available in the [releases](https://github.com/jhm-ciberman/phantom-desktop/releases) section. The application is available for Windows. This pre-release is not stable and the project file format may change at any moment. There is no guarantee of backwards compatibility if you use this version.
+Phantom Desktop can be downloaded from the [releases](https://github.com/jhm-ciberman/phantom-desktop/releases) section. The application is available for Windows and Linux. The first time you run the application, it will download the necessary files. After that, you can use it offline.
+
+**IMPORTANT: Requires a CPU that supports AVX Instructions (Any modern CPU > 2011) otherwise the application won't even start.**
+If you want to use it on an older CPU, you can need to compile it from source.
+
+Releases were tested in Windows 10 and Ubuntu 22.04 LTS.
 
 ## Wiki
 
