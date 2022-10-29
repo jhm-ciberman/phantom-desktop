@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Linux releases are now available on the [releases page](https://github.com/jhm-ciberman/phantom-desktop/releases) as well as the regular Windows releases.
-- The tools in Phantom Desktop now opens in new tabs instead of new windows.
+- Tools in Phantom Desktop now open in new tabs instead of new windows.
 - Added a new welcome screen that shows when the project is empty.
 - Added drag and drop support. Now you can drag and drop image files and Phantom Desktop project files to the main window to open them.
 - Inspector panel: Added a button for opening the image in the default image viewer.
@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inspector panel: Added a button to show and hide the detected faces bounding boxes.
 - Main screen: Added "Edit > Select All" menu item.
 - Clustering window: Added the number of faces in each group in the group label.
+- Clustering window: The inspector panel is now shown when a face is selected.
 - Deblur window: Added a "Reset to defaults" button.
 
 ### Changed
@@ -26,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clustering Window: The faces selector now lets you select multiple faces at once.
 - Improved the About window.
 - Improved the dialog messages when loading a project.
+- Main screen: The left toolbar icons are now smaller.
+- Main screen: Added a "New Project" button to the toolbar.
 
 ### Fixed
 
