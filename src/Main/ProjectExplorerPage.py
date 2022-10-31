@@ -87,7 +87,7 @@ class ProjectExplorerPage(QtWidgets.QWidget, NavigationPage):
         self._toolbar.setContextMenuPolicy(QtCore.Qt.PreventContextMenu)  # Disable right click menu (wtf Qt?)
         self._toolbar.setIconSize(QtCore.QSize(32, 32))
         self._toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self._toolbar.setStyleSheet("""QToolBar QToolButton { width: 150px; }""")
+        self._toolbar.setStyleSheet("""QToolBar QToolButton { width: 180px; }""")
         self._toolbar.setOrientation(QtCore.Qt.Orientation.Vertical)
 
         # self.addToolBar(QtCore.Qt.ToolBarArea.LeftToolBarArea, self._toolbar)

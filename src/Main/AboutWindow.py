@@ -51,7 +51,7 @@ class AboutWindow(QtWidgets.QDialog):
         Initializes a new instance of the AboutWindow class.
         """
         super().__init__(parent)
-        self.setWindowTitle("About Phantom Desktop")
+        self.setWindowTitle(__("About Phantom Desktop"))
         self.setWindowFlags(QtCore.Qt.MSWindowsFixedSizeDialogHint | QtCore.Qt.WindowTitleHint)
         self.setWindowIcon(QtGui.QIcon("res/img/icon.png"))
 
