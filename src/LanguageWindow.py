@@ -62,11 +62,14 @@ class LanguageWindow(QtWidgets.QDialog):
         currentLang = self._languages[self._combo.currentIndex()].code
         self._settings.set("language", currentLang)
 
-        if currentLang != self._originalLanguage and self._needsRestart:
-            QtWidgets.QMessageBox.information(
-                self,
-                __("@language_selector.restart.title"),
-                __("@language_selector.restart.message"),
-            )
+        if currentLang != self._originalLanguage:
+            if self._needsRestart:
+                QtWidgets.QMessageBox.information(
+                    self,
+                    __("@language_selector.restart.title"),
+                    __("@language_selector.restart.message"),
+                )
+            else:
+                LocalizationService.instance().set_locale(currentLang)
 
         self.accept()
