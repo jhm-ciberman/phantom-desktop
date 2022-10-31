@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2022-10-28
+
+### Added
+
+- Added support for multiple languages. Spanish and english are currently supported.
+
+### Fixed
+
+- The text in the main toolbar was cut off with the default font in Ubuntu.
+
 ## [1.0.0] - 2022-10-28
 
 ### Added
