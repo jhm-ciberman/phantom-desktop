@@ -1,7 +1,5 @@
 # Phantom Project File Specification
 
-> **WARNING**: This specification is still a work in progress and is subject to change.
-
 Phantom Desktop is a desktop application for forensic digital image processing. This document describes the project file format used by Phantom Desktop.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" 

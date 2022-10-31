@@ -69,4 +69,4 @@ The project has some type hints, but it's only for basic IDE autocomplete. It's 
 
 ## Phantom Project File format
 
-The phantom project file format (`*.phantom`) is an open format and it's specification can be found [here](./docs/phantom_project_file_format.md). The specification is still in development and it's subject to change.
+The phantom project file format (`*.phantom`) is an open format and it's specification can be found [here](./docs/phantom_project_file_format.md).
