@@ -4,6 +4,8 @@
 [![Build](https://github.com/jhm-ciberman/phantom-desktop/actions/workflows/build.yaml/badge.svg?branch=master)](https://github.com/jhm-ciberman/phantom-desktop/actions/workflows/build.yaml)
 ![For Windows](https://img.shields.io/badge/for-Windows-blue)
 ![For Linux](https://img.shields.io/badge/for-Linux-blue)
+![Language English](https://img.shields.io/badge/language-English-red)
+![Language Spanish](https://img.shields.io/badge/language-Spanish-red)
 
 Phantom Desktop is an application for forensic digital image processing.
 
