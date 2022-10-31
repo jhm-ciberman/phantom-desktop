@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.1.0] - 2022-10-28
+## [1.1.0] - 2022-10-30
 
 ### Added
 
@@ -65,5 +65,6 @@ version.
 
 
 [Unreleased]: https://github.com/jhm-ciberman/phantom-desktop/compare/v0.1.0...HEAD
+[1.1.0]: https://github.com/jhm-ciberman/phantom-desktop/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/jhm-ciberman/phantom-desktop/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/jhm-ciberman/phantom-desktop/releases/tag/v0.1.0
