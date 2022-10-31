@@ -4,16 +4,67 @@ import random
 from time import time_ns
 
 
-class PhantomMascotAnimationWidget(QtWidgets.QWidget):
+class AnimationBase(QtWidgets.QWidget):
+    """
+    A base abstract class for frame based animations. Provides a simple render loop with update/draw method.
+    """
+    _animationFPS = 60  # frames per second
+
+    _lastUpdateTime = 0
+
+    _canvasWidth: int = 0
+
+    _canvasHeight: int = 0
+
+    _time: float = 0
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._lastUpdateTime = time_ns() * 1e-9  # seconds
+
+        self._timer = QtCore.QTimer(self)
+        self._timer.timeout.connect(self._onUpdateTimer)
+        self._timer.start(1000 / self._animationFPS)
+
+    def _onUpdateTimer(self):
+        self._time = time_ns() * 1e-9  # seconds
+        dt = self._time - self._lastUpdateTime
+        self._lastUpdateTime = self._time
+
+        self._update(dt, self._time)
+
+        super().update()  # Queue QT paint event
+
+    def paintEvent(self, event: QtGui.QPaintEvent):
+        painter = QtGui.QPainter(self)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
+
+        self._draw(painter)
+
+    def _update(self, dt: float, time: float):
+        """
+        Override this method to update the animation.
+        """
+        pass
+
+    def _draw(self, painter: QtGui.QPainter):
+        """
+        Override this method to draw the animation.
+        """
+        pass
+
+    def sizeHint(self):
+        return QtCore.QSize(self._canvasWidth, self._canvasHeight)
+
+
+class PhantomMascotAnimationWidget(AnimationBase):
     """
     A small animated image with two frames. One with the eyes open and one with the eyes closed.
     The image is a ghost that moves from left to right and back with a small easing effect.
     Also it has a small floating effect (up and down, sinusoidal).
     """
-
-    _animationFPS = 60  # frames per second
-
-    _lastUpdateTime = 0
 
     _mascot: "PhantomMascot"
 
@@ -22,40 +73,21 @@ class PhantomMascotAnimationWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self._timer = QtCore.QTimer(self)
-        self._timer.timeout.connect(self._update)
-        self._timer.start(1000 / self._animationFPS)
-
-        self._lastUpdateTime = time_ns() * 1e-9  # seconds
-
-        self._width = 400
-        self._height = 200
+        self._canvasWidth = 400
+        self._canvasHeight = 200
         self._mascot = PhantomMascot(moveStartX=100, moveEndX=300, baseY=90)
         self._tumbleweedBack = Tumbleweed(moveStartX=50, moveEndX=350, baseY=110, scale=0.5, alphaMulti=0.6, hspeed=40)
         self._tumbleweedFront = Tumbleweed(moveStartX=40, moveEndX=360, baseY=160, scale=0.8, alphaMulti=1.0, hspeed=60)
 
-    def _update(self):
-        t = time_ns() * 1e-9  # seconds
-        dt = t - self._lastUpdateTime
-        self._lastUpdateTime = t
+    def _update(self, dt: float, time: float):
+        self._mascot.update(dt, time)
+        self._tumbleweedBack.update(dt, time)
+        self._tumbleweedFront.update(dt, time)
 
-        self._mascot.update(dt, t)
-        self._tumbleweedBack.update(dt, t)
-        self._tumbleweedFront.update(dt, t)
-
-        self.update()  # Queue QT paint event
-
-    def paintEvent(self, event):
-        painter = QtGui.QPainter(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        painter.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
-
+    def _draw(self, painter: QtGui.QPainter):
         self._tumbleweedBack.draw(painter)
         self._mascot.draw(painter)
         self._tumbleweedFront.draw(painter)
-
-    def sizeHint(self):
-        return QtCore.QSize(self._width, self._height)
 
 
 class PhantomMascot:
@@ -276,3 +308,62 @@ class Tumbleweed:
             return t * 2
         else:
             return 1 - (t - 0.5) * 2
+
+
+class PhantomMascotLangAnimation(AnimationBase):
+    """
+    A small animation that shows the phantom mascot floating with a lang icon above his head.
+    """
+
+    _frameIdle = QtGui.QImage("res/img/phantom_mascot_idle.png")
+
+    _frameBlink = QtGui.QImage("res/img/phantom_mascot_blink.png")
+
+    _currentFrame = _frameIdle
+
+    _langIcon = QtGui.QImage("res/img/lang.png")
+
+    _blinkInterval = 2000
+
+    _blinkDuration = 200
+
+    _y = 0
+
+    _x = 0
+
+    _blinkTimer: QtCore.QTimer
+
+    def __init__(self, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+
+        self._canvasWidth = 200
+        self._canvasHeight = 200
+
+        self._blinkTimer = QtCore.QTimer()
+        self._blinkTimer.setSingleShot(True)
+        self._blinkTimer.timeout.connect(self._onBlinkTimerTimeout)
+        self._blinkTimer.start(self._blinkInterval)
+
+    def _onBlinkTimerTimeout(self):
+        if self._currentFrame == self._frameIdle:
+            self._currentFrame = self._frameBlink
+            self._blinkTimer.start(self._blinkDuration)
+        else:
+            self._currentFrame = self._frameIdle
+            self._blinkTimer.start(self._blinkInterval)
+
+    def _update(self, dt: float, t: float):
+        t /= 2
+        self._y = 10 * math.sin(t * 2 * math.pi)
+        self._x = 5 * math.cos(t * 2 * math.pi * 0.23)
+
+    def _draw(self, painter: QtGui.QPainter):
+        cw = self._canvasWidth
+
+        # lang icon at top right
+        rect = QtCore.QRect(cw - 64, 0, 64, 64)
+        painter.drawImage(rect, self._langIcon)
+
+        # phantom mascot in the center of remaining space
+        rect = QtCore.QRect(30 + self._x, self._y + 50, 128, 128)
+        painter.drawImage(rect, self._currentFrame)

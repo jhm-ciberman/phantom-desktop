@@ -7,7 +7,8 @@ from .ModelsDownloader import ModelsDownloader
 
 from .ProjectManager import ProjectManager
 from .Workspace import Workspace
-
+from .l10n import LocalizationService
+from .SettingsService import SettingsService
 from . import constants
 
 
@@ -70,6 +71,8 @@ class Application(QtWidgets.QApplication):
             local_models_folder=constants.models_local_folder,
         )
 
+        self.initLanguage()
+
         self.setApplicationVersion(constants.app_version)
         self.setApplicationName(constants.app_name)
 
@@ -99,13 +102,18 @@ class Application(QtWidgets.QApplication):
         logging.error("Unhandled exception", exc_info=(exctype, value, traceback))
         QtWidgets.QMessageBox.critical(None, "Unhandled exception", str(value))
 
-    def run(self):
+    def exec(self) -> int:
         """
         Runs the application.
+
+        Returns:
+            The exit code.
         """
+
+        self._ensureLanguageIsSelected()
+
         if not self._projectManager.ensureModelsAreDownloaded():
-            sys.exit(1)
-            return
+            return 1
 
         from .Main.ProjectExplorerPage import ShellWindow  # Avoid circular imports
         self._shell = ShellWindow()
@@ -113,11 +121,12 @@ class Application(QtWidgets.QApplication):
 
         self._imageProcessorService.start()
 
-        exitCode = self.exec()
+        exitCode = super().exec()
 
         self._imageProcessorService.terminate()
 
-        sys.exit(exitCode)
+        Application._instance = None
+        return exitCode
 
     def icon(self) -> QtGui.QIcon:
         """
@@ -136,3 +145,20 @@ class Application(QtWidgets.QApplication):
         Returns the shell window.
         """
         return self._shell
+
+    def initLanguage(self):
+        """
+        Initializes the language.
+        """
+        langCode = SettingsService.instance().get("language", "en")
+        LocalizationService.instance().set_locale(langCode)
+
+    def _ensureLanguageIsSelected(self):
+        """
+        Ensures the language is selected.
+        """
+        langCode = SettingsService.instance().get("language", None)
+        if langCode is None:
+            from .LanguageWindow import LanguageWindow
+            langWindow = LanguageWindow(parent=None, needsRestart=False)
+            langWindow.exec()

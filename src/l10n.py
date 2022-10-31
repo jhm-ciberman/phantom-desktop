@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import json
 import logging
 
@@ -14,6 +15,20 @@ def __(key_or_string: str, **kwargs) -> str:
         str: The localized string.
     """
     return LocalizationService.instance().get(key_or_string, **kwargs)
+
+
+@dataclass
+class Language:
+    """
+    Represents a language.
+
+    Attributes:
+        code (str): The language code.
+        name (str): The language name.
+    """
+
+    code: str
+    name: str
 
 
 class LocalizationService:
@@ -58,17 +73,40 @@ class LocalizationService:
     Nouvelle partie
     Votre score est de 100 points.
 
+    Languages need to be registered in the "languages.json" file. For example:
+
+    {
+        "fallback_lang": "en",
+        "langs": [
+            {
+                "code": "en",
+                "name": "English",
+            },
+            {
+                "code": "fr",
+                "name": "Français",
+            }
+        ]
+    }
     """
 
     _instance = None
 
     warn_on_missing: bool = True
-    """Whether to print a warning when a string is missing."""
+    """
+    Whether to print a warning when a string is missing.
+    """
 
     throw_on_missing: bool = False
     """
     Whether to throw an exception when a string is missing. This is useful for testing and
     checking the stack trace to see where the missing string is.
+    """
+
+    ignore_fallback: bool = False
+    """
+    Whether to ignore the fallback locale. If you set this to true, the fallback locale will not be loaded.
+    This can be useful if you want to test for missing strings in a specific language.
     """
 
     def __init__(self):
@@ -79,6 +117,8 @@ class LocalizationService:
         self._locale: str = "en"
         self._fallback_locale: str = "en"
         self._warned_strings: set[str] = set()
+        self._languages: list[Language] = []
+        self._load_languages()
         self._load_strings()
 
     @staticmethod
@@ -94,22 +134,17 @@ class LocalizationService:
 
         return LocalizationService._instance
 
-    def set_locale(self, locale: str, fallback_locale: str = "en"):
+    def set_locale(self, locale: str):
         """
         Sets the locale. The language code should be in the format of
         the ISO 639-1 standard, with an optional ISO 3166-1 alpha-2 country code.
         For example: en, en-US, fr, fr-CA, de, de-DE, etc.
-
-        If you are testing the application for missing strings, you can set the
-        fallback locale to None. This will cause the application to throw an
-        exception when a string is missing. By default, the fallback locale is "en".
 
         Args:
             locale (str): The language code to set.
             fallback_locale (str, optional): The fallback language code to use. Defaults to "en".
         """
         self._locale = locale
-        self._fallback_locale = fallback_locale
         self._load_strings()
 
     def _load_strings(self):
@@ -118,9 +153,9 @@ class LocalizationService:
         """
         self._strings = {}
         self._warned_strings = set()
-        self._load_strings_for_locale(self._locale)
-        if self._fallback_locale and self._locale != self._fallback_locale:
+        if self._fallback_locale and self._locale != self._fallback_locale and not self.ignore_fallback:
             self._load_strings_for_locale(self._fallback_locale)
+        self._load_strings_for_locale(self._locale)
 
     def _load_strings_for_locale(self, locale: str):
         """
@@ -130,7 +165,7 @@ class LocalizationService:
             locale (str): The locale.
         """
         try:
-            with open("res/lang/" + locale + ".json", "r") as file:
+            with open("res/lang/" + locale + ".json", "r", encoding="utf-8") as file:
                 data = json.load(file)
                 self._strings.update(self._flatten(data))
         except FileNotFoundError:
@@ -197,3 +232,30 @@ class LocalizationService:
         if self.warn_on_missing and key not in self._warned_strings:
             logging.warn("Missing string: " + key)
             self._warned_strings.add(key)
+
+    def _load_languages(self):
+        """
+        Loads the languages.
+        """
+        with open("res/lang/languages.json", "r", encoding="utf-8") as file:
+            data = json.load(file)
+            self._fallback_locale = data["fallback_lang"]
+            self._languages = [Language(**lang) for lang in data["langs"]]
+
+    def get_languages(self) -> list[Language]:
+        """
+        Gets the languages.
+
+        Returns:
+            list[Language]: The languages.
+        """
+        return self._languages
+
+    def get_fallback_language(self) -> str:
+        """
+        Gets the fallback language.
+
+        Returns:
+            str: The fallback language as a ISO 639-1 language code.
+        """
+        return self._fallback_locale

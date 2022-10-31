@@ -12,4 +12,4 @@ if __name__ == "__main__":
 
     # Now we can run the app
     app = Application(sys.argv)
-    app.run()
+    app.exec()

@@ -1,4 +1,6 @@
 from PySide6 import QtCore, QtGui, QtWidgets
+
+from .LanguageWindow import LanguageWindow
 from .Application import Application
 from .l10n import __
 from .Models import Image
@@ -69,6 +71,9 @@ class MainMenuBar(QtWidgets.QMenuBar):
         self._fileMenu.addSeparator()
         self._fileMenu.addAction(self.exitAction)
 
+        self._settingsMenu = self.addMenu(__("@menubar.settings.header"))
+        self._settingsMenu.addAction(__("@menubar.settings.language"), self._onLanguagePressed)
+
         self._helpMenu = self.addMenu(__("@menubar.help.header"))
         self._helpMenu.addAction(__("@menubar.help.report_issue"), self._onReportIssuePressed)
         self._helpMenu.addAction(__("@menubar.help.documentation"), self._onDocumentationPressed)
@@ -131,14 +136,18 @@ class MainMenuBar(QtWidgets.QMenuBar):
     def _onGithubPressed(self) -> None:
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(constants.app_repo_url))
 
+    @QtCore.Slot()
+    def _onLanguagePressed(self) -> None:
+        LanguageWindow(self, needsRestart=True).exec()
+
     def clearCustomMenus(self) -> None:
         for menu in self._customMenus:
             self.removeAction(menu.menuAction())
         self._customMenus.clear()
 
     def addCustomMenu(self, menu: QtWidgets.QMenu) -> None:
-        # Menus are added before the help menu
-        self.insertMenu(self._helpMenu.menuAction(), menu)
+        # Menus are added before the settings menu
+        self.insertMenu(self._settingsMenu.menuAction(), menu)
         self._customMenus.append(menu)
 
     def selectedImages(self) -> list[Image]:

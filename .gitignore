@@ -5,6 +5,7 @@ test_images/**
 output/**
 models/**
 *.phantom
+settings.json
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

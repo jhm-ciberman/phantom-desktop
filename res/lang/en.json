@@ -34,6 +34,14 @@
         "linear": "Linear (Default)",
         "nearest": "Nearest (Pixelated)"
     },
+    "@language_selector": {
+        "accept": "Accept",
+        "label": "Please select your language",
+        "restart": {
+            "message": "The application needs to be restarted for the changes to take effect.",
+            "title": "Restart required"
+        }
+    },
     "@menubar": {
         "edit": {
             "header": "Edit"
@@ -47,6 +55,10 @@
             "github": "GitHub",
             "header": "Help",
             "report_issue": "Report an issue"
+        },
+        "settings": {
+            "header": "Settings",
+            "language": "Language"
         },
         "view": {
             "header": "View"
