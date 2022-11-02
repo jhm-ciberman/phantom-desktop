@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css" media="all">
+    <link rel="stylesheet" href="gutenberg.min.css" media="print">
+    <title>{{ __("title") }}</title>
+</head>
+<body>
+    <div class="page-header">
+        <img src="icon.png" alt="Phantom Desktop" width="62" height="62">
+        <h1>Phantom<span>Desktop</span></h1>
+
+        <ul class="info">
+            <li><span>{{ __("generated_at") }}</span> {{ generated_at }}</li>
+            <li><span>{{ __("phantom_version") }} </span> {{ phantom_version }}</li>
+            <li><span>{{ __("total_images") }}</span> {{ total_images }}</li>
+        </ul>
+    </div>
+
+    <div class="no-print print-instructions">
+        <div class="text">
+            <h2>{{ __("document_ready") }}</h2>
+            <p>{{ __("click_print") }}</p>
+        </div>
+        <button onclick="window.print()">{{ __("print") }}</button>
+    </div>
+
+    {% for group in groups %}
+        <div class="group-block">
+            <div class="group-header avoid-break-inside">
+                <img src="{{ group.icon }}" alt="{{ group.name }}" width="62" height="62">
+                <div>
+                    <h2>{{ group.name }}</h2>
+                    <p>{{ group.description }}</p>
+                </div>
+            </div>
+
+            <div class="images-grid">
+                {% for image in group.images %}
+                    <div class="image-item avoid-break-inside">
+                        <img src="{{ image.path }}" alt="{{ image.name }}">
+                        <a href="{{ image.path }}" target="_blank">{{ image.name }}</a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endfor %}
+</body>
+</html>

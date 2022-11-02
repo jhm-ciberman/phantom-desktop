@@ -540,3 +540,11 @@ class ProjectManager:
         if not self._checkImageFileExists(image):
             return
         startfile(os.path.dirname(image.path))
+
+    def openFileExternally(self, file_path: str) -> None:
+        if not os.path.exists(file_path):
+            QtWidgets.QMessageBox.critical(
+                self, __("File not found"),
+                __("File {path} not found.", path=file_path))
+            return
+        startfile(file_path)

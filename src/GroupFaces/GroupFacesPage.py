@@ -1,4 +1,8 @@
 from PySide6 import QtCore, QtWidgets, QtGui
+import os
+
+
+from .HtmlReportExporter import HtmlReportExporter
 
 from ..ShellWindow import NavigationPage
 
@@ -9,7 +13,7 @@ from ..Models import Face, Group, Image
 from .ClusteringService import MergeOportunity
 from .FacesGrid import FacesGrid
 from .GroupDetailsHeader import GroupDetailsHeaderWidget
-from .GroupSelector import GroupSelector
+from .GroupSelector import GroupSelector, MultiGroupSelector
 from .GroupsGrid import GroupsGrid
 from .MergingWizard import MergingWizard
 
@@ -89,8 +93,17 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         self._mergingWizard.groupsMerged.connect(self._onGroupsMerged)
         self._mergingWizard.groupsDontMerged.connect(self._onGroupsDontMerged)
 
+        self._groupsMenu = QtWidgets.QMenu(__("Groups"))
+        self._groupsMenu.addAction(__("Rename Group"), self._onRenameGroupTriggered)
+        self._groupsMenu.addAction(__("Combine Group"), self._onCombineGroupTriggered)
+        self._groupsMenu.addSeparator()
+        self._groupsMenu.addAction(__("Export as HTML"), self._onExportAsHtmlTriggered)
+
         # Initialize the groups
         self._groupImagesIfRequired()
+
+    def customMenus(self) -> list[QtWidgets.QMenu]:
+        return [self._groupsMenu]
 
     def _refreshGroups(self) -> None:
         groups = self._workspace.project().groups
@@ -302,3 +315,37 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
             faces (list[Face]): The selected faces.
         """
         self._inspector.setSelectedFaces(faces)
+
+    @QtCore.Slot()
+    def _onExportAsHtmlTriggered(self) -> None:
+        """
+        Called when the user wants to export the groups as HTML.
+        """
+        project = self._workspace.project()
+        if not project.groups:
+            QtWidgets.QMessageBox.warning(self, __("No Groups"), __("There are no groups to export."))
+            return
+
+        groupsToExport = MultiGroupSelector.getGroups(project.groups, self, __("Select the groups to export"))
+        if not groupsToExport:
+            return
+
+        defaultFilename = os.path.splitext(os.path.basename(project.path))[0] + ".html"
+        filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, __("Export as HTML"), defaultFilename, "HTML (*.html)")
+        if filename:
+            folder = os.path.dirname(filename)
+
+            if os.path.exists(folder) and os.listdir(folder):
+                if not QtWidgets.QMessageBox.question(
+                        self, __("Folder not empty"), __("The folder is not empty. Do you want to continue?")):
+                    return
+
+            exporter = HtmlReportExporter(groupsToExport, filename)
+            exporter.export()
+
+            # Ask the user if they want to open the file
+            if QtWidgets.QMessageBox.question(
+                    self,
+                    __("HTML Report exported successfully"),
+                    __("The HTML report was exported successfully. Do you want to open it?")):
+                Application.projectManager().openFileExternally(filename)

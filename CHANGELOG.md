@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+# Added
+
+- Clustering window: Added a button to generate a report of the clustering results in HTML format. You can select which groups to include in the report. The option is accesible via "Groups" -> "Export as HTML" in the menu bar.
+
 ## [1.1.0] - 2022-10-30
 
 ### Added
