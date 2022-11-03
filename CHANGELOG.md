@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2022-11-03
 
 # Added
 
@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clustering: The program crashes when adding a new face to the project while the clustering page is open.
 - Clustering: Keyboard navigation in the groups list doesn't work properly.
 - Project explorer: Clicking the "Group similar faces" button opens a new Clustering tab each time even if there is already one open.
+- General: The "File > Export Image" option only exports the selected image/s in the project explorer, but not the selected image/s in the clustering page.
 
 ## [1.1.0] - 2022-10-30
 
