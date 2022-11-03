@@ -1,11 +1,8 @@
 import os
 
 from PySide6 import QtCore, QtGui, QtWidgets
-
 from .PhantomMascotAnimationWidget import PhantomMascotAnimationWidget
-
 from ..ShellWindow import NavigationPage, ShellWindow
-
 from ..Application import Application
 from ..Deblur.DeblurPage import DeblurPage
 from ..GroupFaces.GroupFacesPage import GroupFacesPage

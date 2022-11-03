@@ -1,7 +1,13 @@
+import time
+from typing import Callable
 from PySide6 import QtCore, QtGui, QtWidgets
 import math
 import random
 from time import time_ns
+
+
+def lerp(a: float, b: float, t: float) -> float:
+    return a + (b - a) * t
 
 
 class AnimationBase(QtWidgets.QWidget):
@@ -364,3 +370,255 @@ class PhantomMascotLangAnimation(AnimationBase):
 
         # phantom mascot in the center of remaining space
         self._mascot.draw(painter)
+
+
+class Sprite:
+    """
+    A simple sprite.
+    """
+
+    frame: QtGui.QImage
+
+    x = 0
+
+    y = 0
+
+    scaleX = 1
+
+    scaleY = 1
+
+    def __init__(self, image: str, x: int, y: int, scale: float = 1) -> None:
+        self.frame = QtGui.QImage(image)
+        self.x = x
+        self.y = y
+        self.scaleX = scale
+        self.scaleY = scale
+
+    def draw(self, painter: QtGui.QPainter):
+        # pivot is center
+        w, h = self.frame.width(), self.frame.height()
+
+        painter.translate(self.x, self.y)
+        painter.scale(self.scaleX, self.scaleY)
+        painter.drawImage(-w / 2, -h / 2, self.frame)
+        painter.resetTransform()
+
+
+class SimpleTween:
+    """A simple fire and forget tween"""
+
+    def __init__(
+            self, duration: float, easing: QtCore.QEasingCurve.Type,
+            updateCallback: Callable[[float], None] = None,
+            completeCallback: Callable[[], None] = None) -> None:
+        """
+        Initializes a new instance of the SimpleTween class.
+
+        Args:
+            duration: The duration of the tween in seconds.
+            easing: The easing curve to use.
+            updateCallback: The callback to call when the tween is updated. The callback will be called with a value
+                indicating the progress of the tween between 0 and 1.
+            completeCallback: The callback to call when the tween is complete.
+        """
+        self._duration = duration
+        self._easing = QtCore.QEasingCurve(easing)
+        self._updateCallback = updateCallback or (lambda _: None)
+        self._completeCallback = completeCallback or (lambda: None)
+        self._startTime = time.time()
+        self._finished = False
+
+    def update(self) -> bool:
+        """Updates the tween and returns True if the tween has finished"""
+        if self._finished:
+            return True
+
+        t = time.time() - self._startTime
+        if t < self._duration:
+            self._updateCallback(self._easing.valueForProgress(t / self._duration))
+            return False
+        else:
+            self._updateCallback(1)
+            self._completeCallback()
+            self._finished = True
+            return True
+
+    @staticmethod
+    def delay(duration: float, callback: Callable[[], None] = None) -> "SimpleTween":
+        """
+        Creates a new delay tween.
+
+        Args:
+            duration: The duration of the delay in seconds.
+            callback: The callback to call when the delay is complete.
+        """
+        return SimpleTween(duration, QtCore.QEasingCurve.Linear, completeCallback=callback)
+
+
+class GrabingPhantomMascot(PhantomMascot):
+    """
+    A phantom mascot that can hold one object in its hand.
+    """
+
+    _grabbedObject: Sprite = None
+
+    _grabTween: SimpleTween = None
+
+    _onCompleteCallback: Callable = None
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def _getHandPosition(self) -> tuple[float, float]:
+        point = QtCore.QPointF(-50, 4)
+        point = self._transform.map(point)
+        return point.x(), point.y()
+
+    def grab(self, sprite: Sprite, onComplete: Callable[[], None] = None):
+        """
+        Grabs the given sprite.
+
+        Args:
+            sprite: The sprite to grab.
+            onComplete: The callback to call when the grab is complete.
+        """
+        self._grabbedObject = sprite
+        self._onCompleteCallback = onComplete or (lambda: None)
+        xStart, yStart = sprite.x, sprite.y
+
+        def _onComplete():
+            self._grabTween = None
+            self._onCompleteCallback()
+
+        def _onProgress(t):
+            nonlocal xStart, yStart
+            handX, handY = self._getHandPosition()
+            sprite.x = lerp(xStart, handX, t)
+            sprite.y = lerp(yStart, handY, t)
+
+        self._grabTween = SimpleTween(0.5, QtCore.QEasingCurve.OutCubic, _onProgress, _onComplete)
+
+    def drop(self, x: int, y: int, onComplete: Callable[[], None] = None):
+        """
+        Drops the currently grabbed sprite.
+
+        Args:
+            x: The x position to drop the sprite at.
+            y: The y position to drop the sprite at.
+            onComplete: The callback to call when the drop is complete.
+        """
+        self._onCompleteCallback = onComplete or (lambda: None)
+        xStart, yStart = self._getHandPosition()
+
+        def _onComplete():
+            self._grabbedObject = None
+            self._grabTween = None
+            self._onCompleteCallback()
+
+        def _onProgress(t):
+            nonlocal xStart, yStart
+            self._grabbedObject.x = lerp(xStart, x, t)
+            self._grabbedObject.y = lerp(yStart, y, t)
+
+        self._grabTween = SimpleTween(0.5, QtCore.QEasingCurve.OutCubic, _onProgress, _onComplete)
+
+    def update(self, dt: float, t: float):
+        super().update(dt, t)
+        if self._grabTween:
+            self._grabTween.update()
+        elif self._grabbedObject:
+            self._grabbedObject.x, self._grabbedObject.y = self._getHandPosition()
+
+    def draw(self, painter: QtGui.QPainter):
+        super().draw(painter)
+        if self._grabbedObject:
+            self._grabbedObject.draw(painter)
+
+
+class PhantomMascotFacesAnimation(AnimationBase):
+    """
+    This animation shows our phantom mascot taking photos from a box and placing them in 3 different boxes
+    according to the photo type.
+    """
+
+    _mascot: GrabingPhantomMascot
+
+    _sourceBox: Sprite
+
+    _destBoxes: list[Sprite]
+
+    _photos = [
+        Sprite("res/img/photo1.png", 0, 0, 0.5),
+        Sprite("res/img/photo2.png", 0, 0, 0.5),
+        Sprite("res/img/photo3.png", 0, 0, 0.5),
+    ]
+
+    _currentPhoto: Sprite = None
+
+    _tween: SimpleTween = None
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self._canvasWidth = 550
+        self._canvasHeight = 200
+
+        self._mascot = GrabingPhantomMascot()
+
+        boxesY = 150
+        self._sourceBox = Sprite("res/img/box.png", 50, boxesY)
+
+        self._destBoxes = [
+            Sprite("res/img/box.png", 300, boxesY),
+            Sprite("res/img/box.png", 400, boxesY),
+            Sprite("res/img/box.png", 500, boxesY),
+        ]
+
+        self._boxOffsetX = 60
+        self._mascot.x = self._sourceBox.x + self._boxOffsetX
+        self._mascot.y = self._sourceBox.y - 50
+
+        self._nextPhoto()
+
+    def _update(self, dt: float, time: float):
+        self._mascot.update(dt, time)
+
+        if self._tween:
+            self._tween.update()
+
+    def _draw(self, painter: QtGui.QPainter):
+        # draw mascot behind boxes (Current photo is draw by the mascot)
+        self._mascot.draw(painter)
+
+        # draw boxes at the front
+        self._sourceBox.draw(painter)
+        for box in self._destBoxes:
+            box.draw(painter)
+
+    def _nextPhoto(self):
+        index = random.randint(0, len(self._photos) - 1)
+        self._currentPhoto = self._photos[index]
+        self._destBox = self._destBoxes[index]
+
+        self._currentPhoto.x = self._sourceBox.x
+        self._currentPhoto.y = self._sourceBox.y + 20
+
+        self._mascot.facing = -1
+        self._mascot.grab(self._currentPhoto, onComplete=self._goToBox)
+
+    def _goToBox(self):
+        def _update(t):
+            self._mascot.x = lerp(self._sourceBox.x + self._boxOffsetX, self._destBox.x - self._boxOffsetX, t)
+        self._mascot.facing = 1
+        duration = abs(self._mascot.x - self._destBox.x) / 100
+        self._tween = SimpleTween(duration, QtCore.QEasingCurve.InOutQuad, _update, self._dropPhoto)
+
+    def _dropPhoto(self):
+        self._mascot.drop(self._destBox.x, self._destBox.y + 20, onComplete=self._returnToSource)
+
+    def _returnToSource(self):
+        def _update(t):
+            self._mascot.x = lerp(self._destBox.x - self._boxOffsetX, self._sourceBox.x + self._boxOffsetX, t)
+        self._mascot.facing = -1
+        duration = abs(self._mascot.x - self._sourceBox.x) / 100
+        self._tween = SimpleTween(duration, QtCore.QEasingCurve.InOutQuad, _update, self._nextPhoto)

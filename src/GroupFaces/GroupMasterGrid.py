@@ -72,7 +72,7 @@ class GroupMasterGrid(GridBase):
                 continue
             w, h = self.iconSize().width(), self.iconSize().height()
             pixmap = group.main_face.get_avatar_pixmap(w, h)
-            text = f"{group.name} ({count})" if group.name else f"({count})"            
+            text = f"{group.name} ({count})" if group.name else f"({count})"
             self.addItemCore(pixmap, text)
 
     def groups(self) -> list[Group]:

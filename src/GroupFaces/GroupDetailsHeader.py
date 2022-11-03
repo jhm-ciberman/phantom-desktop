@@ -77,6 +77,10 @@ class GroupDetailsHeaderWidget(QtWidgets.QWidget):
         Args:
             group (Group): The group to display.
         """
+        if group is None:
+            return
+        if len(group.faces) == 0:
+            return
         self._group = group
 
         w, h = self._mainFaceIcon.size().width(), self._mainFaceIcon.size().height()

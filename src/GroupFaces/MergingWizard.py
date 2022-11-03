@@ -374,6 +374,7 @@ class MergingWizard(QtWidgets.QWidget):
             self.hide()  # Don't show the wizard if there are no merge opportunities.
             return
 
+        self.show()
         if self._currentIndex < total:
             oportunity = self._mergeOportunities[self._currentIndex]
             self._currentIndex += 1

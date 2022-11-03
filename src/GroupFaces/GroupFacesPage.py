@@ -1,7 +1,7 @@
 from PySide6 import QtCore, QtWidgets, QtGui
 import os
 
-from ..Main.PhantomMascotAnimationWidget import PhantomMascotAnimationWidget
+from ..Main.PhantomMascotAnimationWidget import PhantomMascotFacesAnimation
 from ..Workspace import Workspace
 from .HtmlReportExporter import HtmlReportExporter
 from ..ShellWindow import NavigationPage
@@ -29,7 +29,7 @@ class GroupFacesPageEmpty(QtWidgets.QWidget):
         layout.setAlignment(QtCore.Qt.AlignCenter)
         self.setLayout(layout)
 
-        self._phantomMascotAnimation = PhantomMascotAnimationWidget(self)
+        self._phantomMascotAnimation = PhantomMascotFacesAnimation(self)
         layout.addWidget(self._phantomMascotAnimation)
 
         layout.addSpacing(40)
@@ -96,6 +96,7 @@ class GroupFacesPageContent(QtWidgets.QWidget):
         leftColumnWidget.setLayout(leftColumnLayout)
         splitter.addWidget(leftColumnWidget)
 
+        self._hasGroups = len(self._workspace.project().groups) > 0
         self._mergingWizard = MergingWizard(self._workspace, leftColumnWidget)
         leftColumnLayout.addWidget(self._mergingWizard)
 
@@ -152,6 +153,11 @@ class GroupFacesPageContent(QtWidgets.QWidget):
     @QtCore.Slot()
     def _onGroupsChanged(self):
         self.refreshGroups()
+
+        hasGroupsNow = len(self._workspace.project().groups) > 0
+        if self._hasGroups != hasGroupsNow:
+            self._mergingWizard.recalculateMergeOpportunities()
+            self._hasGroups = hasGroupsNow
 
     @QtCore.Slot(Image)
     def _onImageProcessed(self, image: Image) -> None:
