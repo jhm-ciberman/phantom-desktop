@@ -1,5 +1,6 @@
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from ..Application import Application
 from ..l10n import __
 from ..Models import Face
 from ..Widgets.GridBase import GridBase
@@ -42,10 +43,15 @@ class GroupDetailsGrid(GridBase):
         self._useAsMainFaceAction = QtGui.QAction(__("Use as main face"), self)
         self._useAsMainFaceAction.triggered.connect(self._onUseAsMainFaceActionTriggered)
 
+        self._exportImagesAction = QtGui.QAction(QtGui.QIcon("res/img/image_save.png"), __("Export Image"), self)
+        self._exportImagesAction.triggered.connect(self._onExportImagesActionTriggered)
+
         self._contextMenu = QtWidgets.QMenu(self)
         self._contextMenu.addAction(self._removeFromGroupAction)
         self._contextMenu.addAction(self._moveToGroupAction)
         self._contextMenu.addAction(self._useAsMainFaceAction)
+        self._contextMenu.addSeparator()
+        self._contextMenu.addAction(self._exportImagesAction)
 
         self.setSelectionMode(QtWidgets.QListView.SelectionMode.ExtendedSelection)
         self.selectionModel().selectionChanged.connect(self._onSelectionChanged)
@@ -61,6 +67,8 @@ class GroupDetailsGrid(GridBase):
         self._moveToGroupAction.setEnabled(count > 0)
         self._removeFromGroupAction.setEnabled(count > 0)
         self._useAsMainFaceAction.setEnabled(count == 1)
+        self._exportImagesAction.setEnabled(count > 0)
+        self._exportImagesAction.setText(__("Export Image") if count == 1 else __("Export Images"))
 
         self._contextMenu.exec_(event.globalPos())
 
@@ -137,3 +145,11 @@ class GroupDetailsGrid(GridBase):
         Called when the selection changes.
         """
         self.selectedFacesChanged.emit(self._currentFaces())
+
+    @QtCore.Slot()
+    def _onExportImagesActionTriggered(self) -> None:
+        """
+        Called when the export images action is triggered.
+        """
+        images = [face.image for face in self._currentFaces()]
+        Application.projectManager().exportImages(self, images)

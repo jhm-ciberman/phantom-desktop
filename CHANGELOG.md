@@ -12,12 +12,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clustering: Added options for "Groups > Rename group...", "Groups > Combine group...", "Faces > Move to group...", "Faces > Remove from group..." and "Faces > Use as main face..." in the menu bar.
 - Clustering: Added a new option "Groups > Delete all groups" in the menu bar. This will delete all groups from the project and you will be able to start a new clustering session.
 - Clustering: Added a new screen that shows when there are no groups in the project. This screen will allow you to start a new clustering session.
+- Clustering: Added a new right-click menu option in each image to "Export Image(s)...".
 
 ## Changed
 
 - Clustering: The merging wizard has less padding and the buttons are smaller so they can fit in smaller screens.
 - Clustering: The icons in the groups list and group details are now smaller.
 - Clustering: Now new faces are automatically added to the best group (or a new group) when they are added to the project and the project has groups.
+- Project explorer: The "Export Image" text changes to "Export images" when multiple images are selected.
 
 # Fixed
 

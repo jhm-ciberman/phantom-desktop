@@ -70,6 +70,11 @@ class ImageGrid(GridBase):
 
         self._menu.addSeparator()
 
+        self._exportImagesAction = self._menu.addAction(
+            QtGui.QIcon("res/img/image_save.png"),
+            __("Export Image"),
+            self._onExportImage)
+
         self._removeFromProjectAction = self._menu.addAction(
             QtGui.QIcon("res/img/times.png"),
             __("Remove from Project"),
@@ -85,8 +90,9 @@ class ImageGrid(GridBase):
             self._openInExplorerAction.setEnabled(count == 1)
             self._deblurAction.setEnabled(count == 1)
             self._perspectiveAction.setEnabled(count == 1)
-            self._removeFromProjectAction.setEnabled(True)
-
+            self._exportImagesAction.setEnabled(count > 0)
+            self._exportImagesAction.setText(__("Export Image") if count == 1 else __("Export Images"))
+            self._removeFromProjectAction.setEnabled(count > 0)
             self._menu.exec_(event.globalPos())
 
     def addImage(self, image: Image) -> None:
@@ -180,6 +186,11 @@ class ImageGrid(GridBase):
         Removes the selected image from the project.
         """
         Application.workspace().removeImages(self.selectedImages())
+
+    @QtCore.Slot()
+    def _onExportImage(self) -> None:
+        selectedImages = self.selectedImages()
+        Application.projectManager().exportImages(self, selectedImages)
 
 
 class _TextOverDelegate(QtWidgets.QStyledItemDelegate):

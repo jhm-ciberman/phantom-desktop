@@ -157,6 +157,7 @@ class ProjectExplorerPage(QtWidgets.QWidget, NavigationPage):
         self._shell.setSelectedImages(selectedImages)
         count = len(selectedImages)
         self._exportImageAction.setEnabled(count > 0)
+        self._exportImageAction.setText(__("Export Image") if count == 1 else __("Export Images"))
         self._correctPerspectiveAction.setEnabled(count == 1)
         self._deblurAction.setEnabled(count == 1)
 

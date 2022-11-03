@@ -156,6 +156,7 @@ class MainMenuBar(QtWidgets.QMenuBar):
     def setSelectedImages(self, images: list[Image]) -> None:
         self._selectedImages = images
         self.exportImageAction.setEnabled(len(images) != 0)
+        self.exportImageAction.setText(__("Export Image...") if len(images) == 1 else __("Export Images..."))
 
 
 class NavigationPage:
