@@ -596,9 +596,11 @@ class PhantomMascotFacesAnimation(AnimationBase):
             box.draw(painter)
 
     def _nextPhoto(self):
-        index = random.randint(0, len(self._photos) - 1)
-        self._currentPhoto = self._photos[index]
-        self._destBox = self._destBoxes[index]
+        prevPhoto = self._currentPhoto
+        while prevPhoto == self._currentPhoto:
+            index = random.randint(0, len(self._photos) - 1)
+            self._currentPhoto = self._photos[index]
+            self._destBox = self._destBoxes[index]
 
         self._currentPhoto.x = self._sourceBox.x
         self._currentPhoto.y = self._sourceBox.y + 20
