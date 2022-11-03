@@ -171,6 +171,18 @@ class NavigationPage:
         """
         return []
 
+    def onPageVisible(self) -> None:
+        """
+        Called when the page is visible.
+        """
+        pass
+
+    def onPageHidden(self) -> None:
+        """
+        Called when the page is hidden.
+        """
+        pass
+
 
 class ShellWindow(QtWidgets.QMainWindow):
     """
@@ -257,12 +269,18 @@ class ShellWindow(QtWidgets.QMainWindow):
 
     @QtCore.Slot(int)
     def _onTabChanged(self, index: int) -> None:
+        if isinstance(self._currentPage, NavigationPage):
+            self._currentPage.onPageHidden()
+
         if index == -1:
             self._currentPage = None
             return
 
         widget: QtWidgets.QWidget = self._tabWidget.widget(index)
         self._currentPage = widget
+
+        if isinstance(widget, NavigationPage):
+            widget.onPageVisible()
 
         self._menuBar.clearCustomMenus()
         if isinstance(widget, NavigationPage):

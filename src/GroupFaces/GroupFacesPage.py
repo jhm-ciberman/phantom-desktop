@@ -156,7 +156,10 @@ class GroupFacesPageContent(QtWidgets.QWidget):
 
         hasGroupsNow = len(self._workspace.project().groups) > 0
         if self._hasGroups != hasGroupsNow:
-            self._mergingWizard.recalculateMergeOpportunities()
+            if hasGroupsNow:
+                self._mergingWizard.recalculateMergeOpportunities()
+                self._groupsGrid.selectGroup(self._groupsGrid.groups()[0])
+
             self._hasGroups = hasGroupsNow
 
     @QtCore.Slot(Image)
@@ -358,6 +361,9 @@ class GroupFacesPageContent(QtWidgets.QWidget):
         self._removeFromGroupAction.setEnabled(len(faces) > 0)
         self._moveToGroupAction.setEnabled(len(faces) > 0)
         self._useAsMainFaceAction.setEnabled(len(faces) == 1 and self._selectedGroup is not None)
+
+        images = [face.image for face in faces]
+        Application.instance().shell().setSelectedImages(images)
 
     @QtCore.Slot()
     def _onExportAsHtmlTriggered(self) -> None:
