@@ -355,7 +355,6 @@ class Image(Model):
         if self.path is None:
             raise FileNotFoundError("The image could not be found.")
 
-
         self._data = ImageData.from_file(self.path)
 
     def unload(self) -> None:
@@ -719,6 +718,8 @@ class Project:
 
     def add_face_to_best_group(self, face: Face):
         """Adds a face to the best group."""
+        if face.group is not None:
+            return
         from .GroupFaces.ClusteringService import find_best_group
         group = find_best_group(face, self._groups)
         if group is None:
@@ -742,6 +743,14 @@ class Project:
         self._groups.remove(group)
         del self._groups_ids[group.id]
 
+    def clear_groups(self):
+        """Removes all groups from the project."""
+        for group in self._groups:
+            group.clear_faces()
+
+        self._groups.clear()
+        self._groups_ids.clear()
+
     def has_group(self, group: Group) -> bool:
         """Returns True if the project contains the group."""
         return group.id in self._groups_ids
@@ -762,10 +771,9 @@ class Project:
                     faces.append(face)
         return faces
 
-    def regroup_faces(self):
+    def recalculate_groups(self):
         """Regroups all the faces in the project."""
         from .GroupFaces.ClusteringService import cluster
-        self._groups = []
-        self._groups_ids = {}
+        self.clear_groups()
         for group in cluster(self.get_faces()):
             self.add_group(group)

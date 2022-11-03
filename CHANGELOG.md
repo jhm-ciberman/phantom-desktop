@@ -8,7 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Added
 
-- Clustering window: Added a button to generate a report of the clustering results in HTML format. You can select which groups to include in the report. The option is accesible via "Groups" -> "Export as HTML" in the menu bar.
+- Clustering: Added a button to generate a report of the clustering results in HTML format. You can select which groups to include in the report. The option is accesible via "Groups > Export as HTML" in the menu bar.
+- Clustering: Added options for "Groups > Rename group...", "Groups > Combine group...", "Faces > Move to group...", "Faces > Remove from group..." and "Faces > Use as main face..." in the menu bar.
+- Clustering: Added a new option "Groups > Delete all groups" in the menu bar. This will delete all groups from the project and you will be able to start a new clustering session.
+- Clustering: Added a new screen that shows when there are no groups in the project. This screen will allow you to start a new clustering session.
+
+## Changed
+
+- Clustering: The merging wizard has less padding and the buttons are smaller so they can fit in smaller screens.
+- Clustering: The icons in the groups list and group details are now smaller.
+- Clustering: Now new faces are automatically added to the best group (or a new group) when they are added to the project and the project has groups.
+
+# Fixed
+
+- Clustering: The program crashes when adding a new face to the project while the clustering page is open.
+- Clustering: Keyboard navigation in the groups list doesn't work properly.
+- Project explorer: Clicking the "Group similar faces" button opens a new Clustering tab each time even if there is already one open.
 
 ## [1.1.0] - 2022-10-30
 

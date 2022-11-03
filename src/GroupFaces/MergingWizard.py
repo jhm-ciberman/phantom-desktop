@@ -1,7 +1,9 @@
 from PySide6 import QtCore, QtGui, QtWidgets
+
+from ..Workspace import Workspace
 from .ClusteringService import find_merge_oportunities, MergeOportunity
 from ..Widgets.PixmapDisplay import PixmapDisplay
-from ..Models import Group, Project
+from ..Models import Group
 from ..l10n import __
 
 
@@ -18,20 +20,24 @@ class _IconButton(QtWidgets.QPushButton):
         super().__init__(parent)
 
         layout = QtWidgets.QVBoxLayout()
-        layout.setSpacing(10)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(5, 5, 5, 5)
         self._icon = QtWidgets.QLabel()
         size = QtCore.QSize(32, 32)
         self._icon.setPixmap(QtGui.QPixmap(iconPath).scaled(size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
         self._icon.setAlignment(QtCore.Qt.AlignCenter)
         self._icon.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        layout.addWidget(self._icon)
         self._text = QtWidgets.QLabel(text)
         self._text.setAlignment(QtCore.Qt.AlignCenter)
         self._text.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+
+        layout.addStretch()
+        layout.addWidget(self._icon)
+        layout.addSpacing(5)
         layout.addWidget(self._text)
+        layout.addStretch()
+
         self.setLayout(layout)
-        self.setFixedSize(120, 80)
+        self.setFixedSize(130, 70)
 
 
 class _AreSamePersonWidget(QtWidgets.QFrame):
@@ -68,7 +74,7 @@ class _AreSamePersonWidget(QtWidgets.QFrame):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(10)
-        self.setContentsMargins(5, 5, 5, 5)
+        self.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.setFrameShape(QtWidgets.QFrame.Panel)
@@ -102,9 +108,9 @@ class _AreSamePersonWidget(QtWidgets.QFrame):
 
         imagesLayout = QtWidgets.QHBoxLayout()
         imagesLayout.setSpacing(40)
-        layout.addSpacing(10)
+        layout.addSpacing(5)
         layout.addLayout(imagesLayout)
-        layout.addSpacing(10)
+        layout.addSpacing(5)
 
         self._group1Image = PixmapDisplay(self)
         self._group1Image.setFixedSize(100, 100)
@@ -180,8 +186,8 @@ class _CollapsedWidget(QtWidgets.QFrame):
         self.setStyleSheet("QFrame#CollapsedWidget { border: 2px solid #0078d7; border-radius: 5px; }")
 
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setSpacing(10)
-        self.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(5)
+        self.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.setFrameShape(QtWidgets.QFrame.Panel)
@@ -222,7 +228,7 @@ class _DoneWidget(QtWidgets.QFrame):
 
         self.setObjectName("DoneWidget")
         self.setStyleSheet("QFrame#DoneWidget { border: 2px solid #37c451; border-radius: 5px; }")
-        self.setContentsMargins(5, 5, 5, 5)
+        self.setContentsMargins(0, 0, 0, 0)
 
         layout = QtWidgets.QVBoxLayout(self)
         self.setLayout(layout)
@@ -249,7 +255,7 @@ class _DoneWidget(QtWidgets.QFrame):
 
         horLayout.addStretch(1)
         horLayout.addWidget(icon)
-        horLayout.addSpacing(10)
+        horLayout.addSpacing(5)
         horLayout.addWidget(description)
         horLayout.addStretch(1)
 
@@ -298,12 +304,12 @@ class MergingWizard(QtWidgets.QWidget):
     groupsDontMerged = QtCore.Signal(MergeOportunity)
     """Emitted when the user doesn't merge two groups."""
 
-    def __init__(self, project: Project, parent: QtWidgets.QWidget = None) -> None:
+    def __init__(self, workspace: Workspace, parent: QtWidgets.QWidget = None) -> None:
         """
         Initialize a new instance of the MergingWizard class.
 
         Args:
-            project (Project): The project.
+            workspace (Workspace): The workspace.
             parent (QWidget): The parent widget.
         """
         super().__init__(parent)
@@ -337,7 +343,11 @@ class MergingWizard(QtWidgets.QWidget):
 
         self._ignoredOportunities: list[MergeOportunity] = []
 
-        self._project = project
+        self._workspace = workspace
+        self._isChangingGroups = False  # Used to avoid listening to our own changes.
+        self._workspace.groupsChanged.connect(self._onGroupsChanged)
+
+        self._project = workspace.project()
         if len(self._project.groups) > 1:
             self.recalculateMergeOpportunities(autoStart=True)
 
@@ -387,18 +397,18 @@ class MergingWizard(QtWidgets.QWidget):
     @QtCore.Slot()
     def _onYesClicked(self) -> None:
         op = self._oportunity()
-        op.group1.merge(op.group2)
-        self._project.remove_group(op.group2)
         self._removeGroupFromIgnored(op.group2)
         self._removeGroupFromOportunities(op.group2)
+        self._isChangingGroups = True
+        self._workspace.mergeGroups(op.group1, op.group2)
         self.groupsMerged.emit(op)
+        self._isChangingGroups = False
         self.nextQuestion()
 
     @QtCore.Slot()
     def _onNoClicked(self) -> None:
         op = self._oportunity()
-        op.group1.dont_merge_with.add(op.group2)
-        op.group2.dont_merge_with.add(op.group1)
+        self._workspace.dontMergeGroups(op.group1, op.group2)
         self.groupsDontMerged.emit(op)
         self.nextQuestion()
 
@@ -448,3 +458,12 @@ class MergingWizard(QtWidgets.QWidget):
             group (Group): The group to remove.
         """
         self._mergeOportunities = [op for op in self._mergeOportunities if op.group1 != group and op.group2 != group]
+
+    @QtCore.Slot()
+    def _onGroupsChanged(self) -> None:
+        """
+        Called when the groups changed.
+        """
+        if self._isChangingGroups:
+            return
+        self.recalculateMergeOpportunities(autoStart=True)

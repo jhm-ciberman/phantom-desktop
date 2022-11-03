@@ -212,10 +212,12 @@ class MultiGroupSelector(QtWidgets.QDialog):
 
         self._selectButton = QtWidgets.QPushButton(__("Accept"))
         self._selectButton.clicked.connect(self._onSelectClicked)
-        selectCancelLayout.addWidget(self._selectButton)
 
         self._cancelButton = QtWidgets.QPushButton(__("Cancel"))
         self._cancelButton.clicked.connect(self._onCancelClicked)
+
+        selectCancelLayout.addStretch()
+        selectCancelLayout.addWidget(self._selectButton)
         selectCancelLayout.addWidget(self._cancelButton)
 
         self._groups = groups

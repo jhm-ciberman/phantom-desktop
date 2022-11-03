@@ -20,6 +20,7 @@ class AnimationBase(QtWidgets.QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
 
         self._lastUpdateTime = time_ns() * 1e-9  # seconds
 
@@ -66,7 +67,7 @@ class PhantomMascotAnimationWidget(AnimationBase):
     Also it has a small floating effect (up and down, sinusoidal).
     """
 
-    _mascot: "PhantomMascot"
+    _mascot: "PhantomMascotPatrol"
 
     _tumbleweed: "Tumbleweed"
 
@@ -75,7 +76,7 @@ class PhantomMascotAnimationWidget(AnimationBase):
 
         self._canvasWidth = 400
         self._canvasHeight = 200
-        self._mascot = PhantomMascot(moveStartX=100, moveEndX=300, baseY=90)
+        self._mascot = PhantomMascotPatrol(moveStartX=100, moveEndX=300, baseY=90)
         self._tumbleweedBack = Tumbleweed(moveStartX=50, moveEndX=350, baseY=110, scale=0.5, alphaMulti=0.6, hspeed=40)
         self._tumbleweedFront = Tumbleweed(moveStartX=40, moveEndX=360, baseY=160, scale=0.8, alphaMulti=1.0, hspeed=60)
 
@@ -92,62 +93,58 @@ class PhantomMascotAnimationWidget(AnimationBase):
 
 class PhantomMascot:
     frameIdle = QtGui.QImage("res/img/phantom_mascot_idle.png")  # 128x128
+    """The idle frame of the mascot."""
 
     frameBlink = QtGui.QImage("res/img/phantom_mascot_blink.png")
+    """The blinking frame of the mascot."""
 
     blinkDurationMin = 40
+    """The minimum duration in milliseconds when the mascot will have its eyes closed."""
 
     blinkDurationMax = 250
+    """The maximum duration in milliseconds when the mascot will have its eyes closed."""
 
     blinkIntervalMin = 800
+    """The minimum interval between two blinks in milliseconds."""
 
     blinkIntervalMax = 4000
-
-    floatingDeltaY = 15
-
-    floatingDeltaX = 10
-
-    floatingSpeedY = 0.5  # Cycles per second
-    floatingSpeedX = 1.3  # Cycles per second
-
-    movingStartX = 0
-
-    movingEndX = 0  # from 0 to +moveDeltaX inside the widget
-
-    movingSpeed = 40  # pixels per second
+    """The maximum interval between two blinks in milliseconds."""
 
     currentFrame = frameIdle
+    """The current frame of the mascot."""
 
-    movingDirection = 1  # 1 = right, -1 = left
+    facing = 1  # 1 = right, -1 = left
+    """A value of 1 means the mascot is facing right, a value of -1 means the mascot is facing left."""
 
-    x = 0  # 0,0 is the center of the widget
+    x = 0
+    """The x position of the mascot without having the "floating" effect applied."""
 
     y = 0
+    """The y position of the mascot without having the "floating" effect applied."""
 
-    _baseY = 80
+    floatingDeltaY = 15
+    """The delta y value for the "floating" effect."""
 
-    _baseX = 0
+    floatingDeltaX = 10
+    """The delta x value for the "floating" effect."""
 
-    rawX = 0  # This is X before easing
+    floatingSpeed = 0.5  # Cycles per second
+    """The speed of the "floating" effect measured in cycles per second."""
 
-    easingX = None
+    _floatingX = 0
+
+    _floatingY = 0
 
     _transform: QtGui.QTransform()
 
-    def __init__(self, moveStartX: int, moveEndX: int, baseY: int) -> None:
+    def __init__(self) -> None:
         self._blinkTimer = QtCore.QTimer()
         self._blinkTimer.setSingleShot(True)
         self._blinkTimer.timeout.connect(self._onBlinkTimerTimeout)
 
-        self.easingX = QtCore.QEasingCurve(QtCore.QEasingCurve.InOutQuad)
-
-        self.movingStartX = moveStartX
-        self.movingEndX = moveEndX
-        self._baseY = baseY
-
         self._transform = QtGui.QTransform()
-
         self._onBlinkTimerTimeout()
+        self.updateTransform()
 
     def _onBlinkTimerTimeout(self):
         isBlinking = self.currentFrame == self.frameBlink
@@ -159,37 +156,63 @@ class PhantomMascot:
             self.currentFrame = self.frameBlink
             self._blinkTimer.start(random.randint(self.blinkDurationMin, self.blinkDurationMax))
 
-    @property
-    def movingDeltaX(self):
-        return self.movingEndX - self.movingStartX
-
     def update(self, dt: float, t: float):
-        self.rawX += self.movingSpeed * self.movingDirection * dt
-        self.y = math.sin(t * self.floatingSpeedY * math.pi * 2) * self.floatingDeltaY + self._baseY
-        floatingDeltaX = math.sin(t * self.floatingSpeedY * math.pi * 2) * self.floatingDeltaX
+        self._floatingX = math.sin(t * self.floatingSpeed * 0.3 * math.pi * 2) * self.floatingDeltaX
+        self._floatingY = math.sin(t * self.floatingSpeed * math.pi * 2) * self.floatingDeltaY
+        self.updateTransform()
 
-        moveDeltaX = self.movingEndX - self.movingStartX
-        progress = (self.rawX - self.movingStartX) / moveDeltaX
-        self.x = self.easingX.valueForProgress(progress) * moveDeltaX + self.movingStartX + floatingDeltaX
-
-        minX = self.movingStartX
-        maxX = self.movingEndX
-        if self.rawX < minX:
-            self.rawX = minX
-            self.movingDirection = 1
-        elif self.rawX > maxX:
-            self.rawX = maxX
-            self.movingDirection = -1
-
+    def updateTransform(self):
         self._transform.reset()
-        self._transform.translate(self.x, self.y)
-        self._transform.scale(-self.movingDirection, 1)
+        self._transform.translate(self.x + self._floatingX, self.y + self._floatingY)
+        self._transform.scale(-self.facing, 1)
 
     def draw(self, painter: QtGui.QPainter):
         w, h = self.currentFrame.width(), self.currentFrame.height()
         painter.setTransform(self._transform)
         painter.drawImage(-w / 2, -h / 2, self.currentFrame)
         painter.resetTransform()
+
+
+class PhantomMascotPatrol(PhantomMascot):
+    movingStartX = 0
+
+    movingEndX = 0  # from 0 to +moveDeltaX inside the widget
+
+    movingSpeed = 40  # pixels per second
+
+    _rawX = 0  # This is X before easing
+
+    _easingX = None
+
+    def __init__(self, moveStartX: int, moveEndX: int, baseY: int) -> None:
+        super().__init__()
+        self._easingX = QtCore.QEasingCurve(QtCore.QEasingCurve.InOutQuad)
+
+        self.movingStartX = moveStartX
+        self.movingEndX = moveEndX
+        self.y = baseY
+
+    @property
+    def movingDeltaX(self):
+        return self.movingEndX - self.movingStartX
+
+    def update(self, dt: float, t: float):
+        self._rawX += self.movingSpeed * self.facing * dt
+
+        moveDeltaX = self.movingEndX - self.movingStartX
+        progress = (self._rawX - self.movingStartX) / moveDeltaX
+        self.x = self._easingX.valueForProgress(progress) * moveDeltaX + self.movingStartX
+
+        minX = self.movingStartX
+        maxX = self.movingEndX
+        if self._rawX < minX:
+            self._rawX = minX
+            self.facing = 1
+        elif self._rawX > maxX:
+            self._rawX = maxX
+            self.facing = -1
+
+        super().update(dt, t)
 
 
 class Tumbleweed:
@@ -315,23 +338,7 @@ class PhantomMascotLangAnimation(AnimationBase):
     A small animation that shows the phantom mascot floating with a lang icon above his head.
     """
 
-    _frameIdle = QtGui.QImage("res/img/phantom_mascot_idle.png")
-
-    _frameBlink = QtGui.QImage("res/img/phantom_mascot_blink.png")
-
-    _currentFrame = _frameIdle
-
     _langIcon = QtGui.QImage("res/img/lang.png")
-
-    _blinkInterval = 2000
-
-    _blinkDuration = 200
-
-    _y = 0
-
-    _x = 0
-
-    _blinkTimer: QtCore.QTimer
 
     def __init__(self, parent: QtWidgets.QWidget = None) -> None:
         super().__init__(parent)
@@ -339,31 +346,21 @@ class PhantomMascotLangAnimation(AnimationBase):
         self._canvasWidth = 200
         self._canvasHeight = 200
 
-        self._blinkTimer = QtCore.QTimer()
-        self._blinkTimer.setSingleShot(True)
-        self._blinkTimer.timeout.connect(self._onBlinkTimerTimeout)
-        self._blinkTimer.start(self._blinkInterval)
-
-    def _onBlinkTimerTimeout(self):
-        if self._currentFrame == self._frameIdle:
-            self._currentFrame = self._frameBlink
-            self._blinkTimer.start(self._blinkDuration)
-        else:
-            self._currentFrame = self._frameIdle
-            self._blinkTimer.start(self._blinkInterval)
+        self._mascot = PhantomMascot()
+        self._mascot.y = 114
+        self._mascot.x = 94
+        self._mascot.floatingDeltaX = 5
+        self._mascot.floatingDeltaY = 10
+        self._mascot.floatingSpeed = 0.3
+        self._mascot.facing = -1
 
     def _update(self, dt: float, t: float):
-        t /= 2
-        self._y = 10 * math.sin(t * 2 * math.pi)
-        self._x = 5 * math.cos(t * 2 * math.pi * 0.23)
+        self._mascot.update(dt, t)
 
     def _draw(self, painter: QtGui.QPainter):
-        cw = self._canvasWidth
-
         # lang icon at top right
-        rect = QtCore.QRect(cw - 64, 0, 64, 64)
+        rect = QtCore.QRect(self._canvasWidth - 64, 0, 64, 64)
         painter.drawImage(rect, self._langIcon)
 
         # phantom mascot in the center of remaining space
-        rect = QtCore.QRect(30 + self._x, self._y + 50, 128, 128)
-        painter.drawImage(rect, self._currentFrame)
+        self._mascot.draw(painter)

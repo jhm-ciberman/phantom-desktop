@@ -5,9 +5,9 @@ from sklearn.cluster import DBSCAN
 
 from ..Models import Face, Group
 
-cluster_eps = 0.425
+cluster_eps = 0.450
 
-merging_oportunity_max_distance = 0.5
+merging_oportunity_max_distance = 0.525
 
 
 def cluster(faces: list[Face]) -> list[Group]:
@@ -58,7 +58,7 @@ def find_best_group(face: Face, groups: list[Group]) -> Group:
         groups (list[Group]): The groups to search in.
 
     Returns:
-        Group: The best group.
+        Group: The best group. Or None if no group is close enough.
     """
     if face.encoding is None:
         raise ValueError("Face has no encoding.")
@@ -78,6 +78,10 @@ def find_best_group(face: Face, groups: list[Group]) -> Group:
         if distance < best_distance:
             best_group = group
             best_distance = distance
+
+    print(f"Best group: {best_group}, distance: {best_distance}")
+    if best_distance >= cluster_eps:
+        return None
 
     return best_group
 

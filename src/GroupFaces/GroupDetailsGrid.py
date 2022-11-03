@@ -5,7 +5,7 @@ from ..Models import Face
 from ..Widgets.GridBase import GridBase
 
 
-class FacesGrid(GridBase):
+class GroupDetailsGrid(GridBase):
     """
     Widget that displays a list of faces in form of a grid of thumbnails.
     """
@@ -30,6 +30,7 @@ class FacesGrid(GridBase):
             parent (QWidget): The parent widget.
         """
         super().__init__(parent)
+
         self._faces = []  # type: list[Face]
 
         self._moveToGroupAction = QtGui.QAction(__("Move to group..."), self)

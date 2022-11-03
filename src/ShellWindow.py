@@ -283,6 +283,22 @@ class ShellWindow(QtWidgets.QMainWindow):
         if index != -1:
             self._tabWidget.removeTab(index)
 
+    def pageIndex(self, type: type[QtWidgets.QWidget]) -> int:
+        """
+        Returns the index of the page with the given type or -1 if no page with the given type is open.
+        """
+        for i in range(self._tabWidget.count()):
+            if isinstance(self._tabWidget.widget(i), type):
+                return i
+
+        return -1
+
+    def displayPageAtIndex(self, index: int) -> None:
+        """
+        Displays the page at the given index.
+        """
+        self._tabWidget.setCurrentIndex(index)
+
     @QtCore.Slot(int)
     def _onTabCloseRequested(self, index: int) -> None:
         page: NavigationPage = self._tabWidget.widget(index)

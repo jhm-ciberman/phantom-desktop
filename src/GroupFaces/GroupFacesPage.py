@@ -1,46 +1,89 @@
 from PySide6 import QtCore, QtWidgets, QtGui
 import os
 
-
+from ..Main.PhantomMascotAnimationWidget import PhantomMascotAnimationWidget
+from ..Workspace import Workspace
 from .HtmlReportExporter import HtmlReportExporter
-
 from ..ShellWindow import NavigationPage
-
 from .FaceInspectorPanel import FaceInspectorPanel
 from ..Application import Application
 from ..l10n import __
 from ..Models import Face, Group, Image
-from .ClusteringService import MergeOportunity
-from .FacesGrid import FacesGrid
+from .GroupDetailsGrid import GroupDetailsGrid
 from .GroupDetailsHeader import GroupDetailsHeaderWidget
 from .GroupSelector import GroupSelector, MultiGroupSelector
-from .GroupsGrid import GroupsGrid
+from .GroupMasterGrid import GroupMasterGrid
 from .MergingWizard import MergingWizard
 
 
-class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
+class GroupFacesPageEmpty(QtWidgets.QWidget):
     """
-    A window that allows the user to group faces.
+    A fullscreen widget that shows when there are no groups to display.
+    This shows a button to "Group Faces" and a message that there are no faces to display.
     """
 
-    def __init__(self) -> None:
-        """
-        Initialize a new instance of the GroupFacesWindow class.
-        """
-        super().__init__()
+    def __init__(self, parent: QtWidgets.QWidget = None):
+        super().__init__(parent)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setAlignment(QtCore.Qt.AlignCenter)
+        self.setLayout(layout)
+
+        self._phantomMascotAnimation = PhantomMascotAnimationWidget(self)
+        layout.addWidget(self._phantomMascotAnimation)
+
+        layout.addSpacing(40)
+
+        self._title = QtWidgets.QLabel(__("Group faces"))
+        self._title.setAlignment(QtCore.Qt.AlignCenter)
+        self._title.setStyleSheet("font-size: 24px;")
+        layout.addWidget(self._title)
+
+        self._subtitle = QtWidgets.QLabel(__("Add all the images you want to the project and click the button below to start"))
+        self._subtitle.setAlignment(QtCore.Qt.AlignCenter)
+        self._subtitle.setWordWrap(True)
+        self._subtitle.setContentsMargins(40, 0, 40, 0)
+        self._subtitle.setStyleSheet("font-size: 16px; color: #666;")
+        layout.addWidget(self._subtitle)
+
+        layout.addSpacing(40)
+
+        buttonLayout = QtWidgets.QHBoxLayout()
+        buttonLayout.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addLayout(buttonLayout)
+
+        self.button = QtWidgets.QPushButton(QtGui.QIcon("res/img/face.png"), __("Group Faces"))
+        self.button.setIconSize(QtCore.QSize(32, 32))
+        self.button.setStyleSheet("padding-left: 16px; padding-right: 16px;")
+        self.button.clicked.connect(self._onGroupFacesClicked)
+        buttonLayout.addWidget(self.button)
+
+    @QtCore.Slot()
+    def _onGroupFacesClicked(self) -> None:
+        Application.workspace().recalculateGroups()
+
+
+class GroupFacesPageContent(QtWidgets.QWidget):
+    """
+    This is the main widget in the GroupFacesPage.
+    """
+    _selectedGroup: Group = None
+
+    _selectedFaces: list[Face] = []
+
+    _workspace: Workspace = None
+
+    def __init__(self, parent: QtWidgets.QWidget = None):
+        super().__init__(parent)
 
         self._workspace = Application.workspace()
         self._workspace.imagesAdded.connect(self._onImagesAdded)
         self._workspace.imagesRemoved.connect(self._onImageRemoved)
+        self._workspace.imageProcessed.connect(self._onImageProcessed)
+        self._workspace.groupsChanged.connect(self._onGroupsChanged)
 
-        self._selectedGroup = None  # type: Group
-
-        self.setWindowIcon(QtGui.QIcon("res/img/group_faces.png"))
-        self.setWindowTitle(__("Group Faces"))
-
-        layout = QtWidgets.QVBoxLayout()
+        layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(layout)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         self.setSizePolicy(QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding))
@@ -53,10 +96,10 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         leftColumnWidget.setLayout(leftColumnLayout)
         splitter.addWidget(leftColumnWidget)
 
-        self._mergingWizard = MergingWizard(self._workspace.project(), leftColumnWidget)
+        self._mergingWizard = MergingWizard(self._workspace, leftColumnWidget)
         leftColumnLayout.addWidget(self._mergingWizard)
 
-        self._groupsGrid = GroupsGrid()
+        self._groupsGrid = GroupMasterGrid()
         leftColumnLayout.addWidget(self._groupsGrid)
 
         detailsWidget = QtWidgets.QWidget()
@@ -65,7 +108,7 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         detailsWidget.setLayout(detailsLayout)
 
         self._detailsHeader = GroupDetailsHeaderWidget()
-        self._detailsGrid = FacesGrid()
+        self._detailsGrid = GroupDetailsGrid()
 
         detailsLayout.addWidget(self._detailsHeader)
         detailsLayout.addWidget(self._detailsGrid)
@@ -78,7 +121,6 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         splitter.setStretchFactor(1, 3)
         splitter.setStretchFactor(2, 1)
 
-        # Connect signals
         self._groupsGrid.groupClicked.connect(self._onGroupClicked)
         self._groupsGrid.renameGroupTriggered.connect(self._onRenameGroupTriggered)
         self._groupsGrid.combineGroupTriggered.connect(self._onCombineGroupTriggered)
@@ -90,48 +132,41 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         self._detailsHeader.renameGroupTriggered.connect(self._onRenameGroupTriggered)
         self._detailsHeader.combineGroupTriggered.connect(self._onCombineGroupTriggered)
 
-        self._mergingWizard.groupsMerged.connect(self._onGroupsMerged)
-        self._mergingWizard.groupsDontMerged.connect(self._onGroupsDontMerged)
+        # Connect signals
+        self.groupsMenu = QtWidgets.QMenu(__("Groups"))
+        self._renameGroupAction = self.groupsMenu.addAction(
+            QtGui.QIcon("res/img/edit.png"), __("Rename Group..."), self._onRenameGroupActionTriggered)
+        self._combineGroupAction = self.groupsMenu.addAction(__("Combine Group..."), self._onCombineGroupActionTriggered)
+        self.groupsMenu.addSeparator()
+        self._exportAsHtmlAction = self.groupsMenu.addAction(__("Export as HTML..."), self._onExportAsHtmlTriggered)
+        self.groupsMenu.addSeparator()
+        self._recalculateGroupsAction = self.groupsMenu.addAction(__("Delete all groups"), self._onDeleteAllGroupsTriggered)
 
-        self._groupsMenu = QtWidgets.QMenu(__("Groups"))
-        self._groupsMenu.addAction(__("Rename Group"), self._onRenameGroupTriggered)
-        self._groupsMenu.addAction(__("Combine Group"), self._onCombineGroupTriggered)
-        self._groupsMenu.addSeparator()
-        self._groupsMenu.addAction(__("Export as HTML"), self._onExportAsHtmlTriggered)
+        self.facesMenu = QtWidgets.QMenu(__("Faces"))
+        self._moveToGroupAction = self.facesMenu.addAction(__("Move to Group..."), self._onMoveToGroupActionTriggered)
+        self._removeFromGroupAction = self.facesMenu.addAction(__("Remove from Group..."), self._onRemoveFromGroupActionTriggered)  # noqa
+        self._useAsMainFaceAction = self.facesMenu.addAction(__("Use as Main Face"), self._onUseAsMainFaceActionTriggered)
 
-        # Initialize the groups
-        self._groupImagesIfRequired()
+        self.refreshGroups()
 
-    def customMenus(self) -> list[QtWidgets.QMenu]:
-        return [self._groupsMenu]
+    @QtCore.Slot()
+    def _onGroupsChanged(self):
+        self.refreshGroups()
 
-    def _refreshGroups(self) -> None:
+    @QtCore.Slot(Image)
+    def _onImageProcessed(self, image: Image) -> None:
+        """
+        Called when an image is processed.
+        """
+        project = self._workspace.project()
+        for face in image.faces:
+            project.add_face_to_best_group(face)
+
+    def refreshGroups(self) -> None:
         groups = self._workspace.project().groups
         self._groupsGrid.setGroups(groups)
         if self._selectedGroup is None and len(self._groupsGrid.groups()) > 0:
             self._onGroupClicked(groups[0])
-
-    def _groupImagesIfRequired(self) -> None:
-        """
-        Group the images in the current project if required.
-        """
-        project = self._workspace.project()
-        faces_without_groups = project.get_faces_without_group()
-        if len(faces_without_groups) == 0:
-            self._refreshGroups()
-            return  # The faces have already been grouped
-
-        # If the groups are not clustered, then cluster them
-        if len(project.groups) == 0:
-            project.regroup_faces()
-        else:
-            # Otherwise, add the faces to the best matching group (or create a new group)
-            for face in faces_without_groups:
-                project.add_face_to_best_group(face, project.groups[0])
-
-        self._workspace.setDirty()  # The project has changed
-        self._refreshGroups()
-        self._mergingWizard.recalculateMergeOpportunities()
 
     def _collectFaces(self, images: list[Image]) -> list[Face]:
         """
@@ -156,7 +191,7 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         for face in faces:
             project.add_face_to_best_group(face)
         self._workspace.setDirty()
-        self._refreshGroups()
+        self.refreshGroups()
 
     @QtCore.Slot(list)
     def _onImageRemoved(self, images: list[Image]) -> None:
@@ -168,7 +203,7 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         for face in faces:
             project.remove_face_from_groups(face)
         self._workspace.setDirty()
-        self._refreshGroups()
+        self.refreshGroups()
 
     @QtCore.Slot(list)
     def _onMoveToGroupTriggered(self, faces: list[Face]) -> None:
@@ -201,7 +236,7 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
                 self._selectedGroup.remove_face(face)
                 group.add_face(face)
             self._detailsGrid.refresh()
-            self._refreshGroups()
+            self.refreshGroups()
 
     @QtCore.Slot(Group)
     def _onRenameGroupTriggered(self, group: Group) -> None:
@@ -214,9 +249,17 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         name, ok = QtWidgets.QInputDialog.getText(self, __("Group Name"), __("Enter a name for the group:"), text=group.name)
         if ok:
             group.name = name
-            self._refreshGroups()
+            self.refreshGroups()
             self._detailsHeader.refresh()
             self._workspace.setDirty()
+
+    @QtCore.Slot(Group)
+    def _onRenameGroupActionTriggered(self) -> None:
+        """
+        Called when the user wants to rename the selected group.
+        """
+        if self._selectedGroup is not None:
+            self._onRenameGroupTriggered(self._selectedGroup)
 
     @QtCore.Slot(list)
     def _onRemoveFromGroupTriggered(self, faces: list[Face]) -> None:
@@ -236,7 +279,7 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         newGroup.recompute_centroid()
         self._workspace.project().add_group(newGroup)
         self._detailsGrid.refresh()
-        self._refreshGroups()
+        self.refreshGroups()
 
     @QtCore.Slot(Group)
     def _onGroupClicked(self, group: Group) -> None:
@@ -261,7 +304,8 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         """
         self._selectedGroup.main_face_override = face
         self._detailsGrid.refresh()
-        self._refreshGroups()
+        self._detailsHeader.refresh()
+        self.refreshGroups()
         self._workspace.setDirty()
 
     @QtCore.Slot(Group)
@@ -282,29 +326,16 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
             project.remove_group(groupToCombine)
             if self._selectedGroup == groupToCombine:
                 self._onGroupClicked(groupToCombineWith)
-            self._refreshGroups()
+            self.refreshGroups()
             self._workspace.setDirty()
 
-    @QtCore.Slot(MergeOportunity)
-    def _onGroupsMerged(self, mergeOportunity: MergeOportunity) -> None:
+    @QtCore.Slot()
+    def _onCombineGroupActionTriggered(self) -> None:
         """
-        Called when two groups are merged.
-
-        Args:
-            mergeOportunity (MergeOportunity): The merge oportunity.
+        Called when the user wants to combine the selected group with another group.
         """
-        self._refreshGroups()
-        self._workspace.setDirty()
-
-    @QtCore.Slot(MergeOportunity)
-    def _onGroupsDontMerged(self, mergeOportunity: MergeOportunity) -> None:
-        """
-        Called when two groups are not merged.
-
-        Args:
-            mergeOportunity (MergeOportunity): The merge oportunity.
-        """
-        self._workspace.setDirty()
+        if self._selectedGroup is not None:
+            self._onCombineGroupTriggered(self._selectedGroup)
 
     @QtCore.Slot(list)
     def _onSelectedFacesChanged(self, faces: list[Face]) -> None:
@@ -314,7 +345,13 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
         Args:
             faces (list[Face]): The selected faces.
         """
+        self._selectedFaces = faces
         self._inspector.setSelectedFaces(faces)
+
+        # Update actions
+        self._removeFromGroupAction.setEnabled(len(faces) > 0)
+        self._moveToGroupAction.setEnabled(len(faces) > 0)
+        self._useAsMainFaceAction.setEnabled(len(faces) == 1 and self._selectedGroup is not None)
 
     @QtCore.Slot()
     def _onExportAsHtmlTriggered(self) -> None:
@@ -349,3 +386,93 @@ class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
                     __("HTML Report exported successfully"),
                     __("The HTML report was exported successfully. Do you want to open it?")):
                 Application.projectManager().openFileExternally(filename)
+
+    @QtCore.Slot()
+    def _onDeleteAllGroupsTriggered(self) -> None:
+        """
+        Called when the user wants to recalculate the groups.
+        """
+        # Ask the user if he wants to continue because this will delete all the groups
+        if not QtWidgets.QMessageBox.question(
+                self,
+                __("Delete all groups"),
+                __("This will delete all the groups. After that you can run the group detection again. Do you want to continue?")):  # noqa: E501
+            return
+
+        self._workspace.clearGroups()
+
+    @QtCore.Slot()
+    def _onMoveToGroupActionTriggered(self) -> None:
+        """
+        Called when the user wants to move the selected faces to a group.
+        """
+        if len(self._selectedFaces) > 0:
+            self._onMoveToGroupTriggered(self._selectedFaces)
+
+    @QtCore.Slot()
+    def _onRemoveFromGroupActionTriggered(self) -> None:
+        """
+        Called when the user wants to remove the selected faces from a group.
+        """
+        if len(self._selectedFaces) > 0:
+            self._onRemoveFromGroupTriggered(self._selectedFaces)
+
+    @QtCore.Slot()
+    def _onUseAsMainFaceActionTriggered(self) -> None:
+        """
+        Called when the user wants to use the selected face as the main face.
+        """
+        if len(self._selectedFaces) == 1:
+            self._onUseAsMainFaceTriggered(self._selectedFaces[0])
+
+
+class GroupFacesPage(QtWidgets.QWidget, NavigationPage):
+    """
+    A window that allows the user to group faces.
+    """
+
+    _workspace: Workspace
+
+    def __init__(self) -> None:
+        """
+        Initialize a new instance of the GroupFacesWindow class.
+        """
+        super().__init__()
+        self._workspace = Application.workspace()
+        self._workspace.groupsChanged.connect(self._onGroupsChanged)
+
+        self.setWindowIcon(QtGui.QIcon("res/img/group_faces.png"))
+        self.setWindowTitle(__("Group Faces"))
+
+        layout = QtWidgets.QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+        self._stack = QtWidgets.QStackedWidget()
+        layout.addWidget(self._stack)
+
+        self._emptyPage = GroupFacesPageEmpty()
+        self._stack.addWidget(self._emptyPage)
+
+        self._content = GroupFacesPageContent()
+        self._stack.addWidget(self._content)
+
+        self._onGroupsChanged()
+
+    def customMenus(self) -> list[QtWidgets.QMenu]:
+        return [self._content.groupsMenu, self._content.facesMenu]
+
+    @QtCore.Slot()
+    def _onGroupsChanged(self) -> None:
+        """
+        Called when the groups change.
+        """
+        groups = self._workspace.project().groups
+        if len(groups) == 0:
+            self._stack.setCurrentWidget(self._emptyPage)
+            self._content.groupsMenu.setEnabled(False)
+            self._content.facesMenu.setEnabled(False)
+        else:
+            self._stack.setCurrentWidget(self._content)
+            self._content.groupsMenu.setEnabled(True)
+            self._content.facesMenu.setEnabled(True)

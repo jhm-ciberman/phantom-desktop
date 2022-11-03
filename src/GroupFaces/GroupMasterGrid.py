@@ -5,7 +5,7 @@ from ..Models import Group
 from ..Widgets.GridBase import GridBase
 
 
-class GroupsGrid(GridBase):
+class GroupMasterGrid(GridBase):
     """
     Widget that displays a list of groups of faces in form of a grid of thumbnails.
     """
@@ -27,8 +27,10 @@ class GroupsGrid(GridBase):
             parent (QWidget): The parent widget.
         """
         super().__init__(parent)
+        self.setSizePreset(GridBase.smallPreset)
+
         self._groups = []  # type: list[Group]
-        self.itemClicked.connect(self._onItemClicked)
+        self.selectionModel().selectionChanged.connect(self._onSelectionChanged)
         self.itemDoubleClicked.connect(self._onItemDoubleClicked)
 
         self._combineGroupAction = QtGui.QAction(__("Combine group with..."), self)
@@ -93,16 +95,6 @@ class GroupsGrid(GridBase):
         self.setCurrentRow(index)
 
     @QtCore.Slot(QtWidgets.QListWidgetItem)
-    def _onItemClicked(self, item: QtWidgets.QListWidgetItem) -> None:
-        """
-        Called when an item is clicked.
-
-        Args:
-            item (QListWidgetItem): The item that was clicked.
-        """
-        self.groupClicked.emit(self._groups[self.row(item)])
-
-    @QtCore.Slot(QtWidgets.QListWidgetItem)
     def _onItemDoubleClicked(self, item: QtWidgets.QListWidgetItem) -> None:
         """
         Called when an item is double-clicked.
@@ -125,3 +117,15 @@ class GroupsGrid(GridBase):
         Called when the "Rename group" action is triggered.
         """
         self.renameGroupTriggered.emit(self._groups[self.currentRow()])
+
+    @QtCore.Slot(QtCore.QItemSelection, QtCore.QItemSelection)
+    def _onSelectionChanged(self, selected: QtCore.QItemSelection, deselected: QtCore.QItemSelection) -> None:
+        """
+        Called when the selection changes.
+
+        Args:
+            selected (QItemSelection): The selected items.
+            deselected (QItemSelection): The deselected items.
+        """
+        if selected.indexes():
+            self.groupClicked.emit(self._groups[selected.indexes()[0].row()])

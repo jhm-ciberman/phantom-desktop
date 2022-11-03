@@ -5,7 +5,7 @@ from typing import Callable
 from PySide6 import QtCore
 
 from .ImageProcessorService import ImageProcessorService
-from .Models import Image, Project
+from .Models import Group, Image, Project
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +53,7 @@ class Workspace(QtCore.QObject):
     the dirty state of the project and emits various signals when the project is changed or updated.
     It as a global channel for internal comunication between the different components of the application.
     A Workspace instance is created by the Application class. There is always one active Project per Workspace.
+    All actions that have an effect on the project should be performed through the Workspace instance.
     """
 
     projectChanged = QtCore.Signal()
@@ -75,6 +76,12 @@ class Workspace(QtCore.QObject):
 
     batchProgressChanged = QtCore.Signal(BatchProgress)
     """Signal emited when the progress of the batch processing changes."""
+
+    groupsChanged = QtCore.Signal()
+    """
+    Signal emmited when all the groups changed. This signal is emitted when a group is added,
+    removed, renamed, combined or the groups are cleared or recalculated.
+    """
 
     def __init__(self, imageProcessorService: ImageProcessorService):
         """
@@ -232,8 +239,8 @@ class Workspace(QtCore.QObject):
         """
         Callback called when an image is successfully processed.
         """
+        self._addToGroupsIfNecessary(image)
         self.setDirty(True)  # This is because the image is modified by the ImageProcessor
-
         self.imageProcessed.emit(image)
         self._removeImageFromBatch(image)
 
@@ -243,3 +250,58 @@ class Workspace(QtCore.QObject):
         """
         self.imageProcessingFailed.emit(image, error)
         self._removeImageFromBatch(image)
+
+    def _addToGroupsIfNecessary(self, image: Image):
+        # If the groups are not yet clustered, skip this step
+        if len(self._project.groups) == 0:
+            return
+
+        # If the image has no faces, nothing to do here
+        if len(image.faces) == 0:
+            return
+
+        # Add the faces to the best matching group (or create a new group)
+        for face in image.faces:
+            self._project.add_face_to_best_group(face)
+        self.groupsChanged.emit()
+
+    def mergeGroups(self, groupA: Group, groupB: Group):
+        """
+        Merges two groups into a single group.
+
+        Args:
+            groupA (Group): The first group.
+            groupB (Group): The second group.
+        """
+        groupA.merge(groupB)
+        self._project.remove_group(groupB)
+        self.setDirty()
+        self.groupsChanged.emit()
+
+    def dontMergeGroups(self, groupA: Group, groupB: Group):
+        """
+        Marks two groups as not mergeable.
+
+        Args:
+            groupA (Group): The first group.
+            groupB (Group): The second group.
+        """
+        groupA.dont_merge_with.add(groupB)
+        groupB.dont_merge_with.add(groupA)
+        self.setDirty()
+
+    def recalculateGroups(self):
+        """
+        Recalculates the groups of the current project.
+        """
+        self._project.recalculate_groups()
+        self.setDirty()
+        self.groupsChanged.emit()
+
+    def clearGroups(self):
+        """
+        Clears the groups of the current project.
+        """
+        self._project.clear_groups()
+        self.setDirty()
+        self.groupsChanged.emit()
