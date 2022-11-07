@@ -48,7 +48,7 @@ class ProjectExplorerPage(QtWidgets.QWidget, NavigationPage):
 
         self._newProjectAction = makeAction("new_project.png", __("New Project"), self._onNewProjectPressed)
         self._openProjectAction = makeAction("folder.png", __("Open Project..."), self._onOpenProjectPressed)
-        self._saveProjectAction = makeAction("save.png", __("Save Project..."), self._onSaveProjectPressed)
+        self._saveProjectAction = makeAction("save.png", __("Save Project"), self._onSaveProjectPressed)
         self._saveProjectAsAction = makeAction("save_as.png", __("Save Project As..."), self._onSaveProjectAsPressed)
         self._addImagesAction = makeAction("image_add.png", __("Add Images..."), self._onAddImagesPressed)
         self._addFolderAction = makeAction("folder_add.png", __("Add From Folder..."), self._onAddFolderPressed)

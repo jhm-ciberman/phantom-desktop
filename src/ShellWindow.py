@@ -29,7 +29,7 @@ class MainMenuBar(QtWidgets.QMenuBar):
         self.openProjectAction.triggered.connect(self._onOpenProjectPressed)
 
         self.saveProjectAction = QtGui.QAction(
-            QtGui.QIcon("res/img/save.png"), __("Save Project..."), self)
+            QtGui.QIcon("res/img/save.png"), __("Save Project"), self)
         self.saveProjectAction.setEnabled(False)
         self.saveProjectAction.setShortcut("Ctrl+S")
         self.saveProjectAction.triggered.connect(self._onSaveProjectPressed)
