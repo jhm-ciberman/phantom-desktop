@@ -379,7 +379,7 @@ class GroupFacesPageContent(QtWidgets.QWidget):
         if not groupsToExport:
             return
 
-        defaultFilename = os.path.splitext(os.path.basename(project.path))[0] + ".html"
+        defaultFilename = "" if project.path is None else os.path.splitext(project.path)[0] + ".html"
         filename, _ = QtWidgets.QFileDialog.getSaveFileName(self, __("Export as HTML"), defaultFilename, "HTML (*.html)")
         if filename:
             folder = os.path.dirname(filename)
