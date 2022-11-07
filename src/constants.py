@@ -2,7 +2,7 @@ from os import path
 import os
 
 
-app_version = "1.2.0"  # Any semver is fine
+app_version = "1.2.1"  # Any semver is fine
 app_name = "Phantom Desktop"
 app_description = "Phantom Desktop"  # This is shown in the task manager so it should be short
 app_repo_url = "https://github.com/jhm-ciberman/phantom-desktop"
