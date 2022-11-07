@@ -385,18 +385,22 @@ class GroupFacesPageContent(QtWidgets.QWidget):
             folder = os.path.dirname(filename)
 
             if os.path.exists(folder) and os.listdir(folder):
-                if not QtWidgets.QMessageBox.question(
-                        self, __("Folder not empty"), __("The folder is not empty. Do you want to continue?")):
+                result = QtWidgets.QMessageBox.question(
+                        self,
+                        __("Folder not empty"),
+                        __("The folder is not empty. Do you want to continue?"))
+                if result != QtWidgets.QMessageBox.Yes:
                     return
 
             exporter = HtmlReportExporter(groupsToExport, filename)
             exporter.export()
 
             # Ask the user if they want to open the file
-            if QtWidgets.QMessageBox.question(
+            result = QtWidgets.QMessageBox.question(
                     self,
                     __("HTML Report exported successfully"),
-                    __("The HTML report was exported successfully. Do you want to open it?")):
+                    __("The HTML report was exported successfully. Do you want to open it?"))
+            if result == QtWidgets.QMessageBox.Yes:
                 Application.projectManager().openFileExternally(filename)
 
     @QtCore.Slot()
@@ -405,13 +409,13 @@ class GroupFacesPageContent(QtWidgets.QWidget):
         Called when the user wants to recalculate the groups.
         """
         # Ask the user if he wants to continue because this will delete all the groups
-        if not QtWidgets.QMessageBox.question(
+        result = QtWidgets.QMessageBox.question(
                 self,
                 __("Delete all groups"),
-                __("This will delete all the groups. After that you can run the group detection again. Do you want to continue?")):  # noqa: E501
-            return
+                __("This will delete all the groups. After that you can run the group detection again. Do you want to continue?"))  # noqa: E501
 
-        self._workspace.clearGroups()
+        if result == QtWidgets.QMessageBox.Yes:
+            self._workspace.clearGroups()
 
     @QtCore.Slot()
     def _onMoveToGroupActionTriggered(self) -> None:
