@@ -13,6 +13,7 @@ build_options = {
     ],
     "include_files": [
         "res/",
+        "LICENSE.txt",
     ],
     "bin_includes": [
         # Required for dlib:
