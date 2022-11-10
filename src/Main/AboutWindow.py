@@ -31,6 +31,7 @@ credits = [
     Title(__("Special thanks to:")),
     Line("Santiago Trigo", "", ""),
     Line("Fernando Zagnoni", "", ""),
+    Line("Matias N. Goldberg", "@darksylinc", "https://github.com/darksylinc"),
     Line("InfoLab", "info-lab.org.ar", "http://info-lab.org.ar/"),
     Line("Universidad Fasta", "ufasta.edu.ar", "https://www.ufasta.edu.ar/"),
 ]
