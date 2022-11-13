@@ -73,5 +73,5 @@ The phantom project file format (`*.phantom`) is an open format and it's specifi
 
 ## License
 
-- Phantom Desktop is licensed under the [MIT License](./LICENSE.txt).
+- Phantom Desktop is licensed under the [MIT License](./LICENCE.txt).
 - Fluency Icons are by [Icons8](https://icons8.com/).
