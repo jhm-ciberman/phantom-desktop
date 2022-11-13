@@ -70,3 +70,8 @@ The project has some type hints, but it's only for basic IDE autocomplete. It's 
 ## Phantom Project File format
 
 The phantom project file format (`*.phantom`) is an open format and it's specification can be found [here](./docs/phantom_project_file_format.md).
+
+## License
+
+- Phantom Desktop is licensed under the [MIT License](./LICENSE).
+- Fluency Icons are by [Icons8](https://icons8.com/).

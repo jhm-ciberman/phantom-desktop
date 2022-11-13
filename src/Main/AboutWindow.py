@@ -34,6 +34,7 @@ credits = [
     Line("Matias N. Goldberg", "@darksylinc", "https://github.com/darksylinc"),
     Line("InfoLab", "info-lab.org.ar", "http://info-lab.org.ar/"),
     Line("Universidad Fasta", "ufasta.edu.ar", "https://www.ufasta.edu.ar/"),
+    Line("Fluency Icons by Icons8", "icons8.com", "https://icons8.com/"),
 ]
 
 logos = [
